@@ -1,0 +1,5 @@
+node_modules/
+*.cindy
+.DS_Store
+coverage/
+artifacts/

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 3,
+  "id": "workflow-deck",
+  "name": "工作流快捷面板",
+  "description": "一键新建实验、功能、工具、PR 和分支整理任务。支持独立窗口与最小化。",
+  "whenToUse": "开始实验性工作、功能开发、工具开发、提交 PR 或整理分支时使用工作流快捷面板。",
+  "version": "0.1.0",
+  "minCindyVersion": "0.1.109",
+  "entry": "main.js",
+  "launch": "on-demand",
+  "command": "workflow-deck",
+  "tools": [
+    {
+      "name": "get_workflows",
+      "description": "查看五个工作流入口及其引用文件或 Skill。仅返回说明，不创建或执行任务；用户在插件面板点击按钮发起独立任务。",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  ],
+  "agent": {
+    "tasks": true
+  },
+  "panel": {
+    "title": "工作流",
+    "html": "panel.html",
+    "position": "left",
+    "minWidth": 280,
+    "defaultFraction": 0.26,
+    "systemButtons": {
+      "maximize": true,
+      "detach": true,
+      "minimize": true
+    }
+  },
+  "locales": {
+    "en": "locales/en.json",
+    "zh-CN": "locales/zh-CN.json"
+  },
+  "icon": "assets/icon.png"
+}
