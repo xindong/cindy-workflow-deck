@@ -1,0 +1,37 @@
+# Cindy Workflow Deck — 0.3.3
+
+任务单：https://github.com/xindong/xdrpg/issues/190。仅开发插件，不修改 Cindy Core。
+
+## 使用
+
+1. 在 Cindy 打开“工作流”面板。上方是执行记录区，底部是五个工作流按钮组成的横向胶囊工具栏。宿主标题栏提供独立窗口和最小化。
+2. 在目标本地项目聊天发送 $workflow-deck，点击新卡片的“绑定工具栏”。绑定只检查文件，不创建任务、不执行流程。
+3. 工具栏显示已绑定项目；悬停或聚焦按钮可看动作、来源及禁用原因。检查失败时显示错误码，点击刷新重查。
+4. 点击可用按钮新建独立任务，Host 从绑定聊天继承目录、Agent 和模型，不复制聊天历史。详情面板可填写补充目标。
+5. 新任务通过 report_progress 主动回报实际步骤、输出摘要、阻塞及最终结果。Cindy 的 turn/activity 事件单独标为宿主状态，AI 报告完成不等于宿主确认业务完成。
+
+未收到回报时显示等待，不能自动镜像全部终端输出，也不会回填旧任务正文。可切换任务查看已保存的日志尾部。
+
+切到未绑定聊天先禁用，不扫描事件中未经绑定的目录。已绑定聊天可恢复；目录变化、插件重启或关联权限失效后需使用新的绑定卡。重复点已使用卡不会重复绑定或派发。
+
+## 流程检查
+
+只读检查四个非空、可读普通文件：_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md。缺失、空文件、链接或不可读时只禁用对应按钮；检查失败不冒充文件不存在。不执行、捆绑或伪造流程正文。
+
+PR 检查 xd-pr-review/SKILL.md，范围是项目的 .agents/skills、.claude/skills、.cindy/skills，以及用户目录的 .agents/skills、.claude/skills、.codex/skills。未确认仅表示这些路径未找到，不代表所有 Host 或远程技能都不存在。远程目录、只读目录和未经核验来源不启用派发。
+
+## 布局与可靠性
+
+底部横向胶囊，上方为可滚动时间线；明暗主题跟随 Host。停靠最小宽度280px，初始占比25%；Host 可能保留已有列宽。独立窗口仍受 Host 最小320×400限制。
+
+Node worker 具有系统账号权限，不能称为操作系统级只读沙箱。实现只检查明确路径，不起 shell、不执行项目脚本、不遍历磁盘。专用 worker-entry.cjs 显式启动 stdio，兼容 Host 通过 require 加载。
+
+每次点击新建任务；后台能力仅用于用户点击派发，没有自动或定时执行。请求和回执在派发前持久化，回执不确定不自动重发，派发间隔至少10秒。KV 串行合并；日志按调用id去重并限制尾部容量，不淘汰未核实派发记录。report_progress 只接受 Host 注入的、属于本插件受理任务的会话上下文。
+
+## 开发与验证
+
+plugin/ 是生产打包目录，无第三方运行依赖。Node 22+ 运行 npm test 和 npm run check；浏览器检查见 tests/browser-check.mjs，需配置 PLAYWRIGHT_MODULE_PATH 与 PLAYWRIGHT_BROWSERS_PATH。
+
+43项单元测试、静态检查及模拟Host浏览器检查通过。0.3.3已安装并启用，核对实际安装manifest和运行日志；新版真实绑定、目录/模型继承及日志回传尚待验收。详见 docs/acceptance.md 和 docs/verification.md。
+
+仅用户明确要求时安装、更新或发布。源码仓不提交 .cindy 包、截图、缓存或用户数据。

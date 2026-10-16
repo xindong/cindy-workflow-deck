@@ -1,0 +1,23 @@
+// Test-only Host simulation. Not distributed in the plugin.
+const settings=new URLSearchParams(location.search),dark=settings.get('theme')==='dark';
+for(const [name,value]of Object.entries(dark?{'--panel-bg':'#1f1f1e','--surface':'#1f1f1e','--surface-elevated':'#2c2c2a','--surface-chip':'#3c3c3a','--border-default':'#3c3c3a','--text-primary':'#d4d4d4','--text-secondary':'#a3a3a3'}:{'--panel-bg':'#f8f8f6','--surface':'#f8f8f6','--surface-elevated':'#fff','--surface-chip':'#e5e5e5','--border-default':'#d7d7d4','--text-primary':'#262626','--text-secondary':'#737373'}))document.documentElement.style.setProperty(name,value);
+document.documentElement.style.colorScheme=dark?'dark':'light';
+const calls={cards:[],results:[],agentRuns:[],inspections:[],creates:[]},options={files:'all',failNode:false,deny:false,lose:false};
+let handler,click=0,offset=0;const nativeNow=Date.now;Date.now=()=>nativeNow()+offset;
+const context={session_id:'source-chat',workdir:'/preview/selected-project',workdir_is_local:true,workdir_is_read_only:false};
+const cards=document.createElement('div');cards.id='test-cards';cards.style.cssText='position:fixed;top:0;right:0;max-width:240px;max-height:190px;overflow:auto;overflow-wrap:anywhere;z-index:100';document.body.append(cards);
+function requestBinding(ctx=context){handler({type:'tool-call',tool:'get_workflows',callId:'source-card',args:{session_context:ctx}});}
+globalThis.mockHost={calls,options,context,deliver:msg=>handler(msg),requestBinding,advanceTime:()=>{offset+=11000;}};
+globalThis.cindy={
+ onHostMessage(cb){handler=cb;requestBinding();},
+ async send(message){
+  if(message.type==='tool-result'){calls.results.push(message);cards.dataset.lastResult=message.callId;return{ok:true};}
+  if(message.type!=='card-update')return{ok:true};calls.cards.push(message);
+  let el=document.getElementById(message.callId);if(!el){el=document.createElement('section');el.id=message.callId;cards.append(el);}el.innerHTML=message.html;return{ok:true};
+ },
+ node:{async request(req){calls.inspections.push(req);if(options.failNode)return{ok:false};return{ok:true,result:{checkedAt:new Date().toISOString(),workflows:Object.fromEntries(['experiment','feature','tooling','pr','merge'].map(id=>[id,{ok:options.files==='all'||options.files==='partial'&&id==='feature',reason:id==='pr'?'skill_unverified':'missing',source:'/preview/selected-project/'+({experiment:'_S/experiment.md',feature:'_S/feature.md',tooling:'_S/tooling.md',pr:'.agents/skills/xd-pr-review/SKILL.md',merge:'_E/merge.md'}[id])}]))}};}},
+ agent:{async run(req){calls.agentRuns.push(req);if(options.lose)throw new Error('Lost receipt');if(options.deny)return{ok:false,errorCode:'PERMISSION_DENIED'};return{ok:true,sessionId:'preview-task-'+calls.agentRuns.length};}},
+ tasks:{async capabilities(){return{operations:['getRun']};},async getRun(){return{status:'running'};}},
+};
+cards.addEventListener('click',event=>{const button=event.target.closest('[data-ghost-action]');if(!button)return;handler({type:'card-action',actionId:button.dataset.ghostAction,callId:'source-card',spawnCallId:'binding-result-'+(++click),sessionId:context.session_id,userActionToken:'test-ticket-'+click});});
+await import('/main.js');

@@ -1,0 +1,13 @@
+{
+  "name": "Workflow Deck",
+  "description": "Bind a local project chat, then inspect and launch workflows from a compact sidebar toolbar.",
+  "whenToUse": "Starting experiments, developing features or tools, submitting pull requests, or cleaning up branches.",
+  "tools": {
+    "get_workflows": {
+      "description": "Bind a local project chat, then inspect and launch workflows from a compact sidebar toolbar."
+    }
+  },
+  "panel": {
+    "title": "Workflows"
+  }
+}

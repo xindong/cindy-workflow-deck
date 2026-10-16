@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE_PATH).href);
+const server=spawn('python3',[resolve(import.meta.dirname,'serve-preview.py')],{stdio:['ignore','pipe','inherit']});
+const base=await new Promise((yes,no)=>{server.stdout.once('data',data=>yes(data.toString().trim()));server.once('error',no);});
+const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:400,height:720},deviceScaleFactor:2});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));const artifacts=resolve(import.meta.dirname,'../artifacts');
+const tool=id=>page.locator('[data-workflow="'+id+'"]');
+async function report(status,title,detail,id='report-'+Date.now()) {
+ await page.evaluate(({status,title,detail,id})=>mockHost.deliver({type:'tool-call',tool:'report_progress',callId:id,args:{session_context:{session_id:'preview-task-1'},status,title,detail}}),{status,title,detail,id});
+ await page.locator('.log-entry h2').filter({hasText:title}).waitFor();
+}
+try {
+ await page.goto(base+'/panel.html');await page.locator('#source-card button').waitFor();
+ assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),5);
+ await tool('feature').hover();assert.ok((await page.locator('#tip-reason').textContent()).includes('尚未绑定'));
+ await page.keyboard.press('Escape');await page.locator('#source-card button').click();await page.locator('#binding-result-1').waitFor();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
+ assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns.length),0);
+ await page.evaluate(()=>mockHost.options.failNode=true);
+ await page.locator('#refresh').click();await page.locator('#refresh:not(:disabled)').waitFor();
+ assert.ok((await page.locator('#summary').textContent()).includes('PROJECT_CHECK_FAILED'));
+ await page.locator('#source-card button').click();await page.locator('#binding-result-2').waitFor();
+ assert.ok((await page.locator('#binding-result-2').textContent()).includes('这张绑定卡已使用'));
+ assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns.length),0);
+ await page.evaluate(()=>mockHost.options.failNode=false);
+ await page.locator('#refresh').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
+ await page.evaluate(()=>document.getElementById('test-cards').hidden=true);
+ const dock=await page.locator('.dock').boundingBox(),canvas=await page.locator('.execution').boundingBox();
+ assert.ok(dock.y>550&&dock.height<=60);assert.ok(canvas.height>400);assert.ok(Math.abs(dock.x+dock.width/2-200)<2);
+ await page.locator('main').screenshot({path:resolve(artifacts,'workflow-canvas-empty-light.png')});
+ await page.locator('#details-toggle').click();await page.locator('#goal').fill('实现日志区');await page.locator('#details-toggle').click();
+ await tool('feature').click();await page.getByText('新任务已受理：preview-task-1',{exact:true}).waitFor();
+ await page.getByText('任务已受理，等待执行回报',{exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns[0].mode),'new');
+ assert.ok(await page.evaluate(()=>mockHost.calls.agentRuns[0].userMessage.includes('report_progress')));
+ await report('step','已核对项目与分支','读取 AGENTS.md 与功能流程，保留现有改动。','r1');
+ await report('output','验证通过','npm test: 42 passed; 0 failed。','r2');
+ await report('completed','本次工作已交付','已完成界面调整与日志回传；等待实际编辑器验收。','r3');
+ await page.evaluate(()=>mockHost.deliver({type:'event',name:'did-turn-end',seq:99,data:{sessionId:'preview-task-1',endReason:'completed'}}));
+ await page.locator('.log-entry h2').filter({hasText:'本轮结束'}).waitFor();
+ assert.equal(await page.locator('.log-entry').count(),4);
+ await report('step','已核对项目与分支','duplicate','r1');assert.equal(await page.locator('.log-entry').count(),4);
+ await page.evaluate(()=>mockHost.deliver({type:'tool-call',tool:'report_progress',callId:'intruder',args:{session_context:{session_id:'other'},status:'step',title:'外部日志',detail:'should not appear'}}));
+ await page.locator('#test-cards[data-last-result="intruder"]').waitFor({state:'attached'});assert.equal(await page.locator('.log-entry').count(),4);
+ await page.mouse.move(390,5);await page.keyboard.press('Escape');await page.locator('main').screenshot({path:resolve(artifacts,'workflow-canvas-log-light.png')});
+ await page.evaluate(()=>{document.documentElement.style.setProperty('--panel-bg','#1f1f1e');document.documentElement.style.setProperty('--surface-elevated','#2c2c2a');document.documentElement.style.setProperty('--surface-chip','#3c3c3a');document.documentElement.style.setProperty('--border-default','#3c3c3a');document.documentElement.style.setProperty('--text-primary','#d4d4d4');document.documentElement.style.setProperty('--text-secondary','#a3a3a3');document.documentElement.style.colorScheme='dark';});
+ await page.locator('main').screenshot({path:resolve(artifacts,'workflow-canvas-log-dark.png')});
+ await page.setViewportSize({width:280,height:580});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await tool('feature').hover();const tip=await page.locator('#tooltip').boundingBox();assert.ok(tip.x>=0&&tip.x+tip.width<=280);
+ await page.keyboard.press('Escape');await page.locator('main').screenshot({path:resolve(artifacts,'workflow-canvas-log-narrow.png')});
+ await report('output','安全文本','<img src=x onerror=alert(1)>','r4');assert.equal(await page.locator('#execution-log img').count(),0);
+ await page.reload();await page.locator('.log-entry').nth(4).waitFor();assert.equal(await page.locator('.log-entry').count(),5);
+ await page.route('**/app-context',route=>route.fulfill({json:{context:{locale:'ja'}}}));await page.reload();await page.getByText('Execution log',{exact:true}).waitFor();
+ assert.deepEqual(errors,[]);console.log('Canvas browser checks passed: bottom toolbar, logs, persisted reload, replay, foreign session rejection, safe text, 280px, light/dark, locale. Screenshots are simulated Host data.');
+} finally {await browser.close();server.kill();await once(server,'exit');}
