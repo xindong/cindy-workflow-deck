@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE_PATH).href);
 const server=spawn('python3',[resolve(import.meta.dirname,'serve-preview.py')],{stdio:['ignore','pipe','inherit']});
 const base=await new Promise((yes,no)=>{server.stdout.once('data',data=>yes(data.toString().trim()));server.once('error',no);});
-const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:400,height:720},deviceScaleFactor:2});
+const browser=await chromium.launch({headless:true,...(process.env.WORKFLOW_BROWSER_EXECUTABLE?{executablePath:process.env.WORKFLOW_BROWSER_EXECUTABLE}:{})});const page=await browser.newPage({viewport:{width:400,height:720},deviceScaleFactor:2});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));const artifacts=resolve(import.meta.dirname,'../artifacts');
 const tool=id=>page.locator('[data-workflow="'+id+'"]');
 async function report(status,title,detail,id='report-'+Date.now()) {
@@ -32,6 +32,7 @@ try {
  assert.ok(dock.y>550&&dock.height<=60);assert.ok(canvas.height>400);assert.ok(Math.abs(dock.x+dock.width/2-200)<2);
  await page.locator('main').screenshot({path:resolve(artifacts,'workflow-canvas-empty-light.png')});
  await page.locator('#details-toggle').click();await page.locator('#goal').fill('实现日志区');await page.locator('#details-toggle').click();
+ await page.evaluate(()=>mockHost.options.autoSwitch=true);
  await tool('feature').click();await page.getByText('新任务已受理：preview-task-1',{exact:true}).waitFor();
  await page.getByText('任务已受理，等待执行回报',{exact:true}).waitFor();
  assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns[0].mode),'new');
@@ -41,6 +42,8 @@ try {
  await report('completed','本次工作已交付','已完成界面调整与日志回传；等待实际编辑器验收。','r3');
  await page.evaluate(()=>mockHost.deliver({type:'event',name:'did-turn-end',seq:99,data:{sessionId:'preview-task-1',endReason:'completed'}}));
  await page.locator('.log-entry h2').filter({hasText:'本轮结束'}).waitFor();
+ // Check the real panel timer after foreground focus changes to the child task.
+ await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor({timeout:15000});
  assert.equal(await page.locator('.log-entry').count(),4);
  await report('step','已核对项目与分支','duplicate','r1');assert.equal(await page.locator('.log-entry').count(),4);
  await page.evaluate(()=>mockHost.deliver({type:'tool-call',tool:'report_progress',callId:'intruder',args:{session_context:{session_id:'other'},status:'step',title:'外部日志',detail:'should not appear'}}));
@@ -52,7 +55,14 @@ try {
  await tool('feature').hover();const tip=await page.locator('#tooltip').boundingBox();assert.ok(tip.x>=0&&tip.x+tip.width<=280);
  await page.keyboard.press('Escape');await page.locator('main').screenshot({path:resolve(artifacts,'workflow-canvas-log-narrow.png')});
  await report('output','安全文本','<img src=x onerror=alert(1)>','r4');assert.equal(await page.locator('#execution-log img').count(),0);
- await page.reload();await page.locator('.log-entry').nth(4).waitFor();assert.equal(await page.locator('.log-entry').count(),5);
+ await tool('tooling').click();await page.getByText('新任务已受理：preview-task-2',{exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns.length),2);
+ assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns[1].sessionId),'source-chat');
+ await page.locator('#task-select').selectOption('preview-task-1');assert.equal(await page.locator('.log-entry').count(),5);
+ await page.reload();await page.locator('#task-select').waitFor();await page.locator('#task-select').selectOption('preview-task-1');await page.locator('.log-entry').nth(4).waitFor();assert.equal(await page.locator('.log-entry').count(),5);
+ await page.locator('#source-card button').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
+ await page.evaluate(()=>mockHost.deliver({type:'event',name:'did-session-switched',data:{sessionId:'unrelated',workdir:mockHost.context.workdir}}));
+ assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),5);
  await page.route('**/app-context',route=>route.fulfill({json:{context:{locale:'ja'}}}));await page.reload();await page.getByText('Execution log',{exact:true}).waitFor();
- assert.deepEqual(errors,[]);console.log('Canvas browser checks passed: bottom toolbar, logs, persisted reload, replay, foreign session rejection, safe text, 280px, light/dark, locale. Screenshots are simulated Host data.');
+ assert.deepEqual(errors,[]);console.log('Canvas browser checks passed: foreground child switch before receipt, cooldown auto-unlock, second workflow launch from original source, unrelated chat disabled, bottom toolbar, logs, persisted reload, replay, safe text, 280px, light/dark, locale. Screenshots are simulated Host data.');
 } finally {await browser.close();server.kill();await once(server,'exit');}

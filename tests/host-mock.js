@@ -16,7 +16,7 @@ globalThis.cindy={
   let el=document.getElementById(message.callId);if(!el){el=document.createElement('section');el.id=message.callId;cards.append(el);}el.innerHTML=message.html;return{ok:true};
  },
  node:{async request(req){calls.inspections.push(req);if(options.failNode)return{ok:false};return{ok:true,result:{checkedAt:new Date().toISOString(),workflows:Object.fromEntries(['experiment','feature','tooling','pr','merge'].map(id=>[id,{ok:options.files==='all'||options.files==='partial'&&id==='feature',reason:id==='pr'?'skill_unverified':'missing',source:'/preview/selected-project/'+({experiment:'_S/experiment.md',feature:'_S/feature.md',tooling:'_S/tooling.md',pr:'.agents/skills/xd-pr-review/SKILL.md',merge:'_E/merge.md'}[id])}]))}};}},
- agent:{async run(req){calls.agentRuns.push(req);if(options.lose)throw new Error('Lost receipt');if(options.deny)return{ok:false,errorCode:'PERMISSION_DENIED'};return{ok:true,sessionId:'preview-task-'+calls.agentRuns.length};}},
+ agent:{async run(req){calls.agentRuns.push(req);if(options.lose)throw new Error('Lost receipt');if(options.deny)return{ok:false,errorCode:'PERMISSION_DENIED'};const sessionId='preview-task-'+calls.agentRuns.length;if(options.autoSwitch)handler({type:'event',name:'did-session-switched',data:{sessionId,workdir:context.workdir}});return{ok:true,sessionId};}},
  tasks:{async capabilities(){return{operations:['getRun']};},async getRun(){return{status:'running'};}},
 };
 cards.addEventListener('click',event=>{const button=event.target.closest('[data-ghost-action]');if(!button)return;handler({type:'card-action',actionId:button.dataset.ghostAction,callId:'source-card',spawnCallId:'binding-result-'+(++click),sessionId:context.session_id,userActionToken:'test-ticket-'+click});});

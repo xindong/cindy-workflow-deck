@@ -1,9 +1,25 @@
 import { WORKFLOWS, buildPrompt, workflowById } from './workflows.js';
 export function createSidebar({ inspect, agent, store, now = () => Date.now(), changed = () => {} }) {
-  const bindings = new Map(); let active = ''; let busy = false; let nextLaunchAt = 0;
+  const bindings = new Map(), children = new Map();
+  let active = '', focused = '', focusedHint = ''; let busy = false; let nextLaunchAt = 0;
   let queue = Promise.resolve();
   const serial = work => { const next = queue.then(work); queue = next.catch(() => {}); return next; };
   const notify = () => changed(view());
+  function selectSession(sessionId, hint = '') {
+    focused = typeof sessionId === 'string' ? sessionId : '';
+    focusedHint = typeof hint === 'string' ? hint : '';
+    active = focused;
+    const child = children.get(focused);
+    // Only a successful Host launch receipt may link a child back to a bound source.
+    // Matching directory strings alone never establish trust or a new association.
+    if (child) {
+      if (bindings.get(child.source) === child.binding && (!focusedHint || focusedHint === child.binding.directory)) active = child.source;
+      else children.delete(focused);
+    } else {
+      const binding = bindings.get(active);
+      if (binding && focusedHint && focusedHint !== binding.directory) bindings.delete(active);
+    }
+  }
   function view() {
     const binding = bindings.get(active);
     const state = !binding ? 'unbound' : binding.readOnly ? 'readonly' : binding.problem || 'ready';
@@ -29,15 +45,20 @@ export function createSidebar({ inspect, agent, store, now = () => Date.now(), c
     bind: context => serial(async () => {
       if (!context?.session_id || !context.workdir_is_local || !context.workdir) throw Object.assign(new Error('LOCAL_CONTEXT_REQUIRED'), { code: 'LOCAL_CONTEXT_REQUIRED' });
       const binding = { directory: context.workdir, readOnly: context.workdir_is_read_only !== false, workflows: {} };
-      bindings.set(context.session_id, binding); active = context.session_id; notify();
+      children.delete(context.session_id);
+      bindings.set(context.session_id, binding); selectSession(context.session_id, context.workdir); notify();
       await checkBinding(binding); return view();
     }),
-    forgetSession(sessionId) { bindings.delete(sessionId); notify(); },
+    forgetSession(sessionId) {
+      bindings.delete(sessionId); children.delete(sessionId);
+      for (const [id, child] of children) if (child.source === sessionId) children.delete(id);
+      if (focused === sessionId) selectSession('');
+      else selectSession(focused, focusedHint);
+      notify();
+    },
     switchSession(sessionId, hint, dropped = false) {
-      active = typeof sessionId === 'string' ? sessionId : '';
-      const binding = bindings.get(active);
-      if (dropped) bindings.clear();
-      else if (binding && typeof hint === 'string' && hint && hint !== binding.directory) bindings.delete(active);
+      if (dropped) { bindings.clear(); children.clear(); }
+      selectSession(sessionId, hint);
       notify();
     },
     refresh: () => serial(async () => { const binding = bindings.get(active); if (binding) await checkBinding(binding); return view(); }),
@@ -73,6 +94,12 @@ export function createSidebar({ inspect, agent, store, now = () => Date.now(), c
           : receipt?.ok === false ? { state: 'rejected', code: receipt.errorCode || 'HOST_REJECTED', workflowId }
           : { state: 'uncertain', code: 'UNVERIFIED_RECEIPT', workflowId };
         if (result.code === 'PERMISSION_DENIED') bindings.delete(source);
+        if (result.state === 'accepted' && bindings.get(source) === binding) {
+          children.set(result.sessionId, { source, binding });
+          if (children.size > 80) children.delete(children.keys().next().value);
+          // A focus event can arrive before agent.run returns the launch receipt.
+          if (focused === result.sessionId) selectSession(focused, focusedHint);
+        }
       } catch { result = { state: 'uncertain', code: 'UNVERIFIED_RECEIPT', workflowId }; }
       launches[requestKey] = result;
       try { await store.write({ sidebarReceipts: launches }); }

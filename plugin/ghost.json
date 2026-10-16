@@ -4,7 +4,7 @@
   "name": "工作流快捷面板",
   "description": "侧边工作流小工具栏，支持独立窗口；绑定聊天目录后检查流程，缺失时置灰，点击新建独立任务。",
   "whenToUse": "开始实验性工作、功能开发、工具开发、提交 PR 或整理分支时使用工作流快捷面板。",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "minCindyVersion": "0.1.109",
   "entry": "main.js",
   "launch": "resident",

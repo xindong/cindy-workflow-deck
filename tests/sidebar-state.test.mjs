@@ -7,7 +7,7 @@ function fixture(){
   let saved={},time=0;const calls=[];const options={inspection:result(),throwRun:false,reply:null,failWrite:false};
   const store={read:async()=>structuredClone(saved),write:async patch=>{if(options.failWrite)throw new Error('storage');saved={...saved,...structuredClone(patch)};}};
   const inspect=async dir=>{if(options.inspectHook)return options.inspectHook(dir);return structuredClone(options.inspection);};
-  const sidebar=createSidebar({inspect,store,now:()=>time,agent:{run:async args=>{calls.push(args);if(options.throwRun)throw new Error('lost');return options.reply||{ok:true,sessionId:'new-'+calls.length};}}});
+  const sidebar=createSidebar({inspect,store,now:()=>time,agent:{run:async args=>{calls.push(args);if(options.runHook)return options.runHook(args);if(options.throwRun)throw new Error('lost');return options.reply||{ok:true,sessionId:'new-'+calls.length};}}});
   return {sidebar,options,calls,store,saved:()=>saved,tick:()=>{time+=11000;}};
 }
 test('initial state is disabled; remote/unverified paths cannot bind',async()=>{
@@ -65,4 +65,40 @@ test('storage failure prevents launch; Host permission denial invalidates bindin
  const f=fixture();await f.sidebar.bind(ctx());f.options.failWrite=true;await assert.rejects(f.sidebar.launch('disk-request-key-1','feature','source'));assert.equal(f.calls.length,0);
  f.options.failWrite=false;f.options.reply={ok:false,errorCode:'PERMISSION_DENIED'};
  assert.equal((await f.sidebar.launch('deny-request-key-1','feature','source')).state,'rejected');assert.equal(f.sidebar.view().state,'unbound');
+});
+test('visiting an accepted workflow task keeps the verified source usable after cooldown',async()=>{
+ const f=fixture();await f.sidebar.bind(ctx());
+ const receipt=await f.sidebar.launch('child-request-key-1','feature','source');
+ f.sidebar.switchSession(receipt.sessionId,'/project/source');f.tick();
+ assert.equal(f.sidebar.view().sessionId,'source');
+ assert.equal(f.sidebar.view().state,'ready');
+ assert.ok(Object.values(f.sidebar.view().workflows).every(item=>item.enabled));
+ assert.equal((await f.sidebar.launch('child-request-key-2','tooling','source')).state,'accepted');
+ assert.equal(f.calls[1].sessionId,'source');
+ f.sidebar.switchSession('unknown','/project/source');
+ assert.equal(f.sidebar.view().state,'unbound');
+});
+test('focus event arriving before the launch receipt is reconciled without retargeting the source',async()=>{
+ const f=fixture();await f.sidebar.bind(ctx());
+ f.options.runHook=async()=>{f.sidebar.switchSession('early-child','/project/source');return {ok:true,sessionId:'early-child'};};
+ await f.sidebar.launch('early-request-key-1','feature','source');f.tick();
+ assert.equal(f.sidebar.view().state,'ready');assert.equal(f.sidebar.view().sessionId,'source');
+ assert.equal(f.sidebar.view().workflows.tooling.enabled,true);
+});
+test('child links cannot survive directory changes, source archival, dropped events or rebinding',async()=>{
+ for(const action of ['directory','archive','dropped','rebind']){
+  const f=fixture();await f.sidebar.bind(ctx());const receipt=await f.sidebar.launch('invalidate-child-1','feature','source');f.tick();
+  if(action==='archive')f.sidebar.forgetSession('source');
+  if(action==='dropped')f.sidebar.switchSession('source','/project/source',true);
+  if(action==='rebind')await f.sidebar.bind({...ctx(),workdir:'/changed'});
+  f.sidebar.switchSession(receipt.sessionId,action==='directory'?'/other':'/project/source');
+  assert.equal(f.sidebar.view().state,'unbound',action);
+  assert.equal((await f.sidebar.launch('invalidate-child-2','tooling','source')).code,'SOURCE_CHANGED');
+  assert.equal(f.calls.length,1);
+ }
+});
+test('unverified receipts cannot associate another chat even at the same directory',async()=>{
+ const f=fixture();await f.sidebar.bind(ctx());f.options.throwRun=true;
+ await f.sidebar.launch('unverified-child-1','feature','source');f.tick();
+ f.sidebar.switchSession('new-1','/project/source');assert.equal(f.sidebar.view().state,'unbound');
 });

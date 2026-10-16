@@ -111,3 +111,22 @@ Host turn/activity 订阅仅展示实际收到的状态元数据；AI 报告完�
 当前安装包的 nodeRuntimeWorkerProcess.js 使用 createRequire 加载插件入口。旧入口用 require.main === module 包住 readline，宿主 require 加载时不建立协议监听。现将纯检查模块与始终启动 stdio 的 worker-entry.cjs 分开，manifest 引用新入口。绑定卡区分目录已关联与检查失败，重复点击已用卡只提示刷新，不假称丢失绑定；面板显示经过限制的错误码。
 
 43项单元测试、manifest/CSP/语法和浏览器检查通过。新增子进程以 node -e require(entry) 模拟宿主加载（非直接执行），向 stdin 发送真实 JSON-RPC 并核对回复。对 tavern-of-convallaria 做同方式只读检查，实验、功能、工具、PR 可用，_E/merge.md 缺失；没有写入项目或发起工作流。尚未安装0.3.3，真实Host重新绑定与日志回传仍待验收。
+
+## 0.3.4 工作流任务切换后按钮全灰修复（2026-10-16）
+
+用户反馈首个流程完成后其它按钮不可用。新建子任务没有绑定，旧版收到did-session-switched后将active直接改成子任务id，导致整条工具栏unbound；新增回归先在旧代码上失败，修复后通过。现在只接受agent.run成功回执中的子任务id，将其关联到原来的内存绑定；切到该子任务保留初始来源。新任务仍通过Host已关联的原聊天派发，不向未取得卡片关联的子任务派发。工作目录字符串相同不能建立关联。覆盖切换早于回执、目录变化、原来源归档、dropped事件、重新绑定和不确定回执，防止旧关联越界。
+
+本轮重新读取当前宿主实时手册2、4.6、4.11、4.12、4.13、5、7；当前安装Cindy版本0.1.109。47项单测、静态/CSP/语法及模拟Host浏览器回归通过。浏览器使用真实main/runtime/panel与本机已有Playwright缓存，真实10秒定时器验证自动解禁；首个任务报告完成及Host轮次结束后，保持子任务焦点再点tooling，确认第二次请求仍来源于初始绑定聊天。另覆盖日志重放、重载、陌生会话禁用、明暗、280px与语言回退。
+
+Forge校验打包0.3.4通过，包内16个生产文件与源码字节一致。未安装0.3.4、未修改Cindy源码、未为测试执行真实业务流程。安装版0.3.3的实机日志已有新任务成功创建和多次report_progress成功回执，但不代表面板显示、全部按钮恢复或完整编辑器验收通过。
+
+
+### 0.3.4安装与实机复验尝试
+
+2026-10-16 18:57:03 Forge返回updated/version0.3.4/enabled:true，读回安装manifest及node入口一致；实际主机日志确认updated后running。screencapture可取得真实窗口，面板正常呈现、重启后未绑定。System Events自动操作失败：osascript不允许辅助访问(-1728)。浏览器工具为独立external后端，不能控制Cindy自身窗口；当前无可用桌面控制插件，市场桌面自动化搜索无匹配。没有伪造点击、注入票据或跳过Host绑定。尚未完成绑定及连续按钮的真实交互验收，需要允许自动操作的辅助功能权限后继续。
+
+### 0.3.4用户点击联合实机验收通过（20:03）
+
+用户在远端控制本机Cindy按约定步骤完成两次点击，助手只读取本机真实日志、两任务历史与screencapture截图，不代写操作结果。19:59:02 get_workflows成功、19:59:03 bind卡片点击送达。20:01:54实验任务7e4e9357-d41f-4170-aaca-8872f7cc25af创建，20:02:19完成；20:02:38工具任务c3231d3a-6794-42e7-9e6b-75ae44efaa27创建，20:03:12完成。两个输入记录ghostVersion=0.3.4，mode=new，sourceSessionId均2af7d5f8-12ec-4a35-b67d-e8968c8ff7b2，工作目录均/Users/yuanzhengjie/Documents/tavern-of-convallaria。每任务step、output、completed各一次，六条工具回执均ok:true/result.recorded:true。两任务最终回复turnCompleted:true，回报为明确只读检查，未要求实际开发、PR或合并。
+
+实机截图在第二任务完成后，当前聊天为开始工具开发；面板项目为tavern-of-convallaria，可用流程4/5，merge灰，显示工具任务输出摘要、AI报告完成及Host本轮结束，证明未再整条禁用。此次仅验收绑定、两种连续派发与日志显示，不等同所有五种业务流程、独立窗或最小化等均已实测。本记录随0.3.4修复源码一起提交，远程同步结果以GitHub实际提交回执为准。
