@@ -1,7 +1,13 @@
 {
   "name": "Workflow Deck",
-  "description": "Create independent experiment, feature, tooling, PR and branch-cleanup tasks. Detach or minimize the panel.",
+  "description": "Bind a local project chat, then inspect and launch workflows from a compact sidebar toolbar.",
   "whenToUse": "Starting experiments, developing features or tools, submitting pull requests, or cleaning up branches.",
-  "panel": { "title": "Workflows" },
-  "tools": { "get_workflows": { "description": "List the five workflow entries and their referenced files or Skill. Read-only: does not create or run a task. Users launch independent tasks with the panel buttons." } }
+  "tools": {
+    "get_workflows": {
+      "description": "Bind a local project chat, then inspect and launch workflows from a compact sidebar toolbar."
+    }
+  },
+  "panel": {
+    "title": "Workflows"
+  }
 }

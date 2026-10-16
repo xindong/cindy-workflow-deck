@@ -1,32 +1,12 @@
 <!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Workflow Deck</title>
-  <link rel="stylesheet" href="panel.css">
-</head>
-<body>
-  <main>
-    <section class="intro">
-      <p class="eyebrow" data-i18n="eyebrow">AGENT 工作流</p>
-      <h1 data-i18n="heading">开始一项工作</h1>
-      <p class="muted" data-i18n="intro">每次点击，创建一个全新的独立任务。</p>
-    </section>
-    <div id="workflows" class="workflows" aria-label="工作流"></div>
-    <details class="context">
-      <summary data-i18n="contextTitle">补充工作目标（可选）</summary>
-      <label for="context" class="muted" data-i18n="contextHint">将添加到下一次新建任务中</label>
-      <textarea id="context" maxlength="4000" rows="4"></textarea>
-    </details>
-    <p class="setup muted" data-i18n="setup">首次使用，请在插件详情的「任务设置」中选择项目目录与模型。</p>
-    <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
-    <section class="history" aria-labelledby="history-heading">
-      <div class="section-heading"><h2 id="history-heading" data-i18n="history">最近发起</h2><button id="refresh" class="small" data-i18n="refresh">刷新状态</button></div>
-      <p id="empty" class="muted" data-i18n="empty">还没有发起任务。</p>
-      <ol id="launches"></ol>
-    </section>
-  </main>
-  <script type="module" src="panel.js"></script>
-</body>
-</html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Workflow tools</title><link rel="stylesheet" href="panel.css"></head>
+<body><main>
+  <div class="project"><span class="project-dot" aria-hidden="true"></span><span id="project-name">…</span></div>
+  <section class="execution" aria-labelledby="log-title"><header class="log-heading"><h1 id="log-title">执行记录</h1><span id="log-count"></span></header><p id="log-help" class="log-help"></p><label id="task-label" for="task-select"></label><select id="task-select"></select><div id="execution-log" class="log-list" role="log" aria-live="polite" aria-relevant="additions text"></div></section>
+  <div class="bottom"><div class="dock"><nav id="toolbar" class="capsule" aria-label="工作流"></nav>
+  <div class="controls"><button id="refresh" class="quiet" aria-label="重新检查流程">↻</button><button id="details-toggle" class="quiet" aria-expanded="false" aria-controls="details" aria-label="目标与目录">☷</button></div></div>
+  <p id="summary" class="summary" role="status"></p>
+  <p id="feedback" class="feedback" role="status" hidden></p>
+  <section id="details" class="details" hidden><p id="directory" class="path"></p><p id="binding-help"></p><label id="goal-label" for="goal"></label><textarea id="goal" rows="3" maxlength="4000"></textarea><p id="check-time"></p></section>
+  <aside id="tooltip" class="tooltip" role="tooltip" hidden><strong id="tip-title"></strong><p id="tip-action"></p><p id="tip-source"></p><p id="tip-reason"></p></aside>
+</div></main><script type="module" src="panel.js"></script></body></html>

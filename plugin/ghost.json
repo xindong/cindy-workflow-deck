@@ -2,42 +2,84 @@
   "schemaVersion": 3,
   "id": "workflow-deck",
   "name": "工作流快捷面板",
-  "description": "一键新建实验、功能、工具、PR 和分支整理任务。支持独立窗口与最小化。",
+  "description": "侧边工作流小工具栏，支持独立窗口；绑定聊天目录后检查流程，缺失时置灰，点击新建独立任务。",
   "whenToUse": "开始实验性工作、功能开发、工具开发、提交 PR 或整理分支时使用工作流快捷面板。",
-  "version": "0.1.0",
+  "version": "0.3.4",
   "minCindyVersion": "0.1.109",
   "entry": "main.js",
-  "launch": "on-demand",
+  "launch": "resident",
   "command": "workflow-deck",
   "tools": [
     {
       "name": "get_workflows",
-      "description": "查看五个工作流入口及其引用文件或 Skill。仅返回说明，不创建或执行任务；用户在插件面板点击按钮发起独立任务。",
+      "description": "在当前本地项目聊天显示绑定工具栏卡片。点击绑定后仅只读检查四个流程文件及常见路径的xd-pr-review技能，不执行脚本；侧边按钮由用户点击后新建继承绑定聊天目录与模型的任务。",
       "parameters": {
         "type": "object",
         "properties": {},
         "additionalProperties": false
       }
+    },
+    {
+      "name": "report_progress",
+      "description": "工作流任务将实际执行步骤、操作输出摘要和最终结果写回工作流面板。仅接受由本插件发起的任务，以宿主提供的当前会话核验归属。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "step",
+              "output",
+              "completed",
+              "blocked"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 3000
+          }
+        },
+        "required": [
+          "status",
+          "title",
+          "detail"
+        ],
+        "additionalProperties": false
+      }
     }
   ],
   "agent": {
-    "tasks": true
-  },
-  "panel": {
-    "title": "工作流",
-    "html": "panel.html",
-    "position": "left",
-    "minWidth": 280,
-    "defaultFraction": 0.26,
-    "systemButtons": {
-      "maximize": true,
-      "detach": true,
-      "minimize": true
-    }
+    "tasks": true,
+    "background": true
   },
   "locales": {
     "en": "locales/en.json",
     "zh-CN": "locales/zh-CN.json"
   },
-  "icon": "assets/icon.png"
+  "icon": "assets/icon.png",
+  "card": {},
+  "panel": {
+    "title": "工作流",
+    "html": "panel.html",
+    "position": "left",
+    "minWidth": 280,
+    "defaultFraction": 0.25
+  },
+  "sessionContext": true,
+  "subscribe": {
+    "topics": [
+      "session",
+      "turn",
+      "activity"
+    ]
+  },
+  "node": {
+    "entry": "node/worker-entry.cjs",
+    "protocol": "json-rpc-stdio",
+    "lifecycle": "on-demand"
+  }
 }

@@ -1,62 +1,37 @@
-# Cindy Workflow Deck
+# Cindy Workflow Deck — 0.3.4
 
-运行在 Cindy 编辑器中的 Agent 工作流快捷面板。任务来源：[xindong/xdrpg#190 · FRONTEND-8766](https://github.com/xindong/xdrpg/issues/190)。
+任务单：https://github.com/xindong/xdrpg/issues/190。仅开发插件，不修改 Cindy Core。
 
-## 第一版行为
+## 使用
 
-| 按钮 | Agent 要读取的流程 |
-| --- | --- |
-| 开始实验性工作 | 项目根目录 `_S/experiment.md` |
-| 开始功能开发 | 项目根目录 `_S/feature.md` |
-| 开始工具开发 | 项目根目录 `_S/tooling.md` |
-| 提交 PR 并走 PR 流程 | 已安装的 `xd-pr-review` Skill |
-| 清理分支并更新回 main | 项目根目录 `_E/merge.md` |
+1. 在 Cindy 打开“工作流”面板。上方是执行记录区，底部是五个工作流按钮组成的横向胶囊工具栏。宿主标题栏提供独立窗口和最小化。
+2. 在目标本地项目聊天发送 $workflow-deck，点击新卡片的“绑定工具栏”。绑定只检查文件，不创建任务、不执行流程。
+3. 工具栏显示已绑定项目；悬停或聚焦按钮可看动作、来源及禁用原因。检查失败时显示错误码，点击刷新重查。
+4. 点击可用按钮新建独立任务，Host 从绑定聊天继承目录、Agent 和模型，不复制聊天历史。详情面板可填写补充目标。
+5. 新任务通过 report_progress 主动回报实际步骤、输出摘要、阻塞及最终结果。Cindy 的 turn/activity 事件单独标为宿主状态，AI 报告完成不等于宿主确认业务完成。
 
-**每次点击都新建一个独立的普通任务，不复用任务或聊天上下文。** 这是本项目确认后的交互选择。用户可先填写可选的工作目标；它会附在新任务指令里。缺少流程文件、Skill 或明确目标时，Agent 被要求停止并说明缺项或询问用户。插件不捆绑、不猜测这些业务流程的正文。
+未收到回报时显示等待，不能自动镜像全部终端输出，也不会回填旧任务正文。可切换任务查看已保存的日志尾部。
 
-面板使用 Cindy 原生停靠容器。标题栏的撑满、独立窗口和最小化按钮由 Cindy 提供；插件不仿制系统窗口，不修改编辑器源码。
+切到本插件经 Host 确认创建的工作流任务时，保留原聊天的绑定；10秒冷却后可继续点击其它按钮，新任务仍由最初绑定聊天派发。切到其它未绑定聊天先禁用，不扫描事件中未经绑定的目录。已绑定聊天可恢复；目录变化、插件重启或关联权限失效后需使用新的绑定卡。重复点已使用卡不会重复绑定或派发。
 
-## 安装与使用
+## 流程检查
 
-1. 将 `workflow-deck-0.1.0.cindy` 导入 Cindy，在权限卡中批准插件的任务能力。
-2. 在插件详情的「任务设置」中选择真正的项目目录、可用模型和合适权限。插件不把自己源码目录当成工作目录，不硬编码模型或提升权限。
-3. 启用并打开「工作流」面板。需要独立窗口或最小化时，使用 Cindy 标题栏按钮。
-4. 点击任一工作流；在 Cindy 任务列表查看、回复、审批或停止新任务。
-5. 面板的「最近发起」保留任务编号和目录。「已受理」只代表任务输入被 Host 接收，实际完成情况以任务和手动「刷新状态」读到的运行状态为准。
+只读检查四个非空、可读普通文件：_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md。缺失、空文件、链接或不可读时只禁用对应按钮；检查失败不冒充文件不存在。不执行、捆绑或伪造流程正文。
 
-出现「待核实」时先检查 Cindy 任务列表。点击「核对原请求」会沿用持久化的请求键，请求 Host 对账，不另起第二条任务。权限拒绝不会自动重弹确认或重试。
+PR 检查 xd-pr-review/SKILL.md，范围是项目的 .agents/skills、.claude/skills、.cindy/skills，以及用户目录的 .agents/skills、.claude/skills、.codex/skills。未确认仅表示这些路径未找到，不代表所有 Host 或远程技能都不存在。远程目录、只读目录和未经核验来源不启用派发。
 
-## 兼容性与边界
+## 布局与可靠性
 
-- 目标宿主：Cindy Desktop `0.1.109`。`minCindyVersion` 采用本项目明确支持的起始版本；尚未验证更早版本。
-- 依据当前宿主下发的 `ghost_forge_guide`（schema v3、`agent.tasks`、`cindy.tasks.create/send/getRun`）开发，启动时检查实际 capabilities。
-- 本地参考编辑器仓库是 `xindong/cindy@8f4f2042e`；其中插件文档仍为旧版，不能据此假定旧宿主具备新任务 API。插件不回退到会复用任务的旧 errand 接口。
-- 仅使用 Host 提供的任务能力和同源 `/wake`、`/kv`、`/app-context`；无自主联网、Node 工作进程、文件读写或凭证权限。
-- 界面跟随 Cindy 语言与主题；提供简中和英文，其他语言按契约回退英文。Light/Dark 通过白名单主题变量适配。
-- 独立任务的上下文彼此隔离，但若选择同一项目目录，它们仍会操作同一工作区；插件没有声称提供 Git worktree 隔离。
-- 流程文件和 Skill 的实际执行依赖用户项目与所选 Agent 的权限。插件测试不会自动执行真实 PR、合并或分支清理。
+底部横向胶囊，上方为可滚动时间线；明暗主题跟随 Host。停靠最小宽度280px，初始占比25%；Host 可能保留已有列宽。独立窗口仍受 Host 最小320×400限制。
 
-## 开发
+Node worker 具有系统账号权限，不能称为操作系统级只读沙箱。实现只检查明确路径，不起 shell、不执行项目脚本、不遍历磁盘。专用 worker-entry.cjs 显式启动 stdio，兼容 Host 通过 require 加载。
 
-零运行依赖，无需 npm install。开发检查需要 Node.js 22+：
+每次点击新建任务；后台能力仅用于用户点击派发，没有自动或定时执行。请求和回执在派发前持久化，回执不确定不自动重发，派发间隔至少10秒。KV 串行合并；日志按调用id去重并限制尾部容量，不淘汰未核实派发记录。report_progress 只接受 Host 注入的、属于本插件受理任务的会话上下文。
 
-```sh
-npm test
-npm run check
-```
+## 开发与验证
 
-源码结构：
+plugin/ 是生产打包目录，无第三方运行依赖。Node 22+ 运行 npm test 和 npm run check；浏览器检查见 tests/browser-check.mjs，需配置 PLAYWRIGHT_MODULE_PATH 与 PLAYWRIGHT_BROWSERS_PATH。
 
-```text
-plugin/                 # 唯一打包目录，不混入测试、仓库或开发工具
-  ghost.json            # schema v3 身份卡，最小任务权限
-  workflows.js          # 五个流程与 Agent 指令
-  controller.js         # 串行派发、持久去重、显式恢复
-  main.js / runtime.js  # 沙箱后台入口与面板消息通道
-  panel.html/css/js     # 零特权面板
-tests/                  # Node 单元测试与浏览器验收夹具
-scripts/check.mjs       # 本地轻量检查
-docs/                   # 验收清单与设计决策
-```
+0.3.4修复工作流任务切换后整条按钮置灰的问题。47项单元测试及静态检查通过。当前0.3.4已安装并启用；用户真实点击、助手核对Host日志/任务回执及实机截图，绑定、连续实验→工具工作流和日志回传验收通过。第二任务结束后绑定保持，可用流程4/5；缺失的merge仍禁用。其它验收项见 docs/acceptance.md 和 docs/verification.md。
 
-在 Cindy 中调用 `ghost_forge_pack`，`dir` 指向本仓库的 `plugin/` 绝对目录。只打包，不自动安装。安装与更新使用独立的 `ghost_forge_install`，需要用户明确要求并批准 Host 权限卡。不要修改已经安装的插件目录。
+仅用户明确要求时安装、更新或发布。源码仓不提交 .cindy 包、截图、缓存或用户数据。
