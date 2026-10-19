@@ -98,7 +98,7 @@ export function handleHostMessage(message) {
       const pending = pendingBindings.get(nonce);
       let text;
       if (!pending || !message.userActionToken || message.sessionId !== pending.context.session_id || Date.now() > pending.expires) {
-        text = english ? 'Please request a fresh toolbar binding in this project chat.' : '请在目标项目聊天重新发送 $workflow-deck，使用新的绑定卡片。';
+        text = english ? 'Please request a fresh toolbar binding in this project chat.' : '请在目标项目聊天重新发送 $jixin-make-a-wish，使用新的绑定卡片。';
       } else if (pending.used) {
         text = english ? 'This binding card has already been used. If workflow inspection failed, click Refresh in the toolbar. Request a new card only after changing projects or restarting Cindy.' : '这张绑定卡已使用。流程检查失败时请点工具栏的刷新按钮；切换项目或重启 Cindy 后才需要新的绑定卡。';
       } else {
