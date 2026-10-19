@@ -1,0 +1,40 @@
+name: Release Cindy plugin
+on:
+  push:
+    tags: ['v*', '[0-9]*']
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test plugin and release preparation
+        run: |
+          npm test
+          npm run check
+          python3 -m unittest discover -s tests -p 'test_release.py' -v
+      - name: Build assets from the tagged source
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 scripts/prepare_release.py --tag "$RELEASE_TAG"
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          options=()
+          version="${RELEASE_TAG%%+*}"
+          if [[ "$version" == *-* ]]; then options+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "极心许愿 $RELEASE_TAG" --generate-notes "${options[@]}"
