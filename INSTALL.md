@@ -8,14 +8,14 @@
 
 ## 给 Cindy AI 的安装步骤
 
-1. 通过已有 GitHub 插件/授权读取仓库，确定默认分支的确切 commit。当前仓库私有；403/404 应报告缺少权限，不索取聊天中的凭证，不改仓库公开性。
+1. 本仓库已公开，可匿名读取，无需 GitHub 授权。确定默认分支的确切 commit，再从 raw.githubusercontent.com 下载文件；也可使用已有 GitHub 插件。若读取失败，报告实际状态，不索取聊天中的凭证。
 2. 从同一 commit 下载根目录 .cindy 和 DISTRIBUTION.json，保存到独立临时目录。GitHub Contents API 的 content 为 base64，必须解码为二进制，不能下载网页 HTML 充当安装包。
 3. 校验整包 SHA256、ZIP 文件清单及逐文件 SHA256，以及包内 ghost.json 的 ID、名称、版本和最低版本。DISTRIBUTION.json 是本仓分发元数据，不是 Cindy 官方发现协议或签名。完整克隆后可运行 python3 scripts/install_local.py --check。
 4. 用户明确要求安装时，使用系统正常打开此 .cindy：macOS 使用 open -a Cindy 后接包的绝对路径；Windows 通过关联应用打开文件。完整克隆可运行 python3 scripts/install_local.py --open。没有 Python 时由 AI 用现有文件工具校验并打开，安装者无需另装开发依赖。
 5. 这会进入 Cindy 的正式安装确认。确认由用户操作，不能写 Host 配置、复制到安装目录或伪造批准；取消后停止，不循环重试。核对最终安装回执/已安装清单中的 jixin-make-a-wish 和 0.3.6，才报告成功。仅打开文件不代表已安装。
 6. 在目标项目聊天发送 $jixin-make-a-wish，点新卡片绑定。旧 workflow-deck 的日志和绑定不自动迁移。
 
-只贴链接不会绕过首次权限确认，也不会让无读取权限的人访问私有仓库。未签名包可能显示“未验证”。
+公开仓库无需 GitHub 授权即可下载。只贴链接不会绕过 Cindy 首次安装权限确认；未签名包可能显示“未验证”。
 
 ## 自动维护安装包
 
