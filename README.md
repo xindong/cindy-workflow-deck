@@ -12,7 +12,7 @@
 
 > 请安装 https://github.com/xindong/cindy-workflow-deck 的极心许愿插件，按 INSTALL.md 下载、校验并打开根目录 .cindy，核对最终安装结果。
 
-仓库已直接提供 [安装包 jixin-make-a-wish.cindy](jixin-make-a-wish.cindy) 和 [安装步骤 INSTALL.md](INSTALL.md)。版本仍为 **0.3.6**。根目录 DISTRIBUTION.json 提供整包及18个文件的SHA256；这是本仓校验格式，不是Cindy官方自动发现协议。首次权限确认仍由用户操作；私有仓库需要读取权限，不会改为公开。
+仓库已直接提供 [安装包 jixin-make-a-wish.cindy](jixin-make-a-wish.cindy) 和 [安装步骤 INSTALL.md](INSTALL.md)。版本仍为 **0.3.6**。根目录 DISTRIBUTION.json 提供整包及18个文件的SHA256；这是本仓校验格式，不是Cindy官方自动发现协议。仓库已公开，安装包和校验文件可匿名下载，无需 GitHub 授权；Cindy 首次安装权限确认仍由用户操作。
 
 源码变化后 GitHub Actions 自动更新根目录安装包及校验文件，也可手动运行。开发时使用 npm run dist 或 npm run dist:check，无需改版本号。详见 INSTALL.md。
 

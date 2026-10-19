@@ -2,7 +2,7 @@
 
 ## 用户贴仓库链接并要求安装时
 
-先按 INSTALL.md 获取根目录 jixin-make-a-wish.cindy 和 DISTRIBUTION.json。通过用户已有GitHub授权从同一commit下载、校验后，使用系统正常打开 .cindy，交给Cindy确认与安装；不需要重新开发或发布。完整克隆后可运行 python3 scripts/install_local.py --check，用户明确要求安装时才用 --open。没有Python时使用现有文件工具，不要求安装者额外安装开发依赖。私有仓库须有读取权限，不索取Token。不得跳过Host确认、注入安装目录或自动重试取消的安装；打开包不等于安装成功，应核对最终回执。
+先按 INSTALL.md 获取根目录 jixin-make-a-wish.cindy 和 DISTRIBUTION.json。本仓库已公开，无需GitHub授权；从同一commit匿名下载、校验后，使用系统正常打开 .cindy，交给Cindy确认与安装；不需要重新开发或发布。完整克隆后可运行 python3 scripts/install_local.py --check，用户明确要求安装时才用 --open。没有Python时使用现有文件工具，不要求安装者额外安装开发依赖。优先匿名读取公开仓库，不索取Token。不得跳过Host确认、注入安装目录或自动重试取消的安装；打开包不等于安装成功，应核对最终回执。
 
 ## 开发约定
 
