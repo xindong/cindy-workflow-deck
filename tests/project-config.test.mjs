@@ -1,3 +1,4 @@
+import { buildPrompt } from '../plugin/workflows.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { newProject, normalizeConfiguration, updateConfiguration, configurationState, projectForDirectory } from '../plugin/core/project-config.mjs';
@@ -33,4 +34,11 @@ test('blank paths explicitly disable flows and normalization drops unknown secre
   const p = project(); p.workflows.pr.path = ''; p.apiKey = 'do-not-store';
   const result = normalizeConfiguration(config(p)); assert.equal(result.projects[0].apiKey, undefined);
   assert.equal(result.projects[0].workflows.pr.path, '');
+});
+
+test('workflow prompts preserve Windows source as a JSON-quoted path', () => {
+  const source = ['C:', 'Work', 'Game', 'custom', 'flow.md'].join(String.fromCharCode(92));
+  const prompt = buildPrompt('feature', '', source);
+  assert.ok(prompt.includes(JSON.stringify(source)));
+  assert.ok(!prompt.includes('_S/feature.md'));
 });
