@@ -206,3 +206,9 @@ scripts/build_distribution.py用标准ZIP、固定排序/时间/文件权限生�
 用户新增硬性规则，取代此前“不改版本”：文件修改提交（含文档/CI/测试）自动+0.0.1。本仓pre-commit模板经scripts/install_hooks.py安装到本仓Git hooks目录，不改全局配置或覆盖现有自定义hook。scripts/bump_version.py仅从暂存区快照构建，同步两处版本、根包、元数据与README标题；版本/包/README存在未暂存修改则拒绝提交。GitHub API上传须包含本地生成的所有文件；main云端流程按push提交范围补齐未升版修改，自动修复提交只落地已计算的版本，不重复递增，CI重跑及空提交也不递增。不会自动打tag或更改已发布v0.1.0。
 
 验证使用真实临时Git仓库提交：连续提交两次各+1、已升版push云端不重复递增、API绕过hook一次push两条提交后补+2且修复/重跑幂等、部分暂存构建不夹带未暂存源码、未暂存受管文件阻止提交、空提交不升版、自定义hook不会被覆盖。与Release资产/命令测试一起运行；同时跑52项插件测试、静态检查和Actionlint。本次正式提交由hook升至0.1.1，发布tag仍保留v0.1.0；远程与云端执行以真实回执核对。
+
+## 2026-10-19：补丁与大版本两条规则
+
+AGENTS.md明确：普通文件修改提交+0.0.1；显式大版本升级+0.1.0（minor+1且patch归零），同一提交只升一次。本地及云端现在共同识别VERSION_BUMP.json：只有本次修改该文件、base匹配父提交且level=minor时才执行minor；--minor生成并暂存该意图，下一普通提交恢复patch。错误意图报错，不被静默改成patch。
+
+12项Python回归通过，其中新增真实临时仓库的minor提交→普通patch提交→云端范围重放、API仅提交minor意图时云端重建、过期意图阻止提交；此前普通连续提交、API多提交修复/重跑、部分暂存和自定义hook保护继续通过。52项插件测试、静态与Actionlint通过。本次生产仓仅是普通修改，不实际升级minor、不打新tag或发Release；由hook自动从0.1.1升至0.1.2，随后核对Forge与真实main云端CI。

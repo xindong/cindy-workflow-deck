@@ -1,4 +1,4 @@
-# 极心许愿 — 0.1.1
+# 极心许愿 — 0.1.2
 
 本地自用版显示名称为“极心许愿”，插件 ID 和命令为 jixin-make-a-wish；不提交组织市场。更换 ID 属于新插件身份，旧 workflow-deck 的数据和绑定不会自动迁移，需要重新绑定。源码仓库名称保持不变。
 
@@ -14,7 +14,7 @@
 
 仓库已直接提供 [安装包 jixin-make-a-wish.cindy](jixin-make-a-wish.cindy) 和 [安装步骤 INSTALL.md](INSTALL.md)。当前版本见本页标题及 DISTRIBUTION.json。根目录 DISTRIBUTION.json 提供整包及18个文件的SHA256；这是本仓校验格式，不是Cindy官方自动发现协议。仓库已公开，安装包和校验文件可匿名下载，无需 GitHub 授权；Cindy 首次安装权限确认仍由用户操作。
 
-每次修改提交自动递增补丁版本，并同步安装包和校验文件。开发时使用 npm run dist 或 npm run dist:check 检查分发内容；版本规则见下文。详见 INSTALL.md。
+日常修改提交自动递增补丁版本；显式大版本升级递增minor并重置patch，同时同步安装包和校验文件。开发时使用 npm run dist 或 npm run dist:check 检查分发内容；版本规则见下文。详见 INSTALL.md。
 
 ## 使用
 
@@ -72,10 +72,14 @@ git push origin "v$version"
 
 ## 每次修改提交自动 +0.0.1（硬性规则）
 
-包括文档、测试、CI和插件修改，每条包含文件变化的开发提交都增加一个补丁版本。先运行 python3 scripts/install_hooks.py 或 npm run prepare 安装本仓hook，之后正常 git add / git commit 即自动完成；只修改本仓配置，不修改全局Git设置。
+日常修改（包括文档、测试、CI和插件）每条包含文件变化的开发提交都增加一个补丁版本：+0.0.1，例如0.1.1→0.1.2。大版本升级按+0.1.0、补丁归零，例如0.1.2→0.2.0；同一提交不再额外加patch。先运行 python3 scripts/install_hooks.py 或 npm run prepare 安装本仓hook，之后正常 git add / git commit 即自动完成；只修改本仓配置，不修改全局Git设置。
 
 hook基于暂存区构建，同步 package.json、plugin/ghost.json、根安装包、DISTRIBUTION.json和本页标题。暂存区之外的插件改动不会混入安装包；版本/包/README存在未暂存改动时会阻止提交并提示处理。
 
 GitHub网页/API跳过本地hook时，main的云端流程会按推送中的修改提交数补齐版本并回提交；本地hook已升版的提交不会重复增加。云端自动修复提交只落地此前开发提交应得的版本，不额外增加；空提交和CI重跑也不增加。修复尚未完成前不要打tag，应在云端检查成功、源码与包版本一致后发布。
 
 GitHub插件上传已有本地提交时，必须同时上传该提交生成的全部版本文件和二进制包。未来提交不再遵循旧的“无需改版本”约定；已发布的v0.1.0保留不动，不会随新提交自动新增Release。
+
+### 显式大版本升级（+0.1.0）
+
+先暂存本次修改，再运行 python3 scripts/bump_version.py --minor，最后正常 git commit / git push。该命令会暂存 VERSION_BUMP.json 升级意图并同步包；提交hook和云端识别同一意图，重复运行不重复升级。下一次普通修改自动恢复+0.0.1。意图base必须匹配父提交版本，错误意图会报错；无需删除历史意图文件。只有明确要升级大版本时使用此命令，普通提交保持默认patch。tag与Release仍按需发布，不自动创建。

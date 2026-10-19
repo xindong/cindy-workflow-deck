@@ -20,8 +20,13 @@
 
 ## 硬性版本规则
 
-每次包含文件修改的开发提交，补丁版本必须自动 +1（如0.1.0→0.1.1），包括文档、测试与CI修改；取代此前“不改版本”的约定。package.json、plugin/ghost.json、根目录.cindy、DISTRIBUTION.json和README标题同步。不能只改文档版本，也不能在打tag时才补版本。
+1. 日常修改提交：自动 +0.0.1，例如0.1.1→0.1.2，包括文档、测试与CI修改。
+2. 大版本升级：明确选择时 +0.1.0，补丁位归零，例如0.1.2→0.2.0。这里“大版本”指minor升级，不是major加1；同一提交只执行这一种升级，不再额外加patch。
+
+以上取代此前“不改版本”的约定。package.json、plugin/ghost.json、根目录.cindy、DISTRIBUTION.json和README标题同步。不能只改文档版本，也不能在打tag时才补版本。
 
 本地先运行 python3 scripts/install_hooks.py（或 npm run prepare）安装本仓pre-commit；正常暂存后git commit即自动处理。版本/分发包/README若有未暂存修改，先明确暂存或收起，避免意外纳入提交。其它插件文件支持部分暂存，构建仅取Git暂存区。
 
 GitHub网页/API不运行本地hook：通过插件push_files上传时，必须上传本地hook生成的完整提交（含所有版本与二进制包文件），不重复再升一次。main每次push还有云端兜底，按每条修改提交递增并自动修复遗漏；自动修复提交只落地这些已计算的版本，不作为新开发修改再次递增。空提交不升版；重跑CI不重复升版。不要移动已发布tag，只有用户要求发布时才新建与当前版本匹配的tag。
+
+需要大版本升级时，先暂存修改，再运行 python3 scripts/bump_version.py --minor，最后正常git commit。该命令暂存 VERSION_BUMP.json（base为父提交版本，level为minor）并同步构建；hook重复执行不叠加升级。意图文件保留为历史记录，仅在本次提交修改它且base匹配父提交时生效，下一次普通提交恢复patch递增。云端也读取同一意图，不会将大版本改回patch；失效或格式错误的升级意图会拒绝提交/同步。只有用户明确选择大版本时才使用此入口，不据此自动升级当前minor或自动发布Release。

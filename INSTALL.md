@@ -19,6 +19,6 @@
 
 ## 自动维护安装包
 
-修改 plugin/ 后运行 python3 scripts/build_distribution.py，生成根目录固定安装包和 DISTRIBUTION.json。每次修改提交由pre-commit自动递增补丁版本并重建包。--check 检查分发包是否过期。同一源码生成确定性 ZIP。
+修改 plugin/ 后运行 python3 scripts/build_distribution.py，生成根目录固定安装包和 DISTRIBUTION.json。日常修改提交由pre-commit自动递增补丁版本并重建包；显式大版本升级按minor+1、patch归零，详见README。--check 检查分发包是否过期。同一源码生成确定性 ZIP。
 
 GitHub Actions 在 main 每次push后检查每条修改提交的补丁版本递增，测试并自动补齐遗漏的版本、包与校验文件，也可手动触发；修复提交和CI重跑不重复升版。开发者先运行 python3 scripts/install_hooks.py 安装本仓提交hook。仅根目录此固定分发包入库，历史安装包仍忽略。

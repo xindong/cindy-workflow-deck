@@ -1,4 +1,4 @@
-"""One patch increment per change commit, for the Git index and GitHub pushes."""
+"""Patch per change commit, or an explicit minor upgrade, locally and on GitHub."""
 import argparse
 import json
 import re
@@ -12,6 +12,7 @@ from build_distribution import ROOT, build
 MANAGED = ['package.json', 'plugin/ghost.json', 'jixin-make-a-wish.cindy',
            'DISTRIBUTION.json', 'README.md']
 BOT_SUBJECT = 'build: synchronize version '
+INTENT_FILE = 'VERSION_BUMP.json'
 
 
 def git(*args, cwd=ROOT):
@@ -24,9 +25,20 @@ def version_tuple(version):
     return tuple(map(int, version.split('.')))
 
 
-def increment(version):
+def increment(version, level='patch'):
     major, minor, patch = version_tuple(version)
+    if level == 'minor':
+        return f'{major}.{minor + 1}.0'
     return f'{major}.{minor}.{patch + 1}'
+
+
+def bump_level(files, intent_ref, base_version):
+    if INTENT_FILE not in files:
+        return 'patch'
+    intent = json.loads(git('show', f'{intent_ref}:{INTENT_FILE}'))
+    if intent != {'base': base_version, 'level': 'minor'}:
+        raise ValueError('Minor intent must specify the parent version and level=minor')
+    return 'minor'
 
 
 def version_at(ref):
@@ -56,7 +68,9 @@ def prepare_index():
     # Only build staged source, never sneak unstaged changes into the commit.
     if git('diff', '--name-only', '--', *MANAGED).strip():
         raise ValueError('Stage or stash unstaged changes to version/package/README files first')
-    expected = increment(version_at('HEAD'))
+    base = version_at('HEAD')
+    staged = git('diff', '--cached', '--name-only').decode().splitlines()
+    expected = increment(base, bump_level(staged, '', base))
     with tempfile.TemporaryDirectory(prefix='jixin-version-') as temp:
         snapshot = Path(temp)
         git('checkout-index', '--all', '--prefix=' + str(snapshot) + '/')
@@ -85,7 +99,7 @@ def expected_push_version(before):
                 and files.issubset(MANAGED)):
             expected = max(expected, version_at(commit), key=version_tuple)
         else:
-            expected = increment(expected)
+            expected = increment(expected, bump_level(files, commit, version_at(parent)))
     return expected
 
 
@@ -95,8 +109,14 @@ if __name__ == '__main__':
     modes.add_argument('--staged', action='store_true')
     modes.add_argument('--set-version')
     modes.add_argument('--push-base')
+    modes.add_argument('--minor', action='store_true', help='Stage an explicit +0.1.0 upgrade')
     args = parser.parse_args()
     if args.staged:
+        prepare_index()
+    elif args.minor:
+        intent = {'base': version_at('HEAD'), 'level': 'minor'}
+        (ROOT / INTENT_FILE).write_text(json.dumps(intent, indent=2) + chr(10), encoding='utf-8')
+        subprocess.run(['git', 'add', '--', INTENT_FILE], cwd=ROOT, check=True)
         prepare_index()
     elif args.push_base:
         synchronize(expected_push_version(args.push_base))
