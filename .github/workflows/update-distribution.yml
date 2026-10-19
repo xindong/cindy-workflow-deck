@@ -34,7 +34,7 @@ jobs:
         run: test -z "$(git ls-files '*.cindy')"
       - name: Commit synchronized source version if needed
         run: |
-          git add package.json plugin/ghost.json README.md
+          git add package.json plugin/ghost.json README.md package-lock.json
           if git diff --cached --quiet; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

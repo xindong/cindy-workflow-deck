@@ -8,3 +8,7 @@ artifacts/
 __pycache__/
 *.pyc
 release-assets/
+
+node_modules/
+artifacts/
+desktop-builds/

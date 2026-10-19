@@ -45,3 +45,15 @@ await readFile(resolve(root, 'plugin', manifest.node.entry));
 const worker = spawnSync(process.execPath, ['--check', resolve(root, 'plugin', manifest.node.entry)], { encoding: 'utf8' });
 assert.equal(worker.status, 0, worker.stderr);
 console.log('Manifest references, locales, CSP and JavaScript syntax: passed.');
+
+for (const file of ['settings.html']) {
+  const html = await readFile(resolve(root, 'plugin', file), 'utf8');
+  assert.ok(!/<script(?![^>]*src=)[^>]*>/i.test(html), 'Settings inline script violates CSP');
+  assert.ok(!/\son\w+\s*=/i.test(html), 'Settings inline handler violates CSP');
+}
+assert.equal(manifest.settingsHtml, 'settings.html');
+assert.equal(manifest.pick, true);
+for (const file of ['plugin/core/project-config.mjs', 'desktop/project-service.js', 'desktop/main.cjs', 'desktop/preload.cjs', 'scripts/package_desktop.mjs']) {
+  const result = spawnSync(process.execPath, ['--check', resolve(root, file)], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+}

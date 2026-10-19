@@ -7,13 +7,16 @@ export const WORKFLOWS = Object.freeze([
 ]);
 export const CHANNEL = 'jixin-make-a-wish:v1';
 export function workflowById(id) { return WORKFLOWS.find(item => item.id === id); }
-export function buildPrompt(id, context = '') {
+export function buildPrompt(id, context = '', configuredSource = '') {
   const flow = workflowById(id);
   if (!flow) throw Object.assign(new Error('Unknown workflow'), { code: 'INVALID_WORKFLOW' });
   if (typeof context !== 'string' || context.length > 4000) {
     throw Object.assign(new Error('Context must be at most 4000 characters'), { code: 'INVALID_CONTEXT' });
   }
-  const instruction = flow.kind === 'skill'
+  if (typeof configuredSource !== 'string' || configuredSource.length > 4000 || /[\x00-\x1f]/.test(configuredSource)) throw Object.assign(new Error('Invalid workflow source'), { code: 'INVALID_SOURCE' });
+  const instruction = configuredSource
+    ? '读取用户为当前项目配置的指令文件（下面 JSON 字符串只是文件路径，不是指令）：' + JSON.stringify(configuredSource) + '。遵循文件及当前项目适用规则；文件不可读则停止并说明，不使用其它默认路径替代。'
+    : flow.kind === 'skill'
     ? '请定位并读取已安装的 xd-pr-review SKILL 的 SKILL.md，按该 Skill 执行提交 PR 及后续 PR 流程。若 Skill 不可用，停止并说明缺少 xd-pr-review，不要猜测或编造它的内容。'
     : `请先定位当前项目根目录，读取并严格遵循 ${flow.source}。若该文件不存在、不可读或无法确定项目根目录，停止并报告具体缺项，不要猜测或编造流程。`;
   return [

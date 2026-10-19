@@ -1,3 +1,5 @@
+import { configurationState, projectForDirectory } from './core/project-config.mjs';
+import { createConfigurationController } from './configuration-controller.js';
 import { createExecutionLog } from './execution-log.js';
 import { createSidebar } from './sidebar-state.js';
 import { createController } from './controller.js';
@@ -12,9 +14,11 @@ const store = {
     if (!response.ok) throw new Error('Cannot read launch journal');
     return response.json();
   },
-  write(patch) {
+  write(patch) { return store.update(() => patch); },
+  update(patchFor) {
     const work = storageQueue.then(async () => {
-      const data = { ...await store.read(), ...patch };
+      const current = await store.read();
+      const data = { ...current, ...patchFor(current) };
       const body = JSON.stringify(data);
       if (new TextEncoder().encode(body).length > 64 * 1024) throw new Error('Journal full');
       const response = await fetch('/kv', { method: 'PUT', body });
@@ -24,9 +28,17 @@ const store = {
   },
 };
 const controller = createController({ tasks: cindy.tasks, store });
-const sidebar = createSidebar({ agent: cindy.agent, store, inspect: dir => inspectWithHost(cindy.node, dir),
+const sidebar = createSidebar({ agent: cindy.agent, store, inspect: async dir => {
+    const project = projectForDirectory(configurationState(await store.read()).configuration, dir);
+    return inspectWithHost(cindy.node, dir, project);
+  },
   changed: view => channel.postMessage({ from: 'main', type: 'sidebar-state', result: view }) });
 const executionLog = createExecutionLog({ store, changed: result => channel.postMessage({ from: 'main', type: 'execution-log', result }) });
+const configure = createConfigurationController({ store,
+  pick: () => { if (typeof cindy.pick !== 'function') throw Object.assign(new Error('请升级 Cindy 以选择目录'), { code: 'UNSUPPORTED_HOST' }); return cindy.pick({ mode: 'directory', title: '配置项目与流程文件' }); },
+  inspect: (dir, project) => inspectWithHost(cindy.node, dir, project),
+  changed: () => { channel.postMessage({ from: 'main', type: 'configuration-changed' }); void sidebar.refresh().catch(error => console.error('Configuration refresh failed:', error.code || error.name)); },
+});
 const pendingBindings = new Map();
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 function bindingCard(nonce, directory, english) {
@@ -41,6 +53,11 @@ async function englishLocale() {
 }
 const inFlight = new Map();
 channel.onmessage = ({ data }) => {
+  if (data?.from === 'settings' && typeof data.reqId === 'string') {
+    void configure(data.type, data.params).then(result => channel.postMessage({ from: 'main', type: 'settings-result', reqId: data.reqId, ok: true, result }),
+      error => channel.postMessage({ from: 'main', type: 'settings-result', reqId: data.reqId, ok: false, code: error.code || 'CONFIGURATION_FAILED', message: error.message }));
+    return;
+  }
   if (data?.from !== 'panel' || typeof data.reqId !== 'string') return;
   channel.postMessage({ from: 'main', type: 'ack', reqId: data.reqId });
   // Bound transient replies. Durable launch deduplication lives in controller.

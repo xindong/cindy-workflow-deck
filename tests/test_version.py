@@ -17,7 +17,7 @@ class VersionTests(unittest.TestCase):
         shutil.copytree(ROOT / 'plugin', self.root / 'plugin', ignore=shutil.ignore_patterns('*.cindy'))
         shutil.copytree(ROOT / 'scripts', self.root / 'scripts', ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copytree(ROOT / '.githooks', self.root / '.githooks')
-        for name in ('package.json', 'README.md', 'INSTALL.md', 'repository-policy.json', '.gitignore'):
+        for name in ('package.json', 'README.md', 'INSTALL.md', 'repository-policy.json', 'package-lock.json', '.gitignore'):
             shutil.copyfile(ROOT / name, self.root / name)
         self.run_git('init', '-q')
         self.run_git('config', 'user.name', 'Version fixture')
@@ -51,6 +51,9 @@ class VersionTests(unittest.TestCase):
         self.assertEqual(self.version(), version)
         manifest = json.loads((self.root / 'plugin/ghost.json').read_text())
         self.assertEqual(manifest['version'], version)
+        lock = json.loads((self.root / 'package-lock.json').read_text())
+        self.assertEqual(lock['version'], version)
+        self.assertEqual(lock['packages']['']['version'], version)
         self.assertTrue((self.root / 'README.md').read_text().startswith('# 极心许愿 — ' + version))
         self.assertFalse((self.root / 'jixin-make-a-wish.cindy').exists())
         self.assertFalse((self.root / 'DISTRIBUTION.json').exists())
