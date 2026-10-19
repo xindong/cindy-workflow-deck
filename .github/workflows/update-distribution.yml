@@ -1,0 +1,34 @@
+name: Update installable Cindy package
+on:
+  push:
+    branches: [main]
+    paths: ['plugin/**', 'package.json', 'scripts/build_distribution.py', 'scripts/check.mjs', '.github/workflows/update-distribution.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: cindy-distribution
+  cancel-in-progress: false
+jobs:
+  distribution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm test && npm run check
+      - run: python3 scripts/build_distribution.py && python3 scripts/install_local.py --check
+      - name: Commit refreshed package without changing version
+        run: |
+          git add jixin-make-a-wish.cindy DISTRIBUTION.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'build: refresh installable Cindy package'
+          git push
