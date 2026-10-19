@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 
 from build_distribution import ROOT
+from check_repository import validate, tracked_paths
 
 MANAGED = ['package.json', 'plugin/ghost.json', 'README.md']
 BOT_SUBJECT = 'build: synchronize version '
@@ -53,7 +54,8 @@ def synchronize(version):
         path.write_text(json.dumps(info, ensure_ascii=False, indent=2) + chr(10), encoding='utf-8')
     readme = ROOT / 'README.md'
     text = readme.read_text(encoding='utf-8')
-    text = re.sub(r'\A# 极心许愿 — [^\n]+', '# 极心许愿 — ' + version, text)
+    display_name = json.loads((ROOT / 'repository-policy.json').read_text(encoding='utf-8'))['name']
+    text = re.sub(r'\A# ' + re.escape(display_name) + r' — [^\n]+', '# ' + display_name + ' — ' + version, text)
     readme.write_text(text, encoding='utf-8')
     print('Synchronized version ' + version)
 
@@ -74,6 +76,7 @@ def prepare_index():
         git('checkout-index', '--all', '--prefix=' + str(snapshot) + '/')
         subprocess.run([sys.executable, str(snapshot / 'scripts/bump_version.py'),
                         '--set-version', expected], cwd=snapshot, check=True)
+        validate(snapshot, tracked_paths())
         for name in MANAGED:
             (ROOT / name).write_bytes((snapshot / name).read_bytes())
     subprocess.run(['git', 'add', '--', *MANAGED], cwd=ROOT, check=True)

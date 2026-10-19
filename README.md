@@ -1,4 +1,4 @@
-# 极心许愿 — 0.1.3
+# 极心许愿 — 0.1.4
 
 极心许愿是 Cindy 工作流快捷面板插件，ID 和命令为 jixin-make-a-wish。本仓库只维护插件，不修改 Cindy Core；不提交组织市场。旧 workflow-deck 的绑定和日志不会自动迁移。
 
@@ -66,3 +66,7 @@ main的版本流程为网页/API漏升版兜底，按每条修改提交补齐；
 	git push origin "v$version"
 
 仅本地tag不触发。workflow使用内置GITHUB_TOKEN，无需额外密钥；不覆盖已有Release，不移动已发布tag。后续源码提交不会重写旧Release。历史Git提交中原有二进制包不重写删除，本次仅从当前文件树移除。
+
+## 自动规范检查
+
+显示名、插件ID和实际GitHub仓库在 repository-policy.json 定义。提交hook与CI共用规范校验器，拦截名称大小写/版本/安装链接不一致、分发包或缓存误入库、路径大小写冲突等问题。运行 npm run check 检查；PR与main push均运行只读 Repository checks，Release从同一配置生成标题并校验目标仓库。源码版本与已发布版本分别核对，不要求普通提交立即发布。完整规则见 AGENTS.md；检查反例包含在 npm run test:release 中。

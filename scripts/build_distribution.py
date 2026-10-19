@@ -16,8 +16,9 @@ def digest(data):
 
 def build():
     manifest = json.loads((SOURCE / 'ghost.json').read_text(encoding='utf-8'))
-    assert manifest['id'] == 'jixin-make-a-wish'
-    assert manifest['name'] == '极心许愿'
+    identity = json.loads((ROOT / 'repository-policy.json').read_text(encoding='utf-8'))
+    assert manifest['id'] == identity['id']
+    assert manifest['name'] == identity['name']
     assert manifest['command'] == manifest['id']
     assert manifest['version'] == json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))['version']
     paths = sorted(p for p in SOURCE.rglob('*') if p.is_file()

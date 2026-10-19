@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from build_distribution import ROOT, build
+from check_repository import check
 
 TAG = re.compile(r'v?(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:[.][0-9A-Za-z-]+)*)?(?:[+][0-9A-Za-z-]+(?:[.][0-9A-Za-z-]+)*)?')
 
@@ -30,6 +31,7 @@ def assets_for_tag(tag):
 
 
 def prepare(tag, destination):
+    check()
     assets = assets_for_tag(tag)
     destination.mkdir(parents=True, exist_ok=False)
     for name, data in assets.items():

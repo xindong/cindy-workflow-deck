@@ -220,3 +220,13 @@ AGENTS.md明确：普通文件修改提交+0.0.1；显式大版本升级+0.1.0�
 Release workflow从tag源码生成版本化.cindy、DISTRIBUTION.json、SHA256SUMS.txt，发布前使用新--dir校验器检查全部附件。开发构建只写被忽略的release-assets/或显式新目录；版本化文件名及校验文件被验证器正确识别。README/INSTALL/AGENTS默认安装最新正式Release，避免把main源码版本当成安装版本。
 
 本地15项Python回归（含无根包提交、强制add包被拦截、显式产物目录、版本化Release验证和损坏包拒绝）通过；52插件测试、静态和Actionlint通过。本次普通提交自动从0.1.2升至0.1.3。将用临时tag真实触发Release、匿名下载校验并清理测试Release/tag；执行结果以随后真实Actions和清理回执为准，不将本地测试当作发布成功。
+
+## 0.1.4 规范门禁（2026-10-19）
+
+参考 xindong/tavern-of-convallaria 的仓库治理、提交hook及只读PR/main CI分层。新增 repository-policy.json 作为中文名、小写ID、实际仓库slug的统一定义；核对manifest/command/package/locale/面板HTML标题、源码版本、安装链接及源代码压缩包提示。修复面板HTML仍叫Workflow tools的问题。安装包校验与构建、版本标题同步和Release标题读取规范配置；发布前检查目标仓库，tag仍须匹配源码版本，不要求main等于最新正式Release。
+
+hook在完整暂存区快照升版后校验，失败不写回受管文件；CI检查完整跟踪树，禁止分发包/元数据/缓存/.env、大小写冲突、gitlink和符号链接。新增只读Repository checks（pull_request和main push，10分钟上限）；Release保留发布权限并复用规范检查。
+
+本地52项插件测试、27项Python测试、npm run check、Actionlint及hook shell语法通过。反例覆盖错误ID大小写、用户指令大小写、语言名称、旧HTML标题、错误仓库URL/大小写、版本不一致、强制加入包/元数据/缓存、路径大小写冲突、真实提交中的符号链接，以及暂存错误与未暂存修正隔离。发布shell以gh替身核对正式/预发布附件、标题及错误目标仓库拒绝；未创建真实tag或Release。Forge校验打包0.1.4成功，未安装。
+
+仓库实际仍为xindong/cindy-workflow-deck，插件ID为jixin-make-a-wish，不虚构仓库已迁移；GitHub必需检查/分支保护未调整，CI存在不等于管理员无法绕过。正式Release维持原发布状态，后续发布需明确授权。

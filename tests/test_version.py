@@ -17,7 +17,7 @@ class VersionTests(unittest.TestCase):
         shutil.copytree(ROOT / 'plugin', self.root / 'plugin', ignore=shutil.ignore_patterns('*.cindy'))
         shutil.copytree(ROOT / 'scripts', self.root / 'scripts', ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copytree(ROOT / '.githooks', self.root / '.githooks')
-        for name in ('package.json', 'README.md', '.gitignore'):
+        for name in ('package.json', 'README.md', 'INSTALL.md', 'repository-policy.json', '.gitignore'):
             shutil.copyfile(ROOT / name, self.root / name)
         self.run_git('init', '-q')
         self.run_git('config', 'user.name', 'Version fixture')
@@ -144,6 +144,35 @@ class VersionTests(unittest.TestCase):
         self.run_git('add', 'VERSION_BUMP.json')
         result = self.run_git('commit', '-qm', 'invalid upgrade', check=False)
         self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.version(), self.initial)
+
+    def test_staged_bad_identity_cannot_be_hidden_by_unstaged_fix(self):
+        manifest = self.root / 'plugin/ghost.json'
+        original = manifest.read_text()
+        data = json.loads(original)
+        data['id'] = 'Wrong-Case'
+        manifest.write_text(json.dumps(data))
+        self.run_git('add', 'plugin/ghost.json')
+        manifest.write_text(original)
+        result = self.run_git('commit', '-qm', 'bad staged identity', check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.version(), self.initial)
+        self.assertEqual(manifest.read_text(), original)
+
+    def test_metadata_and_symlinks_block_real_commit(self):
+        metadata = self.root / 'DISTRIBUTION.json'
+        metadata.write_text('{}')
+        self.run_git('add', '-f', 'DISTRIBUTION.json')
+        result = self.run_git('commit', '-qm', 'bad metadata', check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('artifacts:', result.stderr)
+        self.run_git('reset', '-q', 'HEAD', '--', 'DISTRIBUTION.json')
+        metadata.unlink()
+        (self.root / 'source-link').symlink_to('README.md')
+        self.run_git('add', 'source-link')
+        result = self.run_git('commit', '-qm', 'bad symlink', check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('regular source files', result.stderr)
         self.assertEqual(self.version(), self.initial)
 
     def test_installer_preserves_existing_custom_hook(self):
