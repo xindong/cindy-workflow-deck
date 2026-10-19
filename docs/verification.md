@@ -176,3 +176,11 @@ Forge校验打包成功；ZIP内18个生产文件逐字节匹配源码，USAGE.m
 scripts/build_distribution.py用标准ZIP、固定排序/时间/文件权限生成可复现分发包；scripts/install_local.py支持--check与--open，正常交给Cindy的系统文件关联安装器，不绕过确认或写安装目录。GitHub Actions在main源码/构建脚本变更时测试并自动更新根包和校验文件，版本无需变动；本地npm run dist/dist:check同样可用。
 
 本地52单测、静态检查、构建/重建字节一致性、安装前完整SHA256/ZIP/manifest检查通过；损坏包与伪造版本元数据均被拒绝。Forge仍通过，根目录分发包与Forge包逐项内容相同（ZIP元信息不同不要求整包hash相同）。远程推送、Actions执行及链接下载实测以随后真实回执为准，不以说明文档冒充安装完成。
+
+### 仓库链接链路实测结果
+
+已通过GitHub插件将根目录二进制包、元数据、安装指南和自动化推送到main 5d5d5de541b6b8d02c2d0808459e7d3ee8797a9d。GitHub Actions实际run 39209086981全部步骤success：52单测/静态检查、Python3.12重建、安装前校验和刷新提交步骤通过。
+
+从GitHub同一确切commit重新读取.cindy二进制与DISTRIBUTION.json并解码到独立下载目录，152067字节与作者本地包一致；整包SHA256 2acba8c7ca266747338dcc70e30e329ab348a280d6ac65fe1dc1036ffb158a3f，18文件及manifest验证通过。不是以本地文件替代网络下载测试。
+
+随后用系统open -a Cindy打开该下载包，14:18:36真实Host日志ghosts:open-file记录该路径及source=open-file，证明仓库下载包已送达Cindy安装入口。尚无最终安装确认/成功回执，不宣称安装完成。当前版本仍0.3.6，未更改Core或绕过用户确认，私有仓库读取权限要求保持不变。
