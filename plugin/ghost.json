@@ -4,7 +4,7 @@
   "name": "极心许愿",
   "description": "工作流小工具栏与项目配置页；支持按项目配置指令文件，绑定聊天后点击新建独立任务。",
   "whenToUse": "开始实验性工作、功能开发、工具开发、提交 PR 或整理分支时使用工作流快捷面板。",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "minCindyVersion": "0.1.109",
   "entry": "main.js",
   "launch": "resident",

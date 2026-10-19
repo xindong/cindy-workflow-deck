@@ -242,3 +242,5 @@ hook在完整暂存区快照升版后校验，失败不写回受管文件；CI�
 新增Ubuntu/macOS/Windows共享核心与独立服务CI矩阵；桌面依赖electron固定版本并提交lockfile，patch/minor脚本与云端同步同时管理lock版本。桌面构建产物与依赖被忽略；.cindy仍Release-only。包生成、打包后启动与CI结果由当次交付核实，未自动安装、未创建tag/Release。
 
 第一阶段最终本地验证：版本自动升到0.1.5，62项Node、27项Python、npm run check、Actionlint与原Canvas连续任务回归通过。Forge生成24生产文件，独立构建逐字节对照。独立macOS arm64应用包经真实Electron打包后启动完成保存/重载/只读Git检查；设置页模拟Host回归通过，截图已核看。打包复制必须保留Electron框架相对符号链接（verbatimSymlinks），否则codesign报unsealed contents；修正后ad-hoc签名与深度严格校验通过。此签名不等于Developer ID签名/公证，Windows GUI及真实Cindy安装尚未验收。
+
+三平台真实CI首轮：Ubuntu、macOS及主规范检查通过；Windows仅路径提示词断言失败（测试写死custom/flow.md，实际返回正确Windows反斜杠路径）。修正为核对真实路径的JSON引用，另加独立Windows提示词回归，不改写/弱化实际路径。修正提交按规则升0.1.6；本地Node测试增至63项，Windows核心结果须以新run核实，不将旧run说成通过。

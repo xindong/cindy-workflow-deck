@@ -26,7 +26,7 @@ test('configured inspector honors new paths and explicit blanks without executin
   assert.equal(result.workflows.feature.ok,true); assert.equal(result.workflows.experiment.reason,'not_configured');
   assert.deepEqual(await readFile(path.join(f.dir,'custom/flow.md')),before);
   const prompt = buildPrompt('feature','test',result.workflows.feature.source);
-  assert.ok(prompt.includes('custom/flow.md')); assert.ok(!prompt.includes('_S/feature.md'));
+  assert.ok(prompt.includes(JSON.stringify(result.workflows.feature.source))); assert.ok(!prompt.includes('_S/feature.md'));
 });
 test('external files need consent and symlink paths stay rejected', async t => {
   const f=await fixture(t), outside=path.join(f.root,'external.md');await writeFile(outside,'instruction');
