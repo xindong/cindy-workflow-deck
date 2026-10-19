@@ -2,10 +2,15 @@ import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { WORKFLOWS } from '../plugin/workflows.js';
+import { WORKFLOWS, CHANNEL, buildPrompt } from '../plugin/workflows.js';
 const root = resolve(import.meta.dirname, '..');
 const manifest = JSON.parse(await readFile(resolve(root, 'plugin/ghost.json'), 'utf8'));
 assert.equal(manifest.schemaVersion, 3);
+assert.equal(manifest.id, 'jixin-make-a-wish');
+assert.equal(manifest.command, manifest.id);
+assert.equal(manifest.name, '极心许愿');
+assert.equal(CHANNEL, manifest.id + ':v1');
+for (const flow of WORKFLOWS) assert.ok(buildPrompt(flow.id).includes(manifest.id + ' 插件的 report_progress'));
 assert.equal(manifest.agent.tasks, true); // Legacy record inspection only.
 assert.deepEqual(manifest.card, {});
 assert.equal(manifest.agent.background, true);
@@ -24,7 +29,7 @@ for (const field of ['entry', 'panel']) {
   const file = field === 'panel' ? manifest.panel.html : manifest[field];
   await readFile(resolve(root, 'plugin', file));
 }
-for (const file of Object.values(manifest.locales)) JSON.parse(await readFile(resolve(root, 'plugin', file), 'utf8'));
+for (const file of Object.values(manifest.locales)) assert.equal(JSON.parse(await readFile(resolve(root, 'plugin', file), 'utf8')).name, manifest.name);
 const html = await readFile(resolve(root, 'plugin/panel.html'), 'utf8');
 assert.ok(!/<script(?![^>]*src=)[^>]*>/i.test(html), 'Inline scripts violate plugin CSP');
 assert.ok(!/\son\w+\s*=/i.test(html), 'Inline event handlers violate plugin CSP');

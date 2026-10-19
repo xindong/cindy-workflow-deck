@@ -1,5 +1,5 @@
 {
-  "name": "Workflow Deck",
+  "name": "极心许愿",
   "description": "Bind a local project chat, then inspect and launch workflows from a compact sidebar toolbar.",
   "whenToUse": "Starting experiments, developing features or tools, submitting pull requests, or cleaning up branches.",
   "tools": {
@@ -8,6 +8,6 @@
     }
   },
   "panel": {
-    "title": "Workflows"
+    "title": "极心许愿"
   }
 }

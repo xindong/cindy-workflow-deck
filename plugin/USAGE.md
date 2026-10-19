@@ -1,3 +1,5 @@
+# 极心许愿（jixin-make-a-wish）
+
 # 工作流快捷面板使用说明 / Workflow Deck usage
 
 ## 准备项目
@@ -6,7 +8,7 @@
 
 ## 绑定与启动
 
-在本地项目聊天发送 $workflow-deck，点击新的“绑定工具栏”卡片。绑定只检查，不启动任务。面板“目标与目录”可补充下一次工作目标。每次点击新建独立任务，不复制聊天历史；Host 从来源聊天继承目录、Agent 和模型，权限仍由 Host 管理，不保证继承完全访问。只读聊天和远程工作目录不启动流程。
+在本地项目聊天发送 $jixin-make-a-wish，点击新的“绑定工具栏”卡片。绑定只检查，不启动任务。面板“目标与目录”可补充下一次工作目标。每次点击新建独立任务，不复制聊天历史；Host 从来源聊天继承目录、Agent 和模型，权限仍由 Host 管理，不保证继承完全访问。只读聊天和远程工作目录不启动流程。
 
 发起间隔至少10秒；切到本插件确认创建的任务保留原来源绑定，陌生聊天先禁用。更新、停用重启插件或重启 Cindy 后，回到目标聊天取得新卡重绑。目录变化、来源归档或关联权限失效也可能要求重绑。检查失败可刷新；重复点旧卡不会重复派发。
 
@@ -18,6 +20,6 @@ AI 使用 report_progress 回报实际步骤、输出摘要、阻塞或完成；
 
 ## English quick start
 
-Provide the project workflow files and PR skill listed above; missing files disable only their own actions. Send $workflow-deck in a local project chat, click a fresh binding card, then choose an action. Each click creates an independent task using Host-managed source directory, Agent, model and permissions, without copying chat history. Wait at least 10 seconds between launches. Plugin-created tasks keep the original source binding; unrelated chats do not. Rebind after plugin/Cindy restarts or updates. Remote workspaces and read-only sources cannot launch workflows.
+Provide the project workflow files and PR skill listed above; missing files disable only their own actions. Send $jixin-make-a-wish in a local project chat, click a fresh binding card, then choose an action. Each click creates an independent task using Host-managed source directory, Agent, model and permissions, without copying chat history. Wait at least 10 seconds between launches. Plugin-created tasks keep the original source binding; unrelated chats do not. Rebind after plugin/Cindy restarts or updates. Remote workspaces and read-only sources cannot launch workflows.
 
 Progress is explicitly reported by AI through report_progress, not a mirror of full terminal output. AI completion and Host turn end are separate. Logs retain a bounded tail. If a receipt is uncertain, check the task list before clicking again. Upgrade Cindy for a missing or explicitly unsupported interface; permission denial and network/storage failures require their own remedies. The Node worker has system-account privileges; its fixed-path read checks are not an OS sandbox.
