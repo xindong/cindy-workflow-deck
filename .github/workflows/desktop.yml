@@ -1,0 +1,61 @@
+name: Desktop packages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    name: Windows x64 portable and native smoke
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies without repository hooks
+        run: npm ci --ignore-scripts
+      - name: Download pinned Electron runtime
+        run: node node_modules/electron/install.js
+      - name: Package standalone application
+        run: npm run desktop:package
+      - name: Extract delivered ZIP and test packaged executable
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = Get-ChildItem desktop-builds -Filter '*-windows-x64.zip'
+          if (@($zip).Count -ne 1) { throw 'Expected exactly one Windows ZIP' }
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath artifacts/unpacked
+          $exe = Get-ChildItem artifacts/unpacked -Recurse -Filter '极心许愿.exe'
+          if (@($exe).Count -ne 1) { throw 'Expected exactly one application executable' }
+          $env:JIXIN_DESKTOP_EXECUTABLE = $exe.FullName
+          $env:JIXIN_NATIVE_ONLY = '1'
+          node tests/dual-ui-check.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $hash = (Get-FileHash -LiteralPath $zip.FullName -Algorithm SHA256).Hash.ToLower()
+          [System.IO.File]::WriteAllText((Join-Path $zip.DirectoryName 'SHA256SUMS.txt'), "$hash  $($zip.Name)`n", [System.Text.UTF8Encoding]::new($false))
+      - name: Upload verified Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: jixin-windows-x64
+          path: |
+            desktop-builds/*-windows-x64.zip
+            desktop-builds/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload native acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jixin-windows-acceptance
+          path: |
+            artifacts/desktop-smoke.json
+            artifacts/standalone-configuration.png
+          if-no-files-found: warn
+          retention-days: 30

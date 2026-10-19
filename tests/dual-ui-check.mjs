@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
-const { _electron, chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE_PATH).href);
+const { _electron, chromium } = await import(process.env.PLAYWRIGHT_MODULE_PATH ? pathToFileURL(process.env.PLAYWRIGHT_MODULE_PATH).href : 'playwright-core');
 async function awaitCondition(page, fn) {
   const end = Date.now() + 15000;
   while (Date.now() < end) { if (await page.evaluate(fn)) return; await new Promise(resolve => setTimeout(resolve, 40)); }
@@ -25,6 +25,10 @@ try {
   const args=process.env.JIXIN_DESKTOP_EXECUTABLE ? ['--jixin-user-data',join(temporary,'app-data')] : [join(root,'desktop/main.cjs'),'--jixin-user-data',join(temporary,'app-data')];
   const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
   app=await _electron.launch({executablePath,args,cwd:root,env,timeout:30000});
+  if (process.env.JIXIN_DESKTOP_EXECUTABLE) {
+    assert.equal(await app.evaluate(({app})=>app.getVersion()),JSON.parse(await readFile(join(root,'package.json'),'utf8')).version);
+    assert.equal(await app.evaluate(({app})=>app.isPackaged),true);
+  }
   const page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));
   await page.locator('#add:not(:disabled)').waitFor();
   assert.equal(await page.evaluate(()=>typeof globalThis.cindy),'undefined');
@@ -42,6 +46,9 @@ try {
   await page.screenshot({path:join(root,'artifacts/standalone-configuration.png'),fullPage:true});
   await app.close();app=null;
   console.log('Native desktop: no Cindy bridge, sandboxed UI, real Git inspection, persisted/reloaded config and traversal rejection passed.');
+  assert.deepEqual(errors,[]);
+  await writeFile(join(root,'artifacts/desktop-smoke.json'),JSON.stringify({platform:process.platform,arch:process.arch,version:JSON.parse(await readFile(join(root,'package.json'),'utf8')).version,packaged:!!process.env.JIXIN_DESKTOP_EXECUTABLE,checks:['launch','no-cindy-bridge','no-renderer-node','git-inspection','configuration-save','configuration-reload','traversal-rejected'],passed:true},null,2));
+  if (!process.env.JIXIN_NATIVE_ONLY) {
   server=spawn('python3',[join(root,'tests/serve-preview.py')],{stdio:['ignore','pipe','inherit']});
   const base=await new Promise((yes,no)=>{server.stdout.once('data',data=>yes(data.toString().trim()));server.once('error',no);});
   browser=await chromium.launch({headless:true});
@@ -67,4 +74,5 @@ try {
   const english=await context.newPage();await english.route('**/app-context',route=>route.fulfill({json:{context:{locale:'en'}}}));await english.goto(base+'/settings.html');await awaitCondition(english,()=>document.documentElement.lang==='en');assert.equal(await english.locator('#save').textContent(),'Save configuration');
   assert.deepEqual(errors,[]);
   console.log('Cindy settings (mock Host): real runtime/BroadcastChannel, directory picking, reload, concurrent conflict, custom-path dispatch inspection, zh/en and narrow/dark passed.');
+  }
 } finally {if(app)await app.close();if(browser)await browser.close();if(server)server.kill();await rm(temporary,{recursive:true,force:true});}

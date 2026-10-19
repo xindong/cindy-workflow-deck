@@ -244,3 +244,10 @@ hook在完整暂存区快照升版后校验，失败不写回受管文件；CI�
 第一阶段最终本地验证：版本自动升到0.1.5，62项Node、27项Python、npm run check、Actionlint与原Canvas连续任务回归通过。Forge生成24生产文件，独立构建逐字节对照。独立macOS arm64应用包经真实Electron打包后启动完成保存/重载/只读Git检查；设置页模拟Host回归通过，截图已核看。打包复制必须保留Electron框架相对符号链接（verbatimSymlinks），否则codesign报unsealed contents；修正后ad-hoc签名与深度严格校验通过。此签名不等于Developer ID签名/公证，Windows GUI及真实Cindy安装尚未验收。
 
 三平台真实CI首轮：Ubuntu、macOS及主规范检查通过；Windows仅路径提示词断言失败（测试写死custom/flow.md，实际返回正确Windows反斜杠路径）。修正为核对真实路径的JSON引用，另加独立Windows提示词回归，不改写/弱化实际路径。修正提交按规则升0.1.6；本地Node测试增至63项，Windows核心结果须以新run核实，不将旧run说成通过。
+
+
+## 0.1.7 Windows便携包与本机安装验收（2026-10-19）
+
+扩展同一打包入口至Windows，包含Electron并使用中文启动文件名。新增Desktop packages工作流：main/手动触发，锁定依赖后构建ZIP，从ZIP解压启动实际exe，以临时项目及用户数据验证；通过才上传包和SHA256，单独保留JSON与截图。未创建正式tag/Release。
+
+本地63项Node、27项Python、静态检查及Actionlint通过；真实Electron及模拟Cindy配置页回归通过。Mac最终0.1.7打包后真实二进制版本与isPackaged核验、无Cindy桥/renderer Node、配置保存/重载、只读Git及穿越拒绝通过，ad-hoc签名deep/strict验证通过。Mac启动二进制改中文并同步CFBundleExecutable，避免保留Electron默认名称导致仍识别为开发模式。Windows云端GUI结果与Cindy安装结果以本次真实回执为准，不由上述本地检查推断。

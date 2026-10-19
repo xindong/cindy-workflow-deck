@@ -8,7 +8,7 @@
 
 保存目录不等于给Host任务设置了工作目录。高级工作流仍需在目标聊天点新绑定卡取得真实关联；会话目录与某项配置目录匹配时使用该项的指令文件。配置其它项目不会使现有聊天越权派发到那个目录。未配置项目保留旧版默认路径检查，以兼容已有绑定。配置项目中空白流程明确禁用，不退回默认文件或用户全局技能。
 
-新增pick能力；安装或更新仍由用户通过Host确认，本阶段没有自动安装。配置页浏览器回归使用模拟Host，不等于新版已在真实Cindy完成安装交互验收。
+新增pick能力；安装或更新仍由用户明确授权，通过Host正常安装事务进行。配置页浏览器回归使用模拟Host，不等于新版已在真实Cindy完成安装交互验收。
 
 ## 独立桌面运行
 
@@ -22,11 +22,13 @@
 
 配置保存在本应用系统userData目录中的projects.json，不写入项目，不与Cindy/kv自动同步。保存采用修订校验和原子替换；只支持单实例持久写入。本地只读检查额外显示实际Git根目录、分支、变更及项目根AGENTS.md/CONTRIBUTING.md的存在情况。规则发现不是完整嵌套规则解析或提交准入，界面明确标识；没有实现Git写入、AI调用和独立工作流执行，不能用此阶段程序宣称完整开发工具已交付。
 
-macOS开发机可运行npm run desktop:package，生成忽略目录desktop-builds/中的.app及ZIP。包含Electron运行时，不要求使用者安装Node或Cindy；使用ad-hoc签名，未做Developer ID签名/公证，不冒称系统已信任。Windows源码入口已提供，但目前尚无Windows实机或经过验证的Windows安装包。
+macOS和Windows开发机均可运行npm run desktop:package，生成忽略目录desktop-builds/中的平台包。macOS生成.app及ZIP；Windows x64生成便携ZIP，解压后打开“极心许愿.exe”，须保留同目录运行库和resources文件夹，不能单独复制exe。包含Electron运行时，不要求使用者安装Node或Cindy；Git检查需要本机已安装Git。macOS使用ad-hoc签名，未做Developer ID签名/公证；Windows尚未代码签名，不冒称系统已信任。
+
+Desktop packages工作流在main推送或手动触发时构建Windows x64包，从交付ZIP重新解压后启动真实exe，检查版本、无Cindy依赖、renderer隔离、真实临时Git项目检查、配置保存/重载及路径穿越拒绝。仅通过后上传jixin-windows-x64 artifact，含ZIP与SHA256SUMS.txt；验收JSON与截图单独提供。Actions附件保留30天；这不是正式Release。正式分发仍需按用户授权打tag并走Release流程，不把CI成功等同于已在用户Windows电脑验收。
 
 ## 验证
 
 - npm test：共享配置、真实文件检查、独立配置持久化与冲突、临时Git仓库只读状态、Cindy配置控制器、原绑定/连续任务及Host式Node worker。
 - npm run test:release：版本/发布/规范门禁；package-lock随版本文件同步。
 - npm run check：设置页CSP、manifest引用、共享与桌面代码语法及规范检查。
-- 浏览器/桌面验收：设置PLAYWRIGHT_MODULE_PATH为已安装Playwright的index.mjs路径，PLAYWRIGHT_BROWSERS_PATH为浏览器缓存后，运行node tests/dual-ui-check.mjs。启动真实Electron并使用临时用户数据/项目，再以模拟Host验证Cindy配置页。不会在真实用户项目执行Git写入或AI任务。
+- 浏览器/桌面验收：设置PLAYWRIGHT_MODULE_PATH为已安装Playwright的index.mjs路径，PLAYWRIGHT_BROWSERS_PATH为浏览器缓存后，运行node tests/dual-ui-check.mjs。启动真实Electron并使用临时用户数据/项目，再以模拟Host验证Cindy配置页。安装依赖后也可不设置PLAYWRIGHT_MODULE_PATH，默认使用锁定的playwright-core；仅桌面验收设JIXIN_NATIVE_ONLY=1，并用JIXIN_DESKTOP_EXECUTABLE指向打包后的可执行文件。不会在真实用户项目执行Git写入或AI任务。
