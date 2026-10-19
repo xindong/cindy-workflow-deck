@@ -40,6 +40,7 @@ class ReleaseTests(unittest.TestCase):
         command = textwrap.dedent(workflow.rsplit('run: |', 1)[1])
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
+            (directory / 'repository-policy.json').write_bytes((ROOT / 'repository-policy.json').read_bytes())
             (directory / 'release-assets').mkdir()
             for name in ('plugin.cindy', 'DISTRIBUTION.json', 'SHA256SUMS.txt'):
                 (directory / 'release-assets' / name).touch()
@@ -50,16 +51,26 @@ class ReleaseTests(unittest.TestCase):
             for tag, prerelease in (('v0.1.0', False), ('v0.1.0-rc.1', True),
                                     ('v0.1.0+build-test', False)):
                 env = dict(os.environ, PATH=str(directory) + os.pathsep + os.environ['PATH'],
-                           RELEASE_TAG=tag)
+                           RELEASE_TAG=tag, GH_REPO='xindong/cindy-workflow-deck')
                 result = subprocess.run(['bash', '-e', '-c', command], cwd=directory,
                                         env=env, check=True, capture_output=True, text=True)
                 args = json.loads(result.stdout)
                 self.assertEqual(args[:3], ['release', 'create', tag])
+                self.assertEqual(args[args.index('--title') + 1], '极心许愿 ' + tag)
                 self.assertIn('--verify-tag', args)
                 self.assertIn('--generate-notes', args)
                 self.assertEqual('--prerelease' in args, prerelease)
                 for name in ('plugin.cindy', 'DISTRIBUTION.json', 'SHA256SUMS.txt'):
                     self.assertIn('release-assets/' + name, args)
+
+    def test_publish_refuses_wrong_repository_before_calling_gh(self):
+        workflow = (ROOT / '.github/workflows/release.yml').read_text()
+        command = textwrap.dedent(workflow.rsplit('run: |', 1)[1])
+        result = subprocess.run(['bash', '-e', '-c', command], cwd=ROOT,
+                                env=dict(os.environ, GH_REPO='xindong/wrong-repo', RELEASE_TAG='v0.1.0'),
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Release repository differs', result.stderr)
 
     def test_local_build_and_validator_use_explicit_artifact_directory(self):
         version = json.loads((ROOT / 'package.json').read_text())['version']

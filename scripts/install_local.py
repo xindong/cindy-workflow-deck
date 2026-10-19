@@ -12,9 +12,11 @@ import zipfile
 
 def verify(root):
     metadata = json.loads((root / 'DISTRIBUTION.json').read_text(encoding='utf-8'))
-    assert metadata['id'] == 'jixin-make-a-wish'
-    assert re.fullmatch(r'jixin-make-a-wish-[0-9][0-9A-Za-z.+-]*[.]cindy', metadata['file']), 'Unsafe package filename'
-    assert metadata['file'] == f'jixin-make-a-wish-{metadata["version"]}.cindy'
+    identity = json.loads((Path(__file__).resolve().parents[1] / 'repository-policy.json').read_text(encoding='utf-8'))
+    slug = identity['id']
+    assert metadata['id'] == slug and metadata['name'] == identity['name']
+    assert re.fullmatch(re.escape(slug) + r'-[0-9][0-9A-Za-z.+-]*[.]cindy', metadata['file']), 'Unsafe package filename'
+    assert metadata['file'] == f'{slug}-{metadata["version"]}.cindy'
     package = root / metadata['file']
     assert hashlib.sha256(package.read_bytes()).hexdigest() == metadata['sha256'], 'Package SHA256 mismatch'
     checksums = {}

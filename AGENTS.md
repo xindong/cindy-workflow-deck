@@ -34,3 +34,13 @@ GitHub网页/API不运行本地hook：通过插件push_files上传时，必须�
 ## Release 专属分发
 
 .cindy、DISTRIBUTION.json与SHA256SUMS.txt只由Release流程从对应tag构建上传，main CI仅升版/测试/源码回提交。普通提交不意味着可下载的新版本；安装只取最新正式Release，不访问已删除的根包URL。构建器本地默认输出release-assets/，--out可指定新产物目录，--check仅检查本地产物；校验器用--dir指向同一Release的三附件。不为本次分发方案变更移动既有tag或重写已有Release。
+
+## 规范门禁（本地与 CI 共用）
+
+参考 tavern-of-convallaria 的单一事实来源、暂存区检查与完整树 CI 分层方式，仅采用本插件实际需要的规则。repository-policy.json 是显示名、插件 ID 与实际 GitHub owner/repo 的唯一规范入口；仓库名与插件 ID 是独立字段，改仓库名必须先完成 GitHub 改名，再同步该配置和安装链接，不能只替换文案冒称迁移完成。
+
+scripts/check_repository.py 检查名称/大小写、manifest/package/locale/面板标题、README源码版本、README/INSTALL的实际仓库和最新正式Release链接；禁止跟踪分发包、元数据、缓存、.env、gitlink、符号链接及大小写冲突路径。明确历史记录不做全库链接替换。不扫描或联网获取用户项目、凭证或私有数据。
+
+提交hook升版后，先在完整暂存区快照运行同一校验，失败不写回受管文件；npm run check 在 CI 校验整个跟踪树，pull_request 与 main push 均有只读 Repository checks，Release 构建前重复执行。发布标题从规范配置生成，并检查当前 GitHub 仓库身份与 tag/manifest版本；源码版本不要求等于最新正式Release，禁止为消除差异移动历史tag。npm run test:release 包含反例测试，新增规则必须证明错误输入会失败。
+
+GitHub Required status checks 需仓库管理员另行配置；存在workflow本身不代表已禁止管理员直接推送或合并失败检查。建议将 Repository checks / checks 设为 main 的必需检查；本任务不擅自修改组织或分支保护策略。

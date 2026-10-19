@@ -1,6 +1,6 @@
 {
   "name": "jixin-make-a-wish",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "type": "module",
   "description": "Agent 工作流快捷面板，运行于 Cindy 插件沙箱。",

@@ -4,11 +4,14 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { WORKFLOWS, CHANNEL, buildPrompt } from '../plugin/workflows.js';
 const root = resolve(import.meta.dirname, '..');
+const policyCheck = spawnSync('python3', [resolve(root, 'scripts/check_repository.py')], { encoding: 'utf8' });
+assert.equal(policyCheck.status, 0, policyCheck.stdout + policyCheck.stderr);
+const identity = JSON.parse(await readFile(resolve(root, 'repository-policy.json'), 'utf8'));
 const manifest = JSON.parse(await readFile(resolve(root, 'plugin/ghost.json'), 'utf8'));
 assert.equal(manifest.schemaVersion, 3);
-assert.equal(manifest.id, 'jixin-make-a-wish');
+assert.equal(manifest.id, identity.id);
 assert.equal(manifest.command, manifest.id);
-assert.equal(manifest.name, '极心许愿');
+assert.equal(manifest.name, identity.name);
 assert.equal(CHANNEL, manifest.id + ':v1');
 for (const flow of WORKFLOWS) assert.ok(buildPrompt(flow.id).includes(manifest.id + ' 插件的 report_progress'));
 assert.equal(manifest.agent.tasks, true); // Legacy record inspection only.

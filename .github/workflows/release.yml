@@ -10,6 +10,7 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,7 +37,10 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         shell: bash
         run: |
+          display_name=$(python3 -c 'import json; print(json.load(open("repository-policy.json"))["name"])')
+          repository=$(python3 -c 'import json; print(json.load(open("repository-policy.json"))["repository"])')
+          if [[ "$GH_REPO" != "$repository" ]]; then echo "Release repository differs from repository-policy.json" >&2; exit 1; fi
           options=()
           version="${RELEASE_TAG%%+*}"
           if [[ "$version" == *-* ]]; then options+=(--prerelease); fi
-          gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "极心许愿 $RELEASE_TAG" --generate-notes "${options[@]}"
+          gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "$display_name $RELEASE_TAG" --generate-notes "${options[@]}"
