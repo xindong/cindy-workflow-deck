@@ -1,5 +1,8 @@
 node_modules/
 *.cindy
+!/jixin-make-a-wish.cindy
 .DS_Store
 coverage/
 artifacts/
+__pycache__/
+*.pyc

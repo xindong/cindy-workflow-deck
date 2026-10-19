@@ -168,3 +168,11 @@ Forge校验打包成功；ZIP内18个生产文件逐字节匹配源码，USAGE.m
 用户最终指定显示名称“极心许愿”，内部ID/command保留jixin-make-a-wish。manifest、中英文locale名称、面板标题和HTML标题保持一致。此前新ID首次Forge安装调用最终返回MUTATION_CANCELLED，未确认新版安装成功，不推断为用户主动拒绝；本轮只按授权改名、验证、打包、提交与推送，不重试安装或组织发布。
 
 最终中文名称版52项单测、静态/CSP/语法与diff检查通过；Forge校验打包成功，18生产文件与源码逐字节一致。最终中文名称版浏览器模拟回归已通过（来源、连续派发、冷却、日志、重载、明暗和280px）；远程同步以GitHub实际回执为准。
+
+## 仓库直装与自动维护分发包（版本仍为0.3.6）
+
+按用户要求改变原“不提交.cindy”的开发约定：只允许根目录固定jixin-make-a-wish.cindy入库，其余历史包仍忽略。根目录DISTRIBUTION.json记录整包SHA256、18生产文件SHA256及id/name/version；INSTALL.md和AGENTS.md给Cindy AI明确同commit下载、校验、系统打开与最终回执核对步骤。此元数据不是Host官方发现协议，未新增cindy://安装协议或修改Core；当前仓库私有，仍需安装者有读取权限。
+
+scripts/build_distribution.py用标准ZIP、固定排序/时间/文件权限生成可复现分发包；scripts/install_local.py支持--check与--open，正常交给Cindy的系统文件关联安装器，不绕过确认或写安装目录。GitHub Actions在main源码/构建脚本变更时测试并自动更新根包和校验文件，版本无需变动；本地npm run dist/dist:check同样可用。
+
+本地52单测、静态检查、构建/重建字节一致性、安装前完整SHA256/ZIP/manifest检查通过；损坏包与伪造版本元数据均被拒绝。Forge仍通过，根目录分发包与Forge包逐项内容相同（ZIP元信息不同不要求整包hash相同）。远程推送、Actions执行及链接下载实测以随后真实回执为准，不以说明文档冒充安装完成。
