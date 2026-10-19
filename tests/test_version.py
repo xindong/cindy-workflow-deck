@@ -109,6 +109,38 @@ class VersionTests(unittest.TestCase):
         self.run_git('commit', '--allow-empty', '-qm', 'no source change')
         self.assertEqual(self.version(), self.initial)
 
+    def test_explicit_minor_then_normal_patch_and_cloud_replay(self):
+        major, minor, _ = map(int, self.initial.split('.'))
+        upgraded = f'{major}.{minor + 1}.0'
+        self.change('large release')
+        self.run_python('scripts/bump_version.py', '--minor')
+        self.assert_package(upgraded)
+        self.run_git('commit', '-qm', 'minor upgrade')
+        self.assert_package(upgraded)
+        self.change('next normal change')
+        self.run_git('commit', '-qm', 'patch after minor')
+        self.assert_package(f'{major}.{minor + 1}.1')
+        self.run_python('scripts/bump_version.py', '--push-base', self.base)
+        self.assert_package(f'{major}.{minor + 1}.1')
+        self.assertEqual(self.run_git('status', '--porcelain').stdout, '')
+
+    def test_api_minor_intent_is_respected(self):
+        major, minor, _ = map(int, self.initial.split('.'))
+        intent = {'base': self.initial, 'level': 'minor'}
+        (self.root / 'VERSION_BUMP.json').write_text(json.dumps(intent))
+        self.run_git('add', 'VERSION_BUMP.json')
+        self.run_git('-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'API minor upgrade')
+        self.run_python('scripts/bump_version.py', '--push-base', self.base)
+        self.assert_package(f'{major}.{minor + 1}.0')
+
+    def test_stale_minor_intent_is_rejected(self):
+        intent = {'base': '999.0.0', 'level': 'minor'}
+        (self.root / 'VERSION_BUMP.json').write_text(json.dumps(intent))
+        self.run_git('add', 'VERSION_BUMP.json')
+        result = self.run_git('commit', '-qm', 'invalid upgrade', check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.version(), self.initial)
+
     def test_installer_preserves_existing_custom_hook(self):
         hook = self.root / '.git/hooks/pre-commit'
         original = '#!/bin/sh' + chr(10) + 'exit 23' + chr(10)
