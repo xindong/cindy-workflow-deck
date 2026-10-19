@@ -18,10 +18,26 @@ async function probe(root, relative) {
     return { ok: false, reason: ['ENOENT', 'ENOTDIR'].includes(error.code) ? 'missing' : error.code === 'EACCES' ? 'unreadable' : 'check_failed' };
   }
 }
-async function inspectProject(dir, home = os.homedir()) {
+async function inspectProject(dir, home = os.homedir(), project) {
   if (typeof dir !== 'string' || !path.isAbsolute(dir)) throw new Error('INVALID_DIRECTORY');
   const root = await fs.realpath(dir);
   if (!(await fs.stat(root)).isDirectory()) throw new Error('NOT_DIRECTORY');
+  if (project) {
+    const { normalizeConfiguration, directoryKey } = await import('../core/project-config.mjs');
+    const normalized = normalizeConfiguration({ projects: [project], activeProjectId: project.id }).projects[0];
+    if (directoryKey(normalized.directory) !== directoryKey(dir)) throw new Error('PROJECT_DIRECTORY_MISMATCH');
+    const workflows = {};
+    for (const [id, item] of Object.entries(normalized.workflows)) {
+      if (!item.path) { workflows[id] = { ok: false, reason: 'not_configured' }; continue; }
+      if (process.platform !== 'win32' && /^[A-Za-z]:[\\/]/.test(item.path)) { workflows[id] = { ok: false, reason: 'platform_mismatch' }; continue; }
+      const relative = item.path.split(String.fromCharCode(92)).join('/');
+      const target = path.isAbsolute(relative) ? relative : path.resolve(root, relative);
+      const base = path.parse(target).root;
+      const checked = await probe(base, path.relative(base, target).split(path.sep).join('/'));
+      workflows[id] = checked;
+    }
+    return { workflows, checkedAt: new Date().toISOString() };
+  }
   const files = { experiment: '_S/experiment.md', feature: '_S/feature.md', tooling: '_S/tooling.md', merge: '_E/merge.md' };
   const workflows = {};
   for (const [id, file] of Object.entries(files)) workflows[id] = await probe(root, file);
@@ -43,7 +59,7 @@ function startStdio() {
     try {
       request = JSON.parse(line);
       if (request.method !== 'project/inspect') return process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Unknown method' } }) + '\n');
-      const result = await inspectProject(request.params?.dir);
+      const result = await inspectProject(request.params?.dir, undefined, request.params?.project);
       process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) + '\n');
     } catch {
       process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request?.id ?? null, error: { code: -32000, message: 'PROJECT_CHECK_FAILED' } }) + '\n');

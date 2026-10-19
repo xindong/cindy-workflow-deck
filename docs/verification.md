@@ -230,3 +230,15 @@ hook在完整暂存区快照升版后校验，失败不写回受管文件；CI�
 本地52项插件测试、27项Python测试、npm run check、Actionlint及hook shell语法通过。反例覆盖错误ID大小写、用户指令大小写、语言名称、旧HTML标题、错误仓库URL/大小写、版本不一致、强制加入包/元数据/缓存、路径大小写冲突、真实提交中的符号链接，以及暂存错误与未暂存修正隔离。发布shell以gh替身核对正式/预发布附件、标题及错误目标仓库拒绝；未创建真实tag或Release。Forge校验打包0.1.4成功，未安装。
 
 仓库实际仍为xindong/cindy-workflow-deck，插件ID为jixin-make-a-wish，不虚构仓库已迁移；GitHub必需检查/分支保护未调整，CI存在不等于管理员无法绕过。正式Release维持原发布状态，后续发布需明确授权。
+
+## 双形态第一阶段：项目配置与独立桌面（2026-10-19）
+
+按用户确认实现独立桌面＋Cindy插件；本阶段以配置入口为交付。共用配置模型与页面，Cindy通过settingsHtml、pick目录和逻辑页串行/kv合并；独立Electron通过sandbox/contextIsolation的允许列表IPC及系统选择器，userData原子保存，修订冲突保护，单实例锁。不写目标项目；不保存API密钥。
+
+支持最多8个项目、五类指令文件的相对/显式外部路径、留空禁用；更新配置后刷新已有绑定检查，任务使用实际检查通过的指令路径，仍只派发到Host真实关联来源，不用配置自报会话。未配置项目保留旧默认检查。Node worker通过.mjs加载共用校验，新增无package.json的安装式夹具验证。独立端只读检查Git根/分支/变更和根规则文件存在；未实现完整规则门禁、Git写入、独立工作流执行或AI调用，不将规则发现当准入通过。
+
+本地62项Node测试通过；真实Electron窗口以临时用户数据和临时Git项目验证无Cindy桥、无renderer require、保存/重载/目录穿越拒绝及只读Git检查。Cindy设置页以真实runtime＋模拟Host/BroadcastChannel验证目录选择、保存/重载、双窗口冲突、配置保存零派发、绑定后自定义路径传给检查、中英文/280px/明暗与无溢出。截图属于独立桌面实窗和模拟Host设置页，不是实际Cindy安装验收。Electron受严格CSP保护，测试等待通过CDP读状态，不为测试开放unsafe-eval。
+
+新增Ubuntu/macOS/Windows共享核心与独立服务CI矩阵；桌面依赖electron固定版本并提交lockfile，patch/minor脚本与云端同步同时管理lock版本。桌面构建产物与依赖被忽略；.cindy仍Release-only。包生成、打包后启动与CI结果由当次交付核实，未自动安装、未创建tag/Release。
+
+第一阶段最终本地验证：版本自动升到0.1.5，62项Node、27项Python、npm run check、Actionlint与原Canvas连续任务回归通过。Forge生成24生产文件，独立构建逐字节对照。独立macOS arm64应用包经真实Electron打包后启动完成保存/重载/只读Git检查；设置页模拟Host回归通过，截图已核看。打包复制必须保留Electron框架相对符号链接（verbatimSymlinks），否则codesign报unsealed contents；修正后ad-hoc签名与深度严格校验通过。此签名不等于Developer ID签名/公证，Windows GUI及真实Cindy安装尚未验收。

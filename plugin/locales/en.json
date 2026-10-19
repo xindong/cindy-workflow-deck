@@ -1,10 +1,10 @@
 {
   "name": "极心许愿",
-  "description": "Bind a local project chat, then inspect and launch workflows from a compact sidebar toolbar.",
+  "description": "Configure project workflow files in plugin settings, then bind a local chat to launch independent tasks.",
   "whenToUse": "Starting experiments, developing features or tools, submitting pull requests, or cleaning up branches.",
   "tools": {
     "get_workflows": {
-      "description": "Bind a local project chat, then inspect and launch workflows from a compact sidebar toolbar."
+      "description": "Configure project workflow files in plugin settings, then bind a local chat to launch independent tasks."
     }
   },
   "panel": {

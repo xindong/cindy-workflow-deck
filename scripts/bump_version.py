@@ -10,7 +10,7 @@ from pathlib import Path
 from build_distribution import ROOT
 from check_repository import validate, tracked_paths
 
-MANAGED = ['package.json', 'plugin/ghost.json', 'README.md']
+MANAGED = ['package.json', 'plugin/ghost.json', 'README.md', 'package-lock.json']
 BOT_SUBJECT = 'build: synchronize version '
 INTENT_FILE = 'VERSION_BUMP.json'
 
@@ -52,6 +52,12 @@ def synchronize(version):
         info = json.loads(path.read_text(encoding='utf-8'))
         info['version'] = version
         path.write_text(json.dumps(info, ensure_ascii=False, indent=2) + chr(10), encoding='utf-8')
+    lock_path = ROOT / 'package-lock.json'
+    if lock_path.exists():
+        lock = json.loads(lock_path.read_text(encoding='utf-8'))
+        lock['version'] = version
+        lock['packages']['']['version'] = version
+        lock_path.write_text(json.dumps(lock, ensure_ascii=False, indent=2) + chr(10), encoding='utf-8')
     readme = ROOT / 'README.md'
     text = readme.read_text(encoding='utf-8')
     display_name = json.loads((ROOT / 'repository-policy.json').read_text(encoding='utf-8'))['name']
@@ -78,8 +84,9 @@ def prepare_index():
                         '--set-version', expected], cwd=snapshot, check=True)
         validate(snapshot, tracked_paths())
         for name in MANAGED:
+            if not (snapshot / name).exists(): continue
             (ROOT / name).write_bytes((snapshot / name).read_bytes())
-    subprocess.run(['git', 'add', '--', *MANAGED], cwd=ROOT, check=True)
+    subprocess.run(['git', 'add', '--', *[name for name in MANAGED if (ROOT / name).exists()]], cwd=ROOT, check=True)
 
 
 def expected_push_version(before):

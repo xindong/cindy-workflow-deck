@@ -1,0 +1,10 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>极心许愿</title><link rel="stylesheet" href="settings.css"></head><body>
+<main class="configuration"><header><h1 id="heading">项目与流程配置</h1><p id="intro"></p></header>
+<p id="notice" role="status" aria-live="polite"></p>
+<form id="configuration-form">
+<div class="row"><label><span data-i18n="project">当前项目</span><select id="project"></select></label><button type="button" id="add" data-i18n="add">添加项目</button><button type="button" id="remove" data-i18n="remove">移除</button></div>
+<fieldset id="fields"><legend data-i18n="binding">项目绑定</legend><label><span data-i18n="name">项目名称</span><input id="project-name" maxlength="80" required></label><label><span data-i18n="directory">本机项目目录</span><input id="directory" maxlength="2000" required></label><button id="pick-directory" type="button" data-i18n="chooseDirectory">选择项目目录</button>
+<p class="help" id="path-help"></p><div id="flows"></div></fieldset>
+<div class="row actions"><button type="submit" id="save" data-i18n="save">保存配置</button><button type="button" id="reload" data-i18n="reload">重新加载</button><button type="button" id="inspect" data-i18n="inspect">检查已保存项目</button></div>
+</form><section aria-labelledby="inspection-heading"><h2 id="inspection-heading" data-i18n="results">检查结果</h2><pre id="inspection"></pre></section>
+</main><script type="module" src="settings.js"></script></body></html>

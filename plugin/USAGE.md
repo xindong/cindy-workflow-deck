@@ -23,3 +23,9 @@ AI 使用 report_progress 回报实际步骤、输出摘要、阻塞或完成；
 Provide the project workflow files and PR skill listed above; missing files disable only their own actions. Send $jixin-make-a-wish in a local project chat, click a fresh binding card, then choose an action. Each click creates an independent task using Host-managed source directory, Agent, model and permissions, without copying chat history. Wait at least 10 seconds between launches. Plugin-created tasks keep the original source binding; unrelated chats do not. Rebind after plugin/Cindy restarts or updates. Remote workspaces and read-only sources cannot launch workflows.
 
 Progress is explicitly reported by AI through report_progress, not a mirror of full terminal output. AI completion and Host turn end are separate. Logs retain a bounded tail. If a receipt is uncertain, check the task list before clicking again. Upgrade Cindy for a missing or explicitly unsupported interface; permission denial and network/storage failures require their own remedies. The Node worker has system-account privileges; its fixed-path read checks are not an OS sandbox.
+
+## 自定义项目流程配置 / Custom workflow paths
+
+插件详情配置页可添加项目目录并填写各流程文件路径（项目相对路径优先，外部绝对路径需显式允许）。保存后可只读检查；配置项目里留空表示禁用此项，不再退回旧固定路径。未配置项目仍使用上方默认查找方式。使用工作流任务时仍需在对应本地聊天绑定，配置不能改写Host工作目录或伪造会话授权。
+
+Add projects and instruction file paths in plugin settings. Relative paths resolve inside the selected project; external absolute paths require explicit permission. Blank paths disable configured flows. Unconfigured projects retain the legacy defaults. Task launches still use the verified bound chat and Host authorization.

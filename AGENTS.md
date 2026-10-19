@@ -6,12 +6,12 @@
 
 ## 开发约定
 
-这个仓库只开发 Cindy 插件，不修改编辑器 Core。需求正本为 xindong/xdrpg#190。
+当前实现为Cindy插件；下一阶段目标见docs/product-goals.md：独立桌面应用＋Cindy插件，共享项目/Git/规则核心。允许扩展独立应用，不修改Cindy编辑器Core。原插件需求来源为xindong/xdrpg#190，新阶段以已确认产品目标为准。
 
 - 写插件前读取当前宿主 `ghost_forge_guide`，以实时作者契约和源码事实为准。
 - 保留五个工作流及用户已确认的「每次点击新建独立任务」语义。
 - 不捆绑、改写或伪造目标项目的 `_S/*.md`、`_E/merge.md`、`xd-pr-review`。
-- 任务权限、模型、项目目录由 Host 管理；无业务需要不增加插件能力。
+- Cindy适配器的任务权限、模型、项目目录由Host管理；独立应用使用用户显式选择的项目与AI接入，不模拟Host授权。无业务需要不增加插件能力。
 - 不自动重试不确定的派发；显式恢复沿用持久 requestKey。
 - 界面只用 Host 注入白名单主题变量，同时支持明暗；语言只取 `/app-context`。
 - 提交前执行 `npm test` 和 `npm run check`，修改插件后再用 Forge 校验打包。
@@ -23,7 +23,7 @@
 1. 日常修改提交：自动 +0.0.1，例如0.1.1→0.1.2，包括文档、测试与CI修改。
 2. 大版本升级：明确选择时 +0.1.0，补丁位归零，例如0.1.2→0.2.0。这里“大版本”指minor升级，不是major加1；同一提交只执行这一种升级，不再额外加patch。
 
-以上取代此前“不改版本”的约定。package.json、plugin/ghost.json和README标题同步；提交阶段不构建/提交安装包。不能只改文档版本，也不能在打tag时才补版本。
+以上取代此前“不改版本”的约定。package.json、plugin/ghost.json、package-lock.json和README标题同步；提交阶段不构建/提交安装包。不能只改文档版本，也不能在打tag时才补版本。
 
 本地先运行 python3 scripts/install_hooks.py（或 npm run prepare）安装本仓pre-commit；正常暂存后git commit即自动处理。版本文件/README若有未暂存修改，先明确暂存或收起，避免意外纳入提交。其它插件文件支持部分暂存，不把未暂存源码纳入提交。
 
@@ -44,3 +44,9 @@ scripts/check_repository.py 检查名称/大小写、manifest/package/locale/面
 提交hook升版后，先在完整暂存区快照运行同一校验，失败不写回受管文件；npm run check 在 CI 校验整个跟踪树，pull_request 与 main push 均有只读 Repository checks，Release 构建前重复执行。发布标题从规范配置生成，并检查当前 GitHub 仓库身份与 tag/manifest版本；源码版本不要求等于最新正式Release，禁止为消除差异移动历史tag。npm run test:release 包含反例测试，新增规则必须证明错误输入会失败。
 
 GitHub Required status checks 需仓库管理员另行配置；存在workflow本身不代表已禁止管理员直接推送或合并失败检查。建议将 Repository checks / checks 设为 main 的必需检查；本任务不擅自修改组织或分支保护策略。
+
+## 新阶段产品约束
+
+docs/product-goals.md是已确认目标，不是现有功能说明。基础界面提供Git，高级界面保留五工作流；项目与脚本显式绑定，聊天不是唯一入口。所有操作遵循目标项目适用规则与hooks，修复也走同一门禁；不把本仓版本规则强加其它项目。AI支持本机工具和用户配置API，无AI不影响基础Git。现有Host主题/语言限制仅适用于Cindy适配器，独立应用有自己的主题/语言入口。不得因目标扩展修改Host Core、擅自安装或发布。
+
+双形态第一阶段现状见docs/dual-runtime.md。项目配置共享模型在plugin/core，Cindy设置经逻辑页串行合并/kv；独立桌面通过隔离preload与允许列表IPC访问应用服务，不能开放任意shell。独立端未实现写操作前不得用规则发现冒充提交门禁。新改动需跑共享/桌面服务测试，UI修改应运行真实Electron与模拟Host设置页验收；两者与真实Cindy安装验收分开记录。package-lock纳入版本同步，依赖固定版本；不得提交node_modules、artifacts或desktop-builds。

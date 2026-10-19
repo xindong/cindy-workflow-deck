@@ -9,13 +9,23 @@ const cards=document.createElement('div');cards.id='test-cards';cards.style.cssT
 function requestBinding(ctx=context){handler({type:'tool-call',tool:'get_workflows',callId:'source-card',args:{session_context:ctx}});}
 globalThis.mockHost={calls,options,context,deliver:msg=>handler(msg),requestBinding,advanceTime:()=>{offset+=11000;}};
 globalThis.cindy={
+ async pick(){return {ok:true,path:'/preview/selected-project'};},
  onHostMessage(cb){handler=cb;requestBinding();},
  async send(message){
   if(message.type==='tool-result'){calls.results.push(message);cards.dataset.lastResult=message.callId;return{ok:true};}
   if(message.type!=='card-update')return{ok:true};calls.cards.push(message);
   let el=document.getElementById(message.callId);if(!el){el=document.createElement('section');el.id=message.callId;cards.append(el);}el.innerHTML=message.html;return{ok:true};
  },
- node:{async request(req){calls.inspections.push(req);if(options.failNode)return{ok:false};return{ok:true,result:{checkedAt:new Date().toISOString(),workflows:Object.fromEntries(['experiment','feature','tooling','pr','merge'].map(id=>[id,{ok:options.files==='all'||options.files==='partial'&&id==='feature',reason:id==='pr'?'skill_unverified':'missing',source:'/preview/selected-project/'+({experiment:'_S/experiment.md',feature:'_S/feature.md',tooling:'_S/tooling.md',pr:'.agents/skills/xd-pr-review/SKILL.md',merge:'_E/merge.md'}[id])}]))}};}},
+ node:{async request(req){
+  calls.inspections.push(req);if(options.failNode)return{ok:false};
+  const defaults={experiment:'_S/experiment.md',feature:'_S/feature.md',tooling:'_S/tooling.md',pr:'.agents/skills/xd-pr-review/SKILL.md',merge:'_E/merge.md'};
+  return{ok:true,result:{checkedAt:new Date().toISOString(),workflows:Object.fromEntries(Object.keys(defaults).map(id=>{
+   const configured=req.params?.project?.workflows[id];
+   const file=configured?configured.path:defaults[id];
+   const present=!!file&&(options.files==='all'||options.files==='partial'&&id==='feature');
+   return[id,{ok:present,reason:!file?'not_configured':id==='pr'?'skill_unverified':'missing',source:file?(file.startsWith('/')?file:(req.params?.dir||context.workdir)+'/'+file):''}];
+  }))}};
+ }},
  agent:{async run(req){calls.agentRuns.push(req);if(options.lose)throw new Error('Lost receipt');if(options.deny)return{ok:false,errorCode:'PERMISSION_DENIED'};const sessionId='preview-task-'+calls.agentRuns.length;if(options.autoSwitch)handler({type:'event',name:'did-session-switched',data:{sessionId,workdir:context.workdir}});return{ok:true,sessionId};}},
  tasks:{async capabilities(){return{operations:['getRun']};},async getRun(){return{status:'running'};}},
 };

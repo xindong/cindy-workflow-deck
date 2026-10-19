@@ -21,6 +21,10 @@ def validate(root, paths):
     require(bool(re.fullmatch('[a-z][a-z0-9]*(?:-[a-z0-9]+)*', slug)), 'policy: id must use lowercase kebab-case')
     require(bool(re.fullmatch('[a-z0-9-]+/[a-z0-9-]+', repository)), 'policy: repository must be lowercase owner/repo')
     manifest, package = load('plugin/ghost.json'), load('package.json')
+    if (root / 'package-lock.json').exists():
+        lock = load('package-lock.json')
+        require(lock['name'] == lock['packages']['']['name'] == slug, 'identity: lockfile name mismatch')
+        require(lock['version'] == lock['packages']['']['version'] == package['version'], 'version: lockfile version mismatch')
     require(manifest['id'] == manifest['command'] == package['name'] == slug, 'identity: manifest id/command and package name must match policy exactly')
     require(manifest['name'] == manifest['panel']['title'] == name, 'identity: manifest and panel names must match policy')
     for locale in manifest['locales'].values():
@@ -50,7 +54,7 @@ def validate(root, paths):
             for token in re.findall(r'\$([A-Za-z][A-Za-z0-9-]*)', text):
                 require(token == slug, 'identity: noncanonical plugin command in ' + path + ': ' + token)
         require(not (folded.endswith('.cindy') or parts[-1] in ('distribution.json', 'sha256sums.txt') or
-                     any(p in ('node_modules', '__pycache__', 'release-assets') for p in parts) or folded.endswith('.pyc')),
+                     any(p in ('node_modules', '__pycache__', 'release-assets', 'desktop-builds', 'artifacts') for p in parts) or folded.endswith('.pyc')),
                 'artifacts: generated file must not be tracked: ' + path)
         require(not any(p in ('.env', '.ds_store') for p in parts), 'files: local configuration must not be tracked: ' + path)
     if errors:
