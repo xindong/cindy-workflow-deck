@@ -1,12 +1,8 @@
-# 极心许愿 0.1.0 本地自用版
+# 极心许愿当前源码验收说明
 
-用户最终选择显示名称为“极心许愿”，内部ID为 jixin-make-a-wish，停止组织市场发布方向。command同步改为同名，调用 $jixin-make-a-wish；本次为新插件身份，旧workflow-deck的日志、配置和内存绑定不自动迁移。通信频道和任务进度回报目标均改为新ID，避免旧新版混用。
+当前源码版本见package.json，安装版本取最新正式GitHub Release。插件ID/command为jixin-make-a-wish；旧workflow-deck绑定和日志不会自动迁移。新身份首次安装尚无最终成功回执，不把旧身份历史实机记录当成当前版本安装验收。
 
-52项单测、身份/命令/语言名称/进度目标一致性检查、静态/CSP/语法和模拟Host浏览器回归通过；Forge生成18文件包，与源码逐字节一致。新版真实绑定、连续点击仍需安装后复验，不能直接沿用以下0.3.5记录。此前0.3.6首次安装最终返回 MUTATION_CANCELLED；未确认安装成功，本轮不重试安装。
-
-## 仓库直接分发（仍0.1.0）
-
-根目录已提交jixin-make-a-wish.cindy，INSTALL.md指导AI同commit获取/校验并打开包。GitHub Actions run 39209086981真实执行全部成功，网络下载回读18文件与manifest校验通过。系统打开下载包已送达Cindy（Host open-file日志），最终确认与安装成功尚待核对；不称“免确认静默安装”。
+当前分发采用Release-only：源码树不提交.cindy或分发元数据，按tag构建三附件并校验；普通提交只自动同步源码版本。最新自动流程验证记录见docs/verification.md，以下为保留的历史实机证据。
 
 ## 历史版本记录
 

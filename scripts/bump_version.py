@@ -7,10 +7,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-from build_distribution import ROOT, build
+from build_distribution import ROOT
 
-MANAGED = ['package.json', 'plugin/ghost.json', 'jixin-make-a-wish.cindy',
-           'DISTRIBUTION.json', 'README.md']
+MANAGED = ['package.json', 'plugin/ghost.json', 'README.md']
 BOT_SUBJECT = 'build: synchronize version '
 INTENT_FILE = 'VERSION_BUMP.json'
 
@@ -56,18 +55,17 @@ def synchronize(version):
     text = readme.read_text(encoding='utf-8')
     text = re.sub(r'\A# 极心许愿 — [^\n]+', '# 极心许愿 — ' + version, text)
     readme.write_text(text, encoding='utf-8')
-    package, metadata = build()
-    (ROOT / 'jixin-make-a-wish.cindy').write_bytes(package)
-    (ROOT / 'DISTRIBUTION.json').write_bytes(metadata)
     print('Synchronized version ' + version)
 
 
 def prepare_index():
     if not git('diff', '--cached', '--name-only').strip():
         return
+    if git('ls-files', '--cached', '--', '*.cindy').strip():
+        raise ValueError('Do not commit .cindy files; distribute them through GitHub Releases only')
     # Only build staged source, never sneak unstaged changes into the commit.
     if git('diff', '--name-only', '--', *MANAGED).strip():
-        raise ValueError('Stage or stash unstaged changes to version/package/README files first')
+        raise ValueError('Stage or stash unstaged changes to version/README files first')
     base = version_at('HEAD')
     staged = git('diff', '--cached', '--name-only').decode().splitlines()
     expected = increment(base, bump_level(staged, '', base))

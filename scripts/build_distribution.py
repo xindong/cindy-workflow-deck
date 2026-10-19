@@ -1,4 +1,4 @@
-"""Build the repository's reproducible .cindy distribution; stdlib only."""
+"""Build reproducible Release assets in an ignored directory; stdlib only."""
 import argparse
 import hashlib
 import io
@@ -8,8 +8,6 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / 'plugin'
-PACKAGE = ROOT / 'jixin-make-a-wish.cindy'
-METADATA = ROOT / 'DISTRIBUTION.json'
 
 
 def digest(data):
@@ -42,9 +40,10 @@ def build():
     package = data.getvalue()
     metadata = {
         'schemaVersion': 1,
-        'purpose': 'Repository distribution metadata; not a Cindy marketplace manifest',
+        'purpose': 'GitHub Release distribution metadata; not a Cindy marketplace manifest',
         'id': manifest['id'], 'name': manifest['name'], 'version': manifest['version'],
-        'minCindyVersion': manifest['minCindyVersion'], 'file': PACKAGE.name,
+        'minCindyVersion': manifest['minCindyVersion'],
+        'file': f'{manifest["id"]}-{manifest["version"]}.cindy',
         'sha256': digest(package),
         'sourceFiles': {name: digest(content) for name, content in files.items()},
     }
@@ -52,17 +51,20 @@ def build():
 
 
 def main():
+    from prepare_release import assets_for_tag, prepare
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--check', action='store_true', help='Fail if committed distribution is stale')
+    parser.add_argument('--out', type=Path, default=ROOT / 'release-assets')
+    parser.add_argument('--check', action='store_true', help='Verify previously built local Release assets')
     args = parser.parse_args()
-    package, metadata = build()
+    version = json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))['version']
     if args.check:
-        assert PACKAGE.read_bytes() == package, 'Distribution package differs from source; rebuild it'
-        assert METADATA.read_bytes() == metadata, 'Distribution metadata is stale; rebuild it'
+        assets = assets_for_tag('v' + version)
+        assert {p.name for p in args.out.iterdir()} == set(assets), 'Unexpected or missing Release asset'
+        for name, data in assets.items():
+            assert (args.out / name).read_bytes() == data, f'{name} differs from source; rebuild it'
     else:
-        PACKAGE.write_bytes(package)
-        METADATA.write_bytes(metadata)
-    print(f'{PACKAGE.name}: {len(package)} bytes; SHA256 {digest(package)}; version unchanged')
+        assets = prepare('v' + version, args.out)
+    print(f'Release assets for {version}: {len(assets)} files in {args.out}; nothing added to Git')
 
 
 if __name__ == '__main__':

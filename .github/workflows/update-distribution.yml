@@ -1,4 +1,4 @@
-name: Synchronize version and Cindy package
+name: Synchronize source version
 on:
   push:
     branches: [main]
@@ -30,10 +30,11 @@ jobs:
           python3 scripts/bump_version.py --push-base "$PUSH_BASE"
       - run: npm test && npm run check
       - run: python3 -m unittest discover -s tests -p 'test_*.py' -v
-      - run: python3 scripts/build_distribution.py --check && python3 scripts/install_local.py --check
-      - name: Commit synchronized version and package if needed
+      - name: Keep installable packages out of the repository
+        run: test -z "$(git ls-files '*.cindy')"
+      - name: Commit synchronized source version if needed
         run: |
-          git add package.json plugin/ghost.json jixin-make-a-wish.cindy DISTRIBUTION.json README.md
+          git add package.json plugin/ghost.json README.md
           if git diff --cached --quiet; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

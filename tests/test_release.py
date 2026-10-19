@@ -11,6 +11,7 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from prepare_release import ROOT, prepare
+from install_local import verify
 
 
 class ReleaseTests(unittest.TestCase):
@@ -20,6 +21,7 @@ class ReleaseTests(unittest.TestCase):
             for tag in (version, 'v' + version):
                 destination = Path(temp) / tag
                 assets = prepare(tag, destination)
+                self.assertTrue(verify(destination).is_file())
                 metadata = json.loads(assets['DISTRIBUTION.json'])
                 package = destination / metadata['file']
                 self.assertEqual(hashlib.sha256(package.read_bytes()).hexdigest(), metadata['sha256'])
@@ -58,6 +60,30 @@ class ReleaseTests(unittest.TestCase):
                 self.assertEqual('--prerelease' in args, prerelease)
                 for name in ('plugin.cindy', 'DISTRIBUTION.json', 'SHA256SUMS.txt'):
                     self.assertIn('release-assets/' + name, args)
+
+    def test_local_build_and_validator_use_explicit_artifact_directory(self):
+        version = json.loads((ROOT / 'package.json').read_text())['version']
+        with tempfile.TemporaryDirectory() as temp:
+            destination = Path(temp) / 'assets'
+            for command in (
+                ['scripts/build_distribution.py', '--out', str(destination)],
+                ['scripts/build_distribution.py', '--out', str(destination), '--check'],
+                ['scripts/install_local.py', '--dir', str(destination), '--check'],
+            ):
+                subprocess.run([sys.executable, *command], cwd=ROOT, check=True, capture_output=True)
+            self.assertTrue((destination / f'jixin-make-a-wish-{version}.cindy').exists())
+            self.assertFalse((ROOT / 'jixin-make-a-wish.cindy').exists())
+            self.assertFalse((ROOT / 'DISTRIBUTION.json').exists())
+
+    def test_downloaded_corrupt_package_is_rejected(self):
+        version = json.loads((ROOT / 'package.json').read_text())['version']
+        with tempfile.TemporaryDirectory() as temp:
+            destination = Path(temp) / 'assets'
+            prepare('v' + version, destination)
+            package = destination / f'jixin-make-a-wish-{version}.cindy'
+            package.write_bytes(package.read_bytes() + b'corruption')
+            with self.assertRaises(AssertionError):
+                verify(destination)
 
     def test_invalid_or_mismatched_tag_produces_no_assets(self):
         with tempfile.TemporaryDirectory() as temp:

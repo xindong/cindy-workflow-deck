@@ -212,3 +212,11 @@ scripts/build_distribution.py用标准ZIP、固定排序/时间/文件权限生�
 AGENTS.md明确：普通文件修改提交+0.0.1；显式大版本升级+0.1.0（minor+1且patch归零），同一提交只升一次。本地及云端现在共同识别VERSION_BUMP.json：只有本次修改该文件、base匹配父提交且level=minor时才执行minor；--minor生成并暂存该意图，下一普通提交恢复patch。错误意图报错，不被静默改成patch。
 
 12项Python回归通过，其中新增真实临时仓库的minor提交→普通patch提交→云端范围重放、API仅提交minor意图时云端重建、过期意图阻止提交；此前普通连续提交、API多提交修复/重跑、部分暂存和自定义hook保护继续通过。52项插件测试、静态与Actionlint通过。本次生产仓仅是普通修改，不实际升级minor、不打新tag或发Release；由hook自动从0.1.1升至0.1.2，随后核对Forge与真实main云端CI。
+
+## 2026-10-19：Release-only分发改造
+
+用户授权移除当前源码树中的根安装包和DISTRIBUTION.json，历史Git提交不重写。pre-commit及main版本CI仅同步package/ghost版本与README标题，不构建或回提交二进制；忽略所有.cindy并由hook/CI防止误提交。显式minor规则和API补升版幂等保持。
+
+Release workflow从tag源码生成版本化.cindy、DISTRIBUTION.json、SHA256SUMS.txt，发布前使用新--dir校验器检查全部附件。开发构建只写被忽略的release-assets/或显式新目录；版本化文件名及校验文件被验证器正确识别。README/INSTALL/AGENTS默认安装最新正式Release，避免把main源码版本当成安装版本。
+
+本地15项Python回归（含无根包提交、强制add包被拦截、显式产物目录、版本化Release验证和损坏包拒绝）通过；52插件测试、静态和Actionlint通过。本次普通提交自动从0.1.2升至0.1.3。将用临时tag真实触发Release、匿名下载校验并清理测试Release/tag；执行结果以随后真实Actions和清理回执为准，不将本地测试当作发布成功。

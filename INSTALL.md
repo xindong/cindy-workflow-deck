@@ -1,24 +1,24 @@
-# 从仓库链接安装极心许愿
+# 从 GitHub Release 安装极心许愿
 
-用户在 Cindy 聊天中发送：
+在 Cindy 聊天发送：
 
-> 请安装 https://github.com/xindong/cindy-workflow-deck 的极心许愿插件。按仓库 INSTALL.md 下载、校验并打开根目录 .cindy，完成后核对安装结果。
+> 请安装 https://github.com/xindong/cindy-workflow-deck 的极心许愿插件。按 INSTALL.md 从最新正式 Release 下载并校验安装包，交给 Cindy 正常安装，核对最终结果。
 
-根目录 [jixin-make-a-wish.cindy](jixin-make-a-wish.cindy) 是可安装包，不是源码 ZIP。显示名称为“极心许愿”，ID 和命令为 jixin-make-a-wish，版本以同一commit的 DISTRIBUTION.json 为准，要求 Cindy 0.1.109+。
+[打开最新正式 Release](https://github.com/xindong/cindy-workflow-deck/releases/latest)。在 Assets 下载 jixin-make-a-wish-版本.cindy，不要选择 GitHub 自动生成的 Source code ZIP/TAR。仓库当前源码树没有安装包；main版本可能比已发布版本新，安装必须以选定Release为准。
 
-## 给 Cindy AI 的安装步骤
+## 给 Cindy AI 的步骤
 
-1. 本仓库已公开，可匿名读取，无需 GitHub 授权。确定默认分支的确切 commit，再从 raw.githubusercontent.com 下载文件；也可使用已有 GitHub 插件。若读取失败，报告实际状态，不索取聊天中的凭证。
-2. 从同一 commit 下载根目录 .cindy 和 DISTRIBUTION.json，保存到独立临时目录。GitHub Contents API 的 content 为 base64，必须解码为二进制，不能下载网页 HTML 充当安装包。
-3. 校验整包 SHA256、ZIP 文件清单及逐文件 SHA256，以及包内 ghost.json 的 ID、名称、版本和最低版本。DISTRIBUTION.json 是本仓分发元数据，不是 Cindy 官方发现协议或签名。完整克隆后可运行 python3 scripts/install_local.py --check。
-4. 用户明确要求安装时，使用系统正常打开此 .cindy：macOS 使用 open -a Cindy 后接包的绝对路径；Windows 通过关联应用打开文件。完整克隆可运行 python3 scripts/install_local.py --open。没有 Python 时由 AI 用现有文件工具校验并打开，安装者无需另装开发依赖。
-5. 这会进入 Cindy 的正式安装确认。确认由用户操作，不能写 Host 配置、复制到安装目录或伪造批准；取消后停止，不循环重试。核对最终安装回执/已安装清单中的 jixin-make-a-wish 和本次下载元数据中的version一致，才报告成功。仅打开文件不代表已安装。
-6. 在目标项目聊天发送 $jixin-make-a-wish，点新卡片绑定。旧 workflow-deck 的日志和绑定不自动迁移。
+1. 获取最新正式、非draft且非prerelease的Release。可使用已有GitHub插件的 get_latest_release，或匿名访问 GitHub Releases API / releases/latest 页面并确认实际tag。网络失败或限流时报告实际状态，不索取聊天凭证、不把源码分支版本当成发布版本。
+2. 记录Release的ID/tag及其精确附件URL。从同一个Release下载版本化.cindy、DISTRIBUTION.json和SHA256SUMS.txt到独立目录。下载应为二进制，不能把HTML网页存成安装包；不混用不同Release或旧根目录元数据。
+3. 先检查SHA256SUMS.txt中安装包及DISTRIBUTION.json的SHA256，再检查元数据的整包SHA256、ZIP清单及逐文件哈希、manifest的ID/名称/版本/最低Cindy版本。tag去掉可选v后必须等于metadata和manifest版本，ID及command均为jixin-make-a-wish。下载版本要求的最低Cindy版本以manifest为准（现有版本为0.1.109+）。
+4. 已克隆仓库的开发者可运行 python3 scripts/install_local.py --dir 下载目录 --check；不克隆、不装Python也能由Cindy AI使用现有文件工具校验，普通用户无需额外开发依赖。校验和是本仓一致性信息，不是签名或官方发现协议。
+5. 用户明确要求安装后，使用系统正常打开该.cindy：macOS用 open -a Cindy 后接包的绝对路径；Windows通过文件关联打开。开发者也可运行 python3 scripts/install_local.py --dir 下载目录 --open。这只转交Cindy正式确认，不能写Host配置或安装目录、跳过确认、伪造批准；用户取消后停止，不自动重试。
+6. 核对Host最终安装回执/已安装清单中的ID和本次所选Release版本，才能报告成功；仅打开文件不等于完成安装。在目标项目聊天发送 $jixin-make-a-wish，用新卡绑定；旧workflow-deck的数据不自动迁移。
 
-公开仓库无需 GitHub 授权即可下载。只贴链接不会绕过 Cindy 首次安装权限确认；未签名包可能显示“未验证”。
+公开仓库附件可匿名下载，无需GitHub授权；Cindy首次安装确认保留，未签名包可能显示“未验证”。固定版本安装时指定一个正式Release，并始终从同一Release取三附件。
 
-## 自动维护安装包
+## 开发与发布
 
-修改 plugin/ 后运行 python3 scripts/build_distribution.py，生成根目录固定安装包和 DISTRIBUTION.json。日常修改提交由pre-commit自动递增补丁版本并重建包；显式大版本升级按minor+1、patch归零，详见README。--check 检查分发包是否过期。同一源码生成确定性 ZIP。
+日常提交只同步源码版本：默认+0.0.1，显式大版本+0.1.0且patch归零。main版本CI不构建或提交安装包。推送匹配版本tag后，Release workflow从tag源码测试、构建、校验并上传三附件。
 
-GitHub Actions 在 main 每次push后检查每条修改提交的补丁版本递增，测试并自动补齐遗漏的版本、包与校验文件，也可手动触发；修复提交和CI重跑不重复升版。开发者先运行 python3 scripts/install_hooks.py 安装本仓提交hook。仅根目录此固定分发包入库，历史安装包仍忽略。
+本地需要包预检时，可运行 python3 scripts/build_distribution.py --out 新的产物目录，再用 python3 scripts/install_local.py --dir 产物目录 --check。默认产物目录为被Git忽略的release-assets/，不要提交.cindy或DISTRIBUTION.json。只有发布Release才向安装者提供新包；规则和历史验证见README、AGENTS.md和docs/verification.md。

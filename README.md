@@ -1,20 +1,18 @@
-# 极心许愿 — 0.1.2
+# 极心许愿 — 0.1.3
 
-本地自用版显示名称为“极心许愿”，插件 ID 和命令为 jixin-make-a-wish；不提交组织市场。更换 ID 属于新插件身份，旧 workflow-deck 的数据和绑定不会自动迁移，需要重新绑定。源码仓库名称保持不变。
+极心许愿是 Cindy 工作流快捷面板插件，ID 和命令为 jixin-make-a-wish。本仓库只维护插件，不修改 Cindy Core；不提交组织市场。旧 workflow-deck 的绑定和日志不会自动迁移。
 
-任务单：https://github.com/xindong/xdrpg/issues/190。仅开发插件，不修改 Cindy Core。
+## 从正式 Release 安装
 
-新身份代码已通过自动验证；此前0.3.6首次安装返回 MUTATION_CANCELLED，本版本尚未安装，不自动重试。旧身份0.3.5的实机结论不代表本版已实机验收。
+在 Cindy 聊天发送：
 
-## 贴仓库链接安装
+> 请安装 https://github.com/xindong/cindy-workflow-deck 的极心许愿插件，按 INSTALL.md 从最新正式 GitHub Release 下载、校验并打开 .cindy，再核对最终安装结果。
 
-在 Cindy 聊天中发送：
+[最新正式 Release / 下载附件](https://github.com/xindong/cindy-workflow-deck/releases/latest) · [完整安装说明](INSTALL.md)
 
-> 请安装 https://github.com/xindong/cindy-workflow-deck 的极心许愿插件，按 INSTALL.md 下载、校验并打开根目录 .cindy，核对最终安装结果。
+仓库当前文件树不再保存 .cindy 或分发元数据。安装包只放在 Release 的 Assets 中；普通源码提交只升版本，不产生新的可下载版本。正式发布可能落后于本页源码版本，应以选定 Release 的 tag、包内 manifest 和同一 Release 的 DISTRIBUTION.json 为准。GitHub 自动附带的 Source code ZIP/TAR 是源码，不是安装包。
 
-仓库已直接提供 [安装包 jixin-make-a-wish.cindy](jixin-make-a-wish.cindy) 和 [安装步骤 INSTALL.md](INSTALL.md)。当前版本见本页标题及 DISTRIBUTION.json。根目录 DISTRIBUTION.json 提供整包及18个文件的SHA256；这是本仓校验格式，不是Cindy官方自动发现协议。仓库已公开，安装包和校验文件可匿名下载，无需 GitHub 授权；Cindy 首次安装权限确认仍由用户操作。
-
-日常修改提交自动递增补丁版本；显式大版本升级递增minor并重置patch，同时同步安装包和校验文件。开发时使用 npm run dist 或 npm run dist:check 检查分发内容；版本规则见下文。详见 INSTALL.md。
+每个 Release 提供版本化 .cindy、DISTRIBUTION.json 和 SHA256SUMS.txt。公开附件可匿名下载，无需 GitHub 授权；Cindy 首次安装确认仍由用户操作，打开包不代表已安装。元数据和校验和属于本仓格式，不是官方发现协议、签名或静默安装授权。
 
 ## 使用
 
@@ -44,42 +42,27 @@ Node worker 具有系统账号权限，不能称为操作系统级只读沙箱�
 
 每次点击新建任务；后台能力仅用于用户点击派发，没有自动或定时执行。请求和回执在派发前持久化，回执不确定不自动重发，派发间隔至少10秒。KV 串行合并；日志按调用id去重并限制尾部容量，不淘汰未核实派发记录。report_progress 只接受 Host 注入的、属于本插件受理任务的会话上下文。
 
-## 开发与验证
+## 开发与版本规则
 
-plugin/ 是生产打包目录，无第三方运行依赖。Node 22+ 运行 npm test 和 npm run check；浏览器检查见 tests/browser-check.mjs，需配置 PLAYWRIGHT_MODULE_PATH 与 PLAYWRIGHT_BROWSERS_PATH。
+Node 22+ 与 Python 3.9+，无插件运行依赖。先运行 python3 scripts/install_hooks.py 或 npm run prepare，安装本仓提交hook；不覆盖已有自定义hook或改全局Git配置。
 
-0.3.4修复工作流任务切换后整条按钮置灰的问题。47项单元测试及静态检查通过。当前0.3.4已安装并启用；用户真实点击、助手核对Host日志/任务回执及实机截图，绑定、连续实验→工具工作流和日志回传验收通过。第二任务结束后绑定保持，可用流程4/5；缺失的merge仍禁用。其它验收项见 docs/acceptance.md 和 docs/verification.md。
+1. 日常修改提交（含文档、CI、测试）：自动+0.0.1，例如0.1.2→0.1.3。
+2. 用户明确选择大版本升级：+0.1.0，补丁位归零，例如0.1.3→0.2.0。同一提交不再额外加patch。
 
-0.3.5已本地安装并启用，旧版原位替换。52项单测及静态检查通过；2026-10-19用户真实点击后核对Host日志与两项任务历史，绑定、连续实验→工具派发、目录继承与7条进度写回通过。面板视觉、帮助展开及其它业务流程不在本次实机日志验收范围；未发布到组织。详情见验证记录。
+普通 git add / git commit 自动同步 package.json、plugin/ghost.json 和本页标题，不构建安装包。大版本升级先暂存修改，再运行 python3 scripts/bump_version.py --minor，最后提交；VERSION_BUMP.json 仅在本次更改且base匹配父提交时生效，下一次普通提交恢复patch。
 
-仅用户明确要求时安装、更新或发布。按用户要求，源码仓仅提交根目录固定分发包 jixin-make-a-wish.cindy；历史包、截图、缓存和用户数据仍不提交。
+main的版本流程为网页/API漏升版兜底，按每条修改提交补齐；已升版提交、同步bot提交和CI重跑不重复增加，空提交不增加。上传API提交必须包含本地hook生成的完整源码版本文件。版本文件/README有未暂存修改时hook会阻止覆盖；.cindy 即使用 git add -f 也会被提交hook和云端检查拦截。
 
-## Tag 自动发布 GitHub Release
+验证命令：npm test、npm run check、npm run test:release。发布与版本测试使用真实临时Git仓库及临时产物目录，不执行安装。需要本地预检安装包时使用 npm run dist（写入被忽略的 release-assets/，目录需不存在），再用 npm run dist:check；也可指定 python3 scripts/build_distribution.py --out /tmp/新的产物目录。产物不入库。首次更换ID后的真实安装状态见 docs/acceptance.md；历史实机结论不能直接代替当前新身份验收。
 
-推送版本 tag（推荐 v0.1.0，也支持 0.1.0）会触发 Release Cindy plugin 工作流。tag 去掉 v 后必须与 package.json 和 plugin/ghost.json 的版本一致，否则停止发布；带预发布后缀的版本会标记为 prerelease。
+## Tag 自动发布 Release
 
-工作流检出 tag 对应源码，执行单元测试与静态检查，再独立构建安装包，不依赖 main 分支包是否已自动刷新。成功后创建 GitHub Release，自动生成发布说明，附上版本化 .cindy、DISTRIBUTION.json 和 SHA256SUMS.txt。安装时下载该 Release 同一版本的安装包与校验文件；元数据中的 file 指向版本化包名。现有仓库根目录直装入口保留。
+推送版本tag（v0.1.3或0.1.3这样的格式）触发 Release Cindy plugin。tag去v后必须匹配 package.json 与 plugin/ghost.json；workflow检出tag源码，跑测试与静态检查，再构建、校验并创建Release，上传三附件，自动生成发布说明。带预发布后缀标记prerelease，普通安装取最新正式非draft、非prerelease版本。
 
-先确保包含本工作流的提交已推送，再在相应提交打 tag 并推送，例如：
+先确认main版本CI成功，再在含发布workflow的提交上打tag并推送，例如：
 
-```sh
-version=$(node -p "require('./package.json').version")
-git tag "v$version"
-git push origin "v$version"
-```
+	version=$(node -p "require('./package.json').version")
+	git tag "v$version"
+	git push origin "v$version"
 
-仅创建本地 tag 不触发；必须推送到 GitHub。不修改现有 Release 或覆盖附件，同名 Release 已存在时工作流会失败；不要移动已发布的 tag。构建过程可在本地用 python3 scripts/prepare_release.py --tag 当前版本tag --out /tmp/jixin-release-test 验证（输出目录需不存在）。工作流使用仓库内置 GITHUB_TOKEN，无需额外设置凭证。
-
-## 每次修改提交自动 +0.0.1（硬性规则）
-
-日常修改（包括文档、测试、CI和插件）每条包含文件变化的开发提交都增加一个补丁版本：+0.0.1，例如0.1.1→0.1.2。大版本升级按+0.1.0、补丁归零，例如0.1.2→0.2.0；同一提交不再额外加patch。先运行 python3 scripts/install_hooks.py 或 npm run prepare 安装本仓hook，之后正常 git add / git commit 即自动完成；只修改本仓配置，不修改全局Git设置。
-
-hook基于暂存区构建，同步 package.json、plugin/ghost.json、根安装包、DISTRIBUTION.json和本页标题。暂存区之外的插件改动不会混入安装包；版本/包/README存在未暂存改动时会阻止提交并提示处理。
-
-GitHub网页/API跳过本地hook时，main的云端流程会按推送中的修改提交数补齐版本并回提交；本地hook已升版的提交不会重复增加。云端自动修复提交只落地此前开发提交应得的版本，不额外增加；空提交和CI重跑也不增加。修复尚未完成前不要打tag，应在云端检查成功、源码与包版本一致后发布。
-
-GitHub插件上传已有本地提交时，必须同时上传该提交生成的全部版本文件和二进制包。未来提交不再遵循旧的“无需改版本”约定；已发布的v0.1.0保留不动，不会随新提交自动新增Release。
-
-### 显式大版本升级（+0.1.0）
-
-先暂存本次修改，再运行 python3 scripts/bump_version.py --minor，最后正常 git commit / git push。该命令会暂存 VERSION_BUMP.json 升级意图并同步包；提交hook和云端识别同一意图，重复运行不重复升级。下一次普通修改自动恢复+0.0.1。意图base必须匹配父提交版本，错误意图会报错；无需删除历史意图文件。只有明确要升级大版本时使用此命令，普通提交保持默认patch。tag与Release仍按需发布，不自动创建。
+仅本地tag不触发。workflow使用内置GITHUB_TOKEN，无需额外密钥；不覆盖已有Release，不移动已发布tag。后续源码提交不会重写旧Release。历史Git提交中原有二进制包不重写删除，本次仅从当前文件树移除。
