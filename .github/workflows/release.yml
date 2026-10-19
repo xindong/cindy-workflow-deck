@@ -22,7 +22,7 @@ jobs:
         run: |
           npm test
           npm run check
-          python3 -m unittest discover -s tests -p 'test_release.py' -v
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: Build assets from the tagged source
         env:
           RELEASE_TAG: ${{ github.ref_name }}

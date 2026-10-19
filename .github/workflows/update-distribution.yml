@@ -1,8 +1,7 @@
-name: Update installable Cindy package
+name: Synchronize patch version and Cindy package
 on:
   push:
     branches: [main]
-    paths: ['plugin/**', 'package.json', 'scripts/build_distribution.py', 'scripts/check.mjs', '.github/workflows/update-distribution.yml', '.github/workflows/release.yml', 'scripts/prepare_release.py', 'tests/test_release.py']
   workflow_dispatch:
 permissions:
   contents: write
@@ -16,20 +15,28 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: npm test && npm run check
-      - run: python3 -m unittest discover -s tests -p 'test_release.py' -v
-      - run: python3 scripts/build_distribution.py && python3 scripts/install_local.py --check
-      - name: Commit refreshed package without changing version
+      - name: Synchronize one patch increment per change commit
+        env:
+          PUSH_BASE: ${{ github.event.before }}
         run: |
-          git add jixin-make-a-wish.cindy DISTRIBUTION.json
+          if [ -z "$PUSH_BASE" ]; then PUSH_BASE=$(git rev-parse HEAD^); fi
+          python3 scripts/bump_version.py --push-base "$PUSH_BASE"
+      - run: npm test && npm run check
+      - run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - run: python3 scripts/build_distribution.py --check && python3 scripts/install_local.py --check
+      - name: Commit synchronized version and package if needed
+        run: |
+          git add package.json plugin/ghost.json jixin-make-a-wish.cindy DISTRIBUTION.json README.md
           if git diff --cached --quiet; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'build: refresh installable Cindy package'
-          git push
+          version=$(node -p "require('./package.json').version")
+          git commit -m "build: synchronize version $version"
+          git push origin HEAD:main
