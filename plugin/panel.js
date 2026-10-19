@@ -1,5 +1,10 @@
 import { CHANNEL, WORKFLOWS } from './workflows.js';
 const $ = id => document.getElementById(id);
+const upgrade = locale => locale === 'zh-CN' ? '当前 Cindy 缺少所需插件接口，请升级 Cindy 后再试。' : 'A required plugin interface is unavailable. Upgrade Cindy and try again.';
+const usage = {
+ 'zh-CN': '项目需自行提供 _S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md；PR 需 xd-pr-review/SKILL.md。缺少哪项只禁用对应按钮，插件不提供流程文件。先在本地项目聊天发送 $workflow-deck 并点击新绑定卡；更新或重启插件后重新绑定，检查失败可刷新。每次点击新建独立任务，不复制聊天历史；目录和模型由 Host 从来源聊天继承，权限由 Host 管理。两次发起至少间隔10秒。切到本插件新建任务仍保留来源绑定，其它未绑定聊天禁用。日志是 AI 主动回报的步骤和输出摘要，不是完整终端输出；AI 报告完成与 Cindy 轮次结束分开显示。派发待核实时先查任务列表，不重复点击。缺少接口请升级 Cindy；权限拒绝需检查授权。',
+ en: 'Provide _S/experiment.md, _S/feature.md, _S/tooling.md and _E/merge.md; PR requires xd-pr-review/SKILL.md. Missing items disable their own actions; workflow files are not supplied. Send $workflow-deck in a local project chat and click its fresh binding card. Rebind after plugin updates or restarts; refresh failed inspections. Each click creates a separate task without copying history. Host inherits the source directory and model and manages permissions. Wait at least 10 seconds between launches. Plugin-created task chats retain the original binding; unrelated chats are disabled. Logs are AI-reported steps and output summaries, not full terminal output. AI completion and Host turn end are separate. Check the task list before clicking again if delivery is uncertain. Upgrade Cindy for missing interfaces; check authorization for permission denial.',
+};
 const strings = {
   'zh-CN': {
     unbound:'未绑定项目', bind:'在目标项目聊天发送 $workflow-deck，点一次“绑定工具栏”。新任务继承绑定聊天的目录与模型。',
@@ -69,7 +74,7 @@ channel.onmessage=({data})=>{
 };
 async function wake(){const response=await fetch('/wake');if(!response.ok)throw new Error('WAKE_FAILED');}
 async function readLocale(){try{const r=await fetch('/app-context');const data=await r.json();locale=data.context?.locale==='zh-CN'?'zh-CN':'en';}catch{locale='en';}document.documentElement.lang=locale;}
-function disabledReason(flow){const item=state.workflows?.[flow.id];return t().reasons[item?.reason || state.state] || t().reasons.check_failed;}
+function disabledReason(flow){const item=state.workflows?.[flow.id];return (item?.reason === 'unsupported' || state.state === 'unsupported') ? upgrade(locale) : t().reasons[item?.reason || state.state] || t().reasons.check_failed;}
 function hideTip(){$('tooltip').hidden=true;tipFlow='';}
 function showTip(flow,button){
   tipFlow=flow.id;const item=state.workflows?.[flow.id];
@@ -107,6 +112,8 @@ function render(){
   $('summary').textContent=pending?t().preparing:state.state==='unbound'?t().bind:state.state==='checking'?t().checking:state.state==='readonly'?t().readonly:state.state==='check_failed'?t().failed:state.busy?t().busy:Date.now()<state.nextLaunchAt?t().cooldown:!available?t().none:available<5?t().partial+' '+available+'/5':t().ready;
   $('refresh').setAttribute('aria-label',t().refresh);$('details-toggle').setAttribute('aria-label',t().details);
   if(state.state==='check_failed'&&state.checkError)$('summary').textContent+=' · '+state.checkError;
+  if(state.state==='unsupported')$('summary').textContent=upgrade(locale);
+  $('usage-title').textContent=locale==='zh-CN'?'使用说明':'Usage';$('usage-text').textContent=usage[locale];
   $('goal-label').textContent=t().goal;$('binding-help').textContent=t().bind;$('check-time').textContent=state.checkedAt?t().checked+new Date(state.checkedAt).toLocaleTimeString(locale):'';
   clearTimeout(cooldownTimer);
   if(state.nextLaunchAt>Date.now())cooldownTimer=setTimeout(()=>{void request('sidebar').then(value=>{state=value;render();});},state.nextLaunchAt-Date.now()+20);
@@ -115,7 +122,7 @@ function render(){
 async function launch(id){
   const sourceSessionId=state.sessionId;pending=true;render();feedback(t().preparing);
   try{await wake();const result=await request('sidebar-launch',{workflowId:id,sourceSessionId,goal:$('goal').value});
-    feedback(result.state==='accepted'?t().accepted+result.sessionId:result.state==='rejected'?t().rejected+(t().errors[result.code]||result.code):t().uncertain);
+    feedback(result.state==='accepted'?t().accepted+result.sessionId:result.state==='rejected'?t().rejected+(result.code==='UNSUPPORTED_HOST'?upgrade(locale):t().errors[result.code]||result.code):t().uncertain);
   }catch{feedback(t().uncertain);}finally{pending=false;try{state=await request('sidebar');}catch{}render();}
 }
 $('refresh').addEventListener('click',async()=>{hideTip();$('refresh').disabled=true;try{await wake();state=await request('inspect');render();}catch{feedback(t().failed);}finally{$('refresh').disabled=false;}});

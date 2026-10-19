@@ -2,6 +2,7 @@ import { createExecutionLog } from './execution-log.js';
 import { createSidebar } from './sidebar-state.js';
 import { createController } from './controller.js';
 import { CHANNEL, WORKFLOWS } from './workflows.js';
+import { inspectWithHost } from './host-compat.js';
 
 const channel = new BroadcastChannel(CHANNEL);
 let storageQueue = Promise.resolve();
@@ -23,10 +24,8 @@ const store = {
   },
 };
 const controller = createController({ tasks: cindy.tasks, store });
-const sidebar = createSidebar({ agent: cindy.agent, store, inspect: async dir => {
-  const reply = await cindy.node.request({ method: 'project/inspect', params: { dir } });
-  if (!reply?.ok) throw Object.assign(new Error('PROJECT_CHECK_FAILED'), { code: reply?.errorCode || reply?.code || 'PROJECT_CHECK_FAILED' }); return reply.result;
-}, changed: view => channel.postMessage({ from: 'main', type: 'sidebar-state', result: view }) });
+const sidebar = createSidebar({ agent: cindy.agent, store, inspect: dir => inspectWithHost(cindy.node, dir),
+  changed: view => channel.postMessage({ from: 'main', type: 'sidebar-state', result: view }) });
 const executionLog = createExecutionLog({ store, changed: result => channel.postMessage({ from: 'main', type: 'execution-log', result }) });
 const pendingBindings = new Map();
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -106,7 +105,9 @@ export function handleHostMessage(message) {
         pending.used = true;
         try {
           const state = await sidebar.bind(pending.context);
-          text = (state.state === 'check_failed'
+          text = (state.state === 'unsupported'
+            ? (english ? 'Project associated, but this Cindy lacks a required plugin interface. Upgrade Cindy before starting workflows. ' : '项目已关联，但当前 Cindy 缺少所需插件接口。请升级 Cindy 后再启动工作流。')
+            : state.state === 'check_failed'
             ? (english ? 'Project associated, but workflow inspection failed. Click Refresh in the toolbar. Error: ' : '项目已关联，但流程检查失败。请点击工具栏刷新按钮。错误：') + state.checkError + ' · '
             : (english ? 'Toolbar bound. Open the Workflow panel; unavailable flows remain grey. ' : '工具栏已绑定。请打开插件的工作流面板；没有可用流程时保持置灰。')) + state.directory;
         } catch { text = english ? 'Could not bind this project. Check local directory access.' : '项目绑定失败，请检查本地目录访问权限。'; }

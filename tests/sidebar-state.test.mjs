@@ -102,3 +102,24 @@ test('unverified receipts cannot associate another chat even at the same directo
  await f.sidebar.launch('unverified-child-1','feature','source');f.tick();
  f.sidebar.switchSession('new-1','/project/source');assert.equal(f.sidebar.view().state,'unbound');
 });
+test('missing Agent API disables launching without writing an uncertain receipt',async()=>{
+ let writes=0;const sidebar=createSidebar({agent:{},inspect:async()=>result(),store:{read:async()=>({}),write:async()=>{writes++;}}});
+ await sidebar.bind(ctx());assert.equal(sidebar.view().state,'unsupported');
+ assert.equal((await sidebar.launch('missing-agent-key-1','feature','source')).code,'UNSUPPORTED_HOST');
+ assert.equal(writes,0);assert.ok(Object.values(sidebar.view().workflows).every(item=>!item.enabled));
+});
+test('unsupported inspection remains distinct and refresh can recover',async()=>{
+ const f=fixture();f.options.inspectHook=async()=>{throw Object.assign(new Error('unsupported'),{code:'UNSUPPORTED_HOST'});};
+ await f.sidebar.bind(ctx());assert.equal(f.sidebar.view().state,'unsupported');
+ assert.equal((await f.sidebar.launch('unsupported-node-1','feature','source')).code,'UNSUPPORTED_HOST');assert.equal(f.calls.length,0);
+ f.options.inspectHook=null;await f.sidebar.refresh();assert.equal(f.sidebar.view().state,'ready');
+});
+test('explicit unsupported Agent receipts or errors reject without automatic replay',async()=>{
+ for(const throws of [false,true]){
+  const f=fixture();await f.sidebar.bind(ctx());
+  f.options.runHook=async()=>{if(throws)throw Object.assign(new Error('unsupported'),{code:'UNSUPPORTED_OPERATION'});return {ok:false,errorCode:'UNSUPPORTED_HOST'};};
+  const r=await f.sidebar.launch('unsupported-agent-1','feature','source');
+  assert.equal(r.state,'rejected');assert.equal(r.code,'UNSUPPORTED_HOST');assert.equal(f.sidebar.view().state,'unsupported');assert.equal(f.sidebar.view().busy,false);
+  assert.deepEqual(await f.sidebar.launch('unsupported-agent-1','feature','source'),r);assert.equal(f.calls.length,1);
+ }
+});

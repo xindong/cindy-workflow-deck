@@ -63,6 +63,21 @@ try {
  await page.locator('#source-card button').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
  await page.evaluate(()=>mockHost.deliver({type:'event',name:'did-session-switched',data:{sessionId:'unrelated',workdir:mockHost.context.workdir}}));
  assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),5);
+ await page.evaluate(()=>mockHost.deliver({type:'event',name:'did-session-switched',data:{sessionId:mockHost.context.session_id,workdir:mockHost.context.workdir}}));
+ await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
+ await page.evaluate(()=>{globalThis.savedNodeRequest=cindy.node.request;cindy.node.request=undefined;});
+ await page.locator('#refresh').click();await page.locator('#summary').filter({hasText:'当前 Cindy 缺少所需插件接口，请升级 Cindy 后再试。'}).waitFor();
+ assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),5);
+ await tool('feature').hover();assert.ok((await page.locator('#tip-reason').textContent()).includes('升级 Cindy'));await page.keyboard.press('Escape');
+ await page.evaluate(()=>cindy.node.request=globalThis.savedNodeRequest);await page.locator('#refresh').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
+ await page.evaluate(()=>{globalThis.savedAgentRun=cindy.agent.run;cindy.agent.run=undefined;});
+ await page.locator('#refresh').click();await page.locator('#summary').filter({hasText:'当前 Cindy 缺少所需插件接口，请升级 Cindy 后再试。'}).waitFor();
+ assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns.length),0);
+ await page.locator('#details-toggle').click();await page.locator('#usage-title').click();
+ assert.ok((await page.locator('#usage-text').textContent()).includes('不是完整终端输出'));
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await page.evaluate(()=>cindy.agent.run=globalThis.savedAgentRun);await page.locator('#refresh').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
  await page.route('**/app-context',route=>route.fulfill({json:{context:{locale:'ja'}}}));await page.reload();await page.getByText('Execution log',{exact:true}).waitFor();
+ await page.locator('#details-toggle').click();await page.locator('#usage-title').click();assert.ok((await page.locator('#usage-text').textContent()).includes('not full terminal output'));
  assert.deepEqual(errors,[]);console.log('Canvas browser checks passed: foreground child switch before receipt, cooldown auto-unlock, second workflow launch from original source, unrelated chat disabled, bottom toolbar, logs, persisted reload, replay, safe text, 280px, light/dark, locale. Screenshots are simulated Host data.');
 } finally {await browser.close();server.kill();await once(server,'exit');}
