@@ -10,7 +10,7 @@ from build_distribution import ROOT, build
 TAG = re.compile(r'v?(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:[.][0-9A-Za-z-]+)*)?(?:[+][0-9A-Za-z-]+(?:[.][0-9A-Za-z-]+)*)?')
 
 
-def prepare(tag, destination):
+def assets_for_tag(tag):
     if not TAG.fullmatch(tag):
         raise ValueError('Use a version tag such as v0.1.0 or 0.1.0')
     version = tag.removeprefix('v')
@@ -19,7 +19,6 @@ def prepare(tag, destination):
     if manifest['version'] != version or project['version'] != version:
         raise ValueError('Tag must match both plugin/ghost.json and package.json versions')
     package, metadata = build()
-    destination.mkdir(parents=True, exist_ok=False)
     info = json.loads(metadata)
     info['file'] = f'{manifest["id"]}-{version}.cindy'
     assets = {info['file']: package,
@@ -27,6 +26,12 @@ def prepare(tag, destination):
     checksums = ''.join(f'{hashlib.sha256(data).hexdigest()}  {name}' + chr(10)
                         for name, data in assets.items())
     assets['SHA256SUMS.txt'] = checksums.encode()
+    return assets
+
+
+def prepare(tag, destination):
+    assets = assets_for_tag(tag)
+    destination.mkdir(parents=True, exist_ok=False)
     for name, data in assets.items():
         (destination / name).write_bytes(data)
     return assets

@@ -27,6 +27,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: python3 scripts/prepare_release.py --tag "$RELEASE_TAG"
+      - name: Verify generated Release assets
+        run: python3 scripts/install_local.py --dir release-assets --check
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

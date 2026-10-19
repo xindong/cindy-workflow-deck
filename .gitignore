@@ -1,6 +1,7 @@
 node_modules/
 *.cindy
-!/jixin-make-a-wish.cindy
+/DISTRIBUTION.json
+/SHA256SUMS.txt
 .DS_Store
 coverage/
 artifacts/
