@@ -188,3 +188,9 @@ scripts/build_distribution.py用标准ZIP、固定排序/时间/文件权限生�
 ### 公开仓库与匿名下载验证（2026-10-19）
 
 用户明确要求将仓库公开，已通过GitHub管理API更新xindong/cindy-workflow-deck，回执private=false/visibility=public。随后使用无Authorization头、无Token的标准HTTP请求读取仓库元信息与main ref，并从该commit的raw.githubusercontent.com地址下载DISTRIBUTION.json和.cindy。匿名访问均HTTP200；包152067字节、整包及18文件SHA256一致，manifest版本仍0.3.6。更新README、INSTALL.md和AGENTS.md为匿名安装说明。首次Cindy安装确认仍保留，未把匿名下载成功当作已完成安装。
+
+## 版本号重置为0.1.0（2026-10-19）
+
+用户明确要求将极心许愿版本改为0.1.0。同步package.json、plugin/ghost.json、README、安装指南和当前验收页，并重新构建根目录分发包与DISTRIBUTION.json。名称、ID、命令、能力及功能代码不变；历史0.3.x记录保留为真实历史，不以新号改写旧验收证据。此次不安装或发布组织市场。
+
+0.1.0本地52项单测、静态/CSP/语法、分发包重建一致性和安装前SHA256/manifest检查通过；Forge校验通过且与根分发包18文件内容一致。根包152065字节，SHA256=082ded18f270ebb676e016ea996905ceedf85995f3ba591cefdb3655776b494e。

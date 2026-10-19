@@ -1,10 +1,10 @@
-# 极心许愿 — 0.3.6
+# 极心许愿 — 0.1.0
 
 本地自用版显示名称为“极心许愿”，插件 ID 和命令为 jixin-make-a-wish；不提交组织市场。更换 ID 属于新插件身份，旧 workflow-deck 的数据和绑定不会自动迁移，需要重新绑定。源码仓库名称保持不变。
 
 任务单：https://github.com/xindong/xdrpg/issues/190。仅开发插件，不修改 Cindy Core。
 
-当前0.3.6已通过自动/模拟验证；首次安装返回 MUTATION_CANCELLED，尚未安装，不自动重试。旧身份0.3.5的实机结论不代表本版已实机验收。
+当前0.1.0已通过自动验证；此前0.3.6首次安装返回 MUTATION_CANCELLED，本版本尚未安装，不自动重试。旧身份0.3.5的实机结论不代表本版已实机验收。
 
 ## 贴仓库链接安装
 
@@ -12,7 +12,7 @@
 
 > 请安装 https://github.com/xindong/cindy-workflow-deck 的极心许愿插件，按 INSTALL.md 下载、校验并打开根目录 .cindy，核对最终安装结果。
 
-仓库已直接提供 [安装包 jixin-make-a-wish.cindy](jixin-make-a-wish.cindy) 和 [安装步骤 INSTALL.md](INSTALL.md)。版本仍为 **0.3.6**。根目录 DISTRIBUTION.json 提供整包及18个文件的SHA256；这是本仓校验格式，不是Cindy官方自动发现协议。仓库已公开，安装包和校验文件可匿名下载，无需 GitHub 授权；Cindy 首次安装权限确认仍由用户操作。
+仓库已直接提供 [安装包 jixin-make-a-wish.cindy](jixin-make-a-wish.cindy) 和 [安装步骤 INSTALL.md](INSTALL.md)。版本仍为 **0.1.0**。根目录 DISTRIBUTION.json 提供整包及18个文件的SHA256；这是本仓校验格式，不是Cindy官方自动发现协议。仓库已公开，安装包和校验文件可匿名下载，无需 GitHub 授权；Cindy 首次安装权限确认仍由用户操作。
 
 源码变化后 GitHub Actions 自动更新根目录安装包及校验文件，也可手动运行。开发时使用 npm run dist 或 npm run dist:check，无需改版本号。详见 INSTALL.md。
 
