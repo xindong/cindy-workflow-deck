@@ -17,6 +17,9 @@ assert.equal(manifest.panel.minWidth, 280);
 assert.equal(manifest.panel.defaultFraction, 0.25);
 assert.equal(manifest.sessionContext, true);
 assert.equal(WORKFLOWS.length, 5);
+assert.equal(manifest.version, JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8')).version);
+const usage = await readFile(resolve(root, 'plugin/USAGE.md'), 'utf8');
+assert.ok(usage.includes('report_progress') && usage.includes('10秒') && usage.includes('English quick start'));
 for (const field of ['entry', 'panel']) {
   const file = field === 'panel' ? manifest.panel.html : manifest[field];
   await readFile(resolve(root, 'plugin', file));

@@ -1,4 +1,5 @@
 import { WORKFLOWS, buildPrompt, workflowById } from './workflows.js';
+import { isUnsupported } from './host-compat.js';
 export function createSidebar({ inspect, agent, store, now = () => Date.now(), changed = () => {} }) {
   const bindings = new Map(), children = new Map();
   let active = '', focused = '', focusedHint = ''; let busy = false; let nextLaunchAt = 0;
@@ -22,7 +23,7 @@ export function createSidebar({ inspect, agent, store, now = () => Date.now(), c
   }
   function view() {
     const binding = bindings.get(active);
-    const state = !binding ? 'unbound' : binding.readOnly ? 'readonly' : binding.problem || 'ready';
+    const state = !binding ? 'unbound' : binding.readOnly ? 'readonly' : typeof agent?.run !== 'function' ? 'unsupported' : binding.problem || 'ready';
     return { sessionId: active, directory: binding?.directory || '', state, busy, nextLaunchAt,
       checkError: binding?.checkError || '', checkedAt: binding?.checkedAt || '', workflows: Object.fromEntries(WORKFLOWS.map(flow => [flow.id, {
         enabled: state === 'ready' && !busy && now() >= nextLaunchAt && binding.workflows?.[flow.id]?.ok === true,
@@ -36,7 +37,7 @@ export function createSidebar({ inspect, agent, store, now = () => Date.now(), c
       const result = await inspect(binding.directory);
       if (!result?.workflows || !WORKFLOWS.every(flow => typeof result.workflows[flow.id]?.ok === 'boolean')) throw new Error('Invalid inspection');
       binding.workflows = result.workflows; binding.checkedAt = result.checkedAt || ''; binding.problem = '';
-    } catch (error) { binding.problem = 'check_failed'; binding.workflows = {}; binding.checkError = /^[A-Z][A-Z0-9_]{1,60}$/.test(error.code || '') ? error.code : 'PROJECT_CHECK_FAILED'; }
+    } catch (error) { binding.problem = isUnsupported(error.code) ? 'unsupported' : 'check_failed'; binding.workflows = {}; binding.checkError = /^[A-Z][A-Z0-9_]{1,60}$/.test(error.code || '') ? error.code : 'PROJECT_CHECK_FAILED'; }
     notify();
   }
   return {
@@ -68,8 +69,10 @@ export function createSidebar({ inspect, agent, store, now = () => Date.now(), c
       if (Object.hasOwn(launches, requestKey)) return launches[requestKey];
       const source = active; const binding = bindings.get(source);
       if (!source || source !== expectedSessionId || !binding) return { state: 'rejected', code: 'SOURCE_CHANGED' };
+      if (typeof agent?.run !== 'function') return { state: 'rejected', code: 'UNSUPPORTED_HOST' };
       if (now() < nextLaunchAt) return { state: 'rejected', code: 'RATE_LIMITED' };
       await checkBinding(binding);
+      if (active === source && bindings.get(source) === binding && binding.problem === 'unsupported') return { state: 'rejected', code: 'UNSUPPORTED_HOST' };
       // Recheck after I/O: switching chat during a check must never launch into the old one.
       if (active !== source || bindings.get(source) !== binding || !view().workflows[workflowId].enabled) return { state: 'rejected', code: 'FLOW_UNAVAILABLE' };
       const text = buildPrompt(workflowId, goal);
@@ -94,13 +97,17 @@ export function createSidebar({ inspect, agent, store, now = () => Date.now(), c
           : receipt?.ok === false ? { state: 'rejected', code: receipt.errorCode || 'HOST_REJECTED', workflowId }
           : { state: 'uncertain', code: 'UNVERIFIED_RECEIPT', workflowId };
         if (result.code === 'PERMISSION_DENIED') bindings.delete(source);
+        if (isUnsupported(result.code)) { result.code = 'UNSUPPORTED_HOST'; binding.problem = 'unsupported'; }
         if (result.state === 'accepted' && bindings.get(source) === binding) {
           children.set(result.sessionId, { source, binding });
           if (children.size > 80) children.delete(children.keys().next().value);
           // A focus event can arrive before agent.run returns the launch receipt.
           if (focused === result.sessionId) selectSession(focused, focusedHint);
         }
-      } catch { result = { state: 'uncertain', code: 'UNVERIFIED_RECEIPT', workflowId }; }
+      } catch (error) {
+        if (isUnsupported(error.code)) { binding.problem = 'unsupported'; result = { state: 'rejected', code: 'UNSUPPORTED_HOST', workflowId }; }
+        else result = { state: 'uncertain', code: 'UNVERIFIED_RECEIPT', workflowId };
+      }
       launches[requestKey] = result;
       try { await store.write({ sidebarReceipts: launches }); }
       finally { busy = false; notify(); }

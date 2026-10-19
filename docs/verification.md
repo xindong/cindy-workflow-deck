@@ -130,3 +130,29 @@ Forge校验打包0.3.4通过，包内16个生产文件与源码字节一致。�
 用户在远端控制本机Cindy按约定步骤完成两次点击，助手只读取本机真实日志、两任务历史与screencapture截图，不代写操作结果。19:59:02 get_workflows成功、19:59:03 bind卡片点击送达。20:01:54实验任务7e4e9357-d41f-4170-aaca-8872f7cc25af创建，20:02:19完成；20:02:38工具任务c3231d3a-6794-42e7-9e6b-75ae44efaa27创建，20:03:12完成。两个输入记录ghostVersion=0.3.4，mode=new，sourceSessionId均2af7d5f8-12ec-4a35-b67d-e8968c8ff7b2，工作目录均/Users/yuanzhengjie/Documents/tavern-of-convallaria。每任务step、output、completed各一次，六条工具回执均ok:true/result.recorded:true。两任务最终回复turnCompleted:true，回报为明确只读检查，未要求实际开发、PR或合并。
 
 实机截图在第二任务完成后，当前聊天为开始工具开发；面板项目为tavern-of-convallaria，可用流程4/5，merge灰，显示工具任务输出摘要、AI报告完成及Host本轮结束，证明未再整条禁用。此次仅验收绑定、两种连续派发与日志显示，不等同所有五种业务流程、独立窗或最小化等均已实测。本记录随0.3.4修复源码一起提交，远程同步结果以GitHub实际提交回执为准。
+
+## 0.3.5 组织发布准备：兼容处理与随包说明（2026-10-19）
+
+按实时手册第9章检查必要接口存在性，并仅对明确不支持的错误码归类为unsupported。缺少cindy.node.request或agent.run时阻止启动并显示升级提示；Node检查失败、权限拒绝、网络异常不作为不支持绕过。明确不支持的Agent响应或异常记录为rejected，不伪装成待核实回执；真正丢失的回执仍保持uncertain，不重放。升级/修复接口后用户刷新可恢复。绑定卡、状态区和悬停说明均提示升级。
+
+新增面板“目标与目录 → 使用说明”的中英文内容和包内USAGE.md，说明流程文件与PR技能路径前提、首次绑定和重启重绑、Host继承与权限、每次独立任务、10秒间隔、有限日志和恢复方式。没有新增Manual能力：实时3.6要求核实首个支持Manual的正式版本，当前不猜版本或抬高minCindyVersion。没有新增权限或移除旧记录接口。
+
+52项单元测试、manifest/CSP/语法及diff检查通过。真实main/runtime/panel配模拟Host的浏览器回归通过：缺少Node接口禁用并显示升级，恢复刷新启用；缺少Agent接口禁用且零派发；中英文使用说明可展开且280px无横溢出；原绑定、连续新任务、10秒解禁、日志、重载、明暗、外部任务拒绝等原回归保持通过。截图为模拟Host，不代表新版实机验收。版本0.3.5仅修改作者源码和重新打包；未安装、未提交GitHub、未发起企业发布，0.3.4的真实验收结论不自动转移到0.3.5。
+
+Forge校验打包成功；ZIP内18个生产文件逐字节匹配源码，USAGE.md已包含。安装目录读回仍为0.3.4。
+
+### 0.3.5 本地更新与运行验证（2026-10-19）
+
+用户明确授权本地安装验证并移除旧版。11:51:57 Forge返回updated/version=0.3.5/enabled=true；真实Host日志记录旧运行时stopping/off、新版updated并进入running。安装路径为cindy-brain/_ns/xd/workflow-deck，18个生产文件与作者源码逐字节一致。只读检查安装manifest和plugin-instances.v2.json，仅有一个workflow-deck实例，namespace=xd、active=true；0.3.4已原位替换，不另行卸载同ID，以免移除新版。作者目录历史.cindy包不属于已安装实例，本轮未删除。
+
+11:52:32真实get_workflows工具调用成功，Host记录ok=true，返回awaiting-user-binding；只生成绑定卡，没有点击绑定或创建业务任务。已安装worker通过与Host一致的require入口和JSON-RPC子进程检查，真实项目实验/功能/工具/PR四项可用，merge文件缺失；未知方法正确返回-32601。此子进程检查不等同于绑定后Host Node RPC端到端验收。
+
+当前桌面截图仅显示壁纸，未取得Cindy面板可见证据。新版绑定、帮助展开和两次连续工作流交互尚未完成，需要用户在目标项目聊天重新生成绑定卡并操作，再依据真实日志验收；不沿用0.3.4的点击验收结论。没有修改编辑器Core、提交GitHub或发布到组织。
+
+### 0.3.5 用户点击后的实机日志复验（2026-10-19）
+
+用户确认已完成两次点击，助手核对真实Host日志及两项任务原始消息，不代写操作结果。11:54:59 get_workflows成功，11:55:01绑定card-action送达。11:55:31创建实验任务33a2bc9a-cd1e-4979-ae54-e5ba2f90bd5b，11:56:15轮次完成；11:56:21创建工具任务87bacf03-b3cc-4f75-a75e-587e298e271b，11:57:03轮次完成。两次Host accepted回执的sourceSessionId均c3231d3a-6794-42e7-9e6b-75ae44efaa27（用户此次实际选择的绑定聊天），mode=new、trigger=background、disposition=created。两任务输入ghostVersion=0.3.5，工作目录均为/Users/yuanzhengjie/Documents/tavern-of-convallaria。
+
+实验任务step、blocked、output、completed四条回报，工具任务step、output、completed三条回报，全部ok=true/result.recorded=true。实验任务的blocked为用户目标不明确，澄清仅测试面板入口后已完成，不是插件故障。两任务最终assistant均turnCompleted=true；测试目标为不修改、不上传，回报未修改或上传业务项目。Host另有原项目技能目录已存在的链接告警，不阻断本次两项任务；没有改写这些目录。
+
+本次绑定、实验结束后连续启动工具任务、正确目录和日志写回验证通过；没有新版真实面板视觉证据，因此不将其扩展为帮助展开、显示布局、独立窗、最小化或全部业务流程验收。提交前重跑52单测全部通过、静态/CSP/语法与git diff --check通过；原有浏览器模拟回归结果保持不变。源码上传按用户本轮明确授权进行，组织发布不在本轮范围内。
