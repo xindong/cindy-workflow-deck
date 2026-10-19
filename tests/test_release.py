@@ -1,0 +1,72 @@
+import hashlib
+import json
+from pathlib import Path
+import os
+import subprocess
+import textwrap
+import sys
+import tempfile
+import unittest
+import zipfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+from prepare_release import ROOT, prepare
+
+
+class ReleaseTests(unittest.TestCase):
+    def test_release_downloads_are_consistent(self):
+        version = json.loads((ROOT / 'package.json').read_text())['version']
+        with tempfile.TemporaryDirectory() as temp:
+            for tag in (version, 'v' + version):
+                destination = Path(temp) / tag
+                assets = prepare(tag, destination)
+                metadata = json.loads(assets['DISTRIBUTION.json'])
+                package = destination / metadata['file']
+                self.assertEqual(hashlib.sha256(package.read_bytes()).hexdigest(), metadata['sha256'])
+                with zipfile.ZipFile(package) as archive:
+                    self.assertIsNone(archive.testzip())
+                    self.assertEqual(json.loads(archive.read('ghost.json'))['version'], version)
+                    self.assertEqual(set(archive.namelist()), set(metadata['sourceFiles']))
+                    for name, digest in metadata['sourceFiles'].items():
+                        self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(), digest)
+                for line in assets['SHA256SUMS.txt'].decode().splitlines():
+                    digest, name = line.split('  ')
+                    self.assertEqual(hashlib.sha256((destination / name).read_bytes()).hexdigest(), digest)
+
+    def test_publish_command_uses_tag_and_attaches_assets(self):
+        workflow = (ROOT / '.github/workflows/release.yml').read_text()
+        command = textwrap.dedent(workflow.rsplit('run: |', 1)[1])
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            (directory / 'release-assets').mkdir()
+            for name in ('plugin.cindy', 'DISTRIBUTION.json', 'SHA256SUMS.txt'):
+                (directory / 'release-assets' / name).touch()
+            fake_gh = directory / 'gh'
+            fake_gh.write_text('#!' + sys.executable + chr(10) +
+                               'import json,sys; print(json.dumps(sys.argv[1:]))' + chr(10))
+            fake_gh.chmod(0o755)
+            for tag, prerelease in (('v0.1.0', False), ('v0.1.0-rc.1', True),
+                                    ('v0.1.0+build-test', False)):
+                env = dict(os.environ, PATH=str(directory) + os.pathsep + os.environ['PATH'],
+                           RELEASE_TAG=tag)
+                result = subprocess.run(['bash', '-e', '-c', command], cwd=directory,
+                                        env=env, check=True, capture_output=True, text=True)
+                args = json.loads(result.stdout)
+                self.assertEqual(args[:3], ['release', 'create', tag])
+                self.assertIn('--verify-tag', args)
+                self.assertIn('--generate-notes', args)
+                self.assertEqual('--prerelease' in args, prerelease)
+                for name in ('plugin.cindy', 'DISTRIBUTION.json', 'SHA256SUMS.txt'):
+                    self.assertIn('release-assets/' + name, args)
+
+    def test_invalid_or_mismatched_tag_produces_no_assets(self):
+        with tempfile.TemporaryDirectory() as temp:
+            destination = Path(temp) / 'assets'
+            for tag in ('v9999.0.0', 'v01.0.0', 'test-tag', 'v0.1.0/unsafe'):
+                with self.assertRaises(ValueError):
+                    prepare(tag, destination)
+                self.assertFalse(destination.exists())
+
+
+if __name__ == '__main__':
+    unittest.main()

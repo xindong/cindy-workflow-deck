@@ -2,7 +2,7 @@ name: Update installable Cindy package
 on:
   push:
     branches: [main]
-    paths: ['plugin/**', 'package.json', 'scripts/build_distribution.py', 'scripts/check.mjs', '.github/workflows/update-distribution.yml']
+    paths: ['plugin/**', 'package.json', 'scripts/build_distribution.py', 'scripts/check.mjs', '.github/workflows/update-distribution.yml', '.github/workflows/release.yml', 'scripts/prepare_release.py', 'tests/test_release.py']
   workflow_dispatch:
 permissions:
   contents: write
@@ -23,6 +23,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm test && npm run check
+      - run: python3 -m unittest discover -s tests -p 'test_release.py' -v
       - run: python3 scripts/build_distribution.py && python3 scripts/install_local.py --check
       - name: Commit refreshed package without changing version
         run: |

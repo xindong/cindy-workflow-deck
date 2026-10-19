@@ -194,3 +194,9 @@ scripts/build_distribution.py用标准ZIP、固定排序/时间/文件权限生�
 用户明确要求将极心许愿版本改为0.1.0。同步package.json、plugin/ghost.json、README、安装指南和当前验收页，并重新构建根目录分发包与DISTRIBUTION.json。名称、ID、命令、能力及功能代码不变；历史0.3.x记录保留为真实历史，不以新号改写旧验收证据。此次不安装或发布组织市场。
 
 0.1.0本地52项单测、静态/CSP/语法、分发包重建一致性和安装前SHA256/manifest检查通过；Forge校验通过且与根分发包18文件内容一致。根包152065字节，SHA256=082ded18f270ebb676e016ea996905ceedf85995f3ba591cefdb3655776b494e。
+
+## 2026-10-19：Tag 驱动 GitHub Release
+
+新增 .github/workflows/release.yml：push v* 或数字开头tag后，从tag源码执行插件测试与静态检查，再验证tag与两处manifest版本一致，独立构建版本化.cindy、DISTRIBUTION.json与SHA256SUMS.txt；使用内置GITHUB_TOKEN创建Release并生成说明，预发布后缀标记prerelease。没有手动触发、没有自动打tag，不覆盖已有Release。现有main根包更新流程保留，并增加发布脚本回归测试。
+
+本地52项插件测试、静态检查、3项Python发布测试和Actionlint 1.7.7对两个workflow的检查通过。发布测试核对ZIP内18文件及整包/逐文件/附件校验和、错误tag零产物，以及实际workflow发布shell的正式/预发布参数（gh替身，不访问发布API）。当前版本仍0.1.0；未为测试创建真实tag或Release，真实tag发布尚未执行。

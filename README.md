@@ -53,3 +53,18 @@ plugin/ 是生产打包目录，无第三方运行依赖。Node 22+ 运行 npm t
 0.3.5已本地安装并启用，旧版原位替换。52项单测及静态检查通过；2026-10-19用户真实点击后核对Host日志与两项任务历史，绑定、连续实验→工具派发、目录继承与7条进度写回通过。面板视觉、帮助展开及其它业务流程不在本次实机日志验收范围；未发布到组织。详情见验证记录。
 
 仅用户明确要求时安装、更新或发布。按用户要求，源码仓仅提交根目录固定分发包 jixin-make-a-wish.cindy；历史包、截图、缓存和用户数据仍不提交。
+
+## Tag 自动发布 GitHub Release
+
+推送版本 tag（推荐 v0.1.0，也支持 0.1.0）会触发 Release Cindy plugin 工作流。tag 去掉 v 后必须与 package.json 和 plugin/ghost.json 的版本一致，否则停止发布；带预发布后缀的版本会标记为 prerelease。
+
+工作流检出 tag 对应源码，执行单元测试与静态检查，再独立构建安装包，不依赖 main 分支包是否已自动刷新。成功后创建 GitHub Release，自动生成发布说明，附上版本化 .cindy、DISTRIBUTION.json 和 SHA256SUMS.txt。安装时下载该 Release 同一版本的安装包与校验文件；元数据中的 file 指向版本化包名。现有仓库根目录直装入口保留。
+
+先确保包含本工作流的提交已推送，再在相应提交打 tag 并推送，例如：
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+仅创建本地 tag 不触发；必须推送到 GitHub。不修改现有 Release 或覆盖附件，同名 Release 已存在时工作流会失败；不要移动已发布的 tag。构建过程可在本地用 python3 scripts/prepare_release.py --tag v0.1.0 --out /tmp/jixin-release-test 验证（输出目录需不存在）。工作流使用仓库内置 GITHUB_TOKEN，无需额外设置凭证。
