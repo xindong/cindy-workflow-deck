@@ -200,3 +200,9 @@ scripts/build_distribution.py用标准ZIP、固定排序/时间/文件权限生�
 新增 .github/workflows/release.yml：push v* 或数字开头tag后，从tag源码执行插件测试与静态检查，再验证tag与两处manifest版本一致，独立构建版本化.cindy、DISTRIBUTION.json与SHA256SUMS.txt；使用内置GITHUB_TOKEN创建Release并生成说明，预发布后缀标记prerelease。没有手动触发、没有自动打tag，不覆盖已有Release。现有main根包更新流程保留，并增加发布脚本回归测试。
 
 本地52项插件测试、静态检查、3项Python发布测试和Actionlint 1.7.7对两个workflow的检查通过。发布测试核对ZIP内18文件及整包/逐文件/附件校验和、错误tag零产物，以及实际workflow发布shell的正式/预发布参数（gh替身，不访问发布API）。当前版本仍0.1.0；未为测试创建真实tag或Release，真实tag发布尚未执行。
+
+## 2026-10-19：每次修改提交递增补丁版本
+
+用户新增硬性规则，取代此前“不改版本”：文件修改提交（含文档/CI/测试）自动+0.0.1。本仓pre-commit模板经scripts/install_hooks.py安装到本仓Git hooks目录，不改全局配置或覆盖现有自定义hook。scripts/bump_version.py仅从暂存区快照构建，同步两处版本、根包、元数据与README标题；版本/包/README存在未暂存修改则拒绝提交。GitHub API上传须包含本地生成的所有文件；main云端流程按push提交范围补齐未升版修改，自动修复提交只落地已计算的版本，不重复递增，CI重跑及空提交也不递增。不会自动打tag或更改已发布v0.1.0。
+
+验证使用真实临时Git仓库提交：连续提交两次各+1、已升版push云端不重复递增、API绕过hook一次push两条提交后补+2且修复/重跑幂等、部分暂存构建不夹带未暂存源码、未暂存受管文件阻止提交、空提交不升版、自定义hook不会被覆盖。与Release资产/命令测试一起运行；同时跑52项插件测试、静态检查和Actionlint。本次正式提交由hook升至0.1.1，发布tag仍保留v0.1.0；远程与云端执行以真实回执核对。
