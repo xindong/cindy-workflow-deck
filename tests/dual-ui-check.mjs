@@ -36,8 +36,14 @@ try {
   await page.locator('#add').click();await page.locator('#project-name').fill('独立项目');await page.locator('#directory').fill(project);
   for(const id of ['experiment','feature','tooling','pr','merge'])await page.locator('#flow-'+id).fill(id==='feature'?'instructions/start.md':'');
   await page.locator('#save').click();await awaitCondition(page,()=>!document.getElementById('inspect').disabled);
-  await page.locator('#inspect').click();await awaitCondition(page,()=>document.getElementById('inspection').textContent.includes('instructions/start.md'));
+  await page.locator('#inspect').click();await awaitCondition(page,()=>document.getElementById('inspection').textContent.split(String.fromCharCode(92)).join('/').includes('instructions/start.md'));
   assert.ok((await page.locator('#inspection').textContent()).includes('AGENTS.md'));
+  const inspection = await page.evaluate(async () => {
+    const state = await globalThis.jixinDesktop.request('config-read');
+    return globalThis.jixinDesktop.request('config-inspect', {projectId: state.configuration.activeProjectId});
+  });
+  assert.equal(inspection.git.available,true,JSON.stringify(inspection));
+  assert.equal(inspection.workflows.feature.source,join(project,'instructions','start.md'));
   await page.reload();await page.locator('#project-name').waitFor();await awaitCondition(page,()=>document.getElementById('project-name').value==='独立项目');
   assert.equal(await page.locator('#flow-feature').inputValue(),'instructions/start.md');
   await page.locator('#flow-feature').fill('../escape.md');await page.locator('#save').click();await awaitCondition(page,()=>document.getElementById('notice').textContent.includes('INVALID_CONFIGURATION'));

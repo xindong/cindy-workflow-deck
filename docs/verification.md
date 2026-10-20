@@ -251,3 +251,8 @@ hook在完整暂存区快照升版后校验，失败不写回受管文件；CI�
 扩展同一打包入口至Windows，包含Electron并使用中文启动文件名。新增Desktop packages工作流：main/手动触发，锁定依赖后构建ZIP，从ZIP解压启动实际exe，以临时项目及用户数据验证；通过才上传包和SHA256，单独保留JSON与截图。未创建正式tag/Release。
 
 本地63项Node、27项Python、静态检查及Actionlint通过；真实Electron及模拟Cindy配置页回归通过。Mac最终0.1.7打包后真实二进制版本与isPackaged核验、无Cindy桥/renderer Node、配置保存/重载、只读Git及穿越拒绝通过，ad-hoc签名deep/strict验证通过。Mac启动二进制改中文并同步CFBundleExecutable，避免保留Electron默认名称导致仍识别为开发模式。Windows云端GUI结果与Cindy安装结果以本次真实回执为准，不由上述本地检查推断。
+
+
+### Windows GUI首轮与路径断言修正
+
+0.1.7云端run39260372409成功构建ZIP并启动打包exe，但UI测试以POSIX斜杠匹配Windows原生文件路径而超时，未上传包。修正显示断言兼容两种分隔符，并直接检查IPC结果Git可用及工作流完整路径，避免仅页面字符串判定检查通过。Cindy安装请求在2026-10-19 21:34日志确认为MUTATION_CANCELLED，未重复安装，不声称插件实机验收通过。修正提交按规则升0.1.8，后续Windows结果以新run为准。
