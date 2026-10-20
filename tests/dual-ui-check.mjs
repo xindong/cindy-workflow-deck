@@ -44,7 +44,7 @@ try {
   });
   assert.equal(inspection.git.available,true,JSON.stringify(inspection));
   assert.equal(inspection.workflows.feature.source,join(project,'instructions','feature.md'));
-  await page.reload();await page.locator('#directory').waitFor();
+  await page.reload();await page.locator('#config-tab').click();await page.locator('#directory').waitFor();
   assert.equal(await page.locator('#directory').inputValue(),project);
   assert.equal(await page.locator('#project option:checked').textContent(),'project');
   await page.locator('#directory').fill('relative/root');await page.locator('#save').click();await awaitCondition(page,()=>document.getElementById('notice').textContent.includes('INVALID_CONFIGURATION'));
@@ -66,10 +66,10 @@ try {
   assert.equal(await settings.locator('#project-name, [id^=flow-], [id^=external-]').count(),0);
   await settings.locator('#save').click();await awaitCondition(settings,()=>!document.getElementById('inspect').disabled);
   assert.equal(await panel.evaluate(()=>mockHost.calls.agentRuns.length),0);
-  const second=await context.newPage();await second.goto(base+'/settings.html');await awaitCondition(second,()=>document.getElementById('directory').value==='/preview/selected-project');
+  const second=await context.newPage();await second.goto(base+'/settings.html');await second.locator('#config-tab').click();await awaitCondition(second,()=>document.getElementById('directory').value==='/preview/selected-project');
   await settings.locator('#directory').fill('/preview/project');await settings.locator('#save').click();await awaitCondition(settings,()=>!document.getElementById('inspect').disabled);
   await second.locator('#directory').fill('/preview/conflict');await second.locator('#save').click();await awaitCondition(second,()=>document.getElementById('notice').textContent.includes('CONFIG_CONFLICT'));
-  await settings.reload();await awaitCondition(settings,()=>document.getElementById('directory').value==='/preview/project');
+  await settings.reload();await settings.locator('#config-tab').click();await awaitCondition(settings,()=>document.getElementById('directory').value==='/preview/project');
   assert.equal(await settings.locator('#directory').inputValue(),'/preview/project');
   await settings.locator('#directory').fill('/preview/selected-project');await settings.locator('#save').click();await awaitCondition(settings,()=>!document.getElementById('inspect').disabled);
   await settings.screenshot({path:join(root,'artifacts/cindy-settings-configuration.png'),fullPage:true});

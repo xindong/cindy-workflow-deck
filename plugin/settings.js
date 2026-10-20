@@ -34,7 +34,7 @@ async function run(work) {
   try { await work(); } catch (error) {
     if (error.code !== 'CANCELLED') notice((error.code ? error.code + ' · ' : '') + error.message);
     else notice(say('已取消选择，配置未改变。','Selection cancelled; configuration unchanged.'));
-  } finally { busy = false; buttons(); }
+  } finally { busy = false; buttons(); document.dispatchEvent(new Event('configuration-ready')); }
 }
 async function load() {
   const result = await transport.call('config-read');
@@ -48,10 +48,10 @@ async function start() {
   document.documentElement.dataset.runtime = transport.standalone ? 'desktop' : 'cindy';
   document.documentElement.lang = english ? 'en' : 'zh-CN';
   for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = tr(element.dataset.i18n);
-  $('heading').textContent = say('Git 与工作流','Git and workflows');
+  $('heading').textContent = say('极心许愿','Jixin');
   $('intro').textContent = transport.standalone
-    ? say('独立桌面 · 无需 Cindy。基础 Git 与项目配置；高级工作流使用 Cindy 面板，AI 诊断尚未开放。','Standalone desktop · No Cindy required. Configuration and read-only inspection are available; Git writes and AI integrations are not yet enabled.')
-    : say('选择并保存项目根目录。基础界面管理 Git，高级界面启动项目工作流。请使用“选择项目目录”完成宿主目录授权。','Choose and save a project root. Use Basic for Git and Advanced for project workflows. Use Choose directory for Host authorization.');
+    ? say('已有项目，直接开始。更新团队内容，或把你的修改交给团队。','Use an existing project. Get team updates or share your changes.')
+    : say('选择已有项目。日常只需更新、查看改动、提交修改。','Choose an existing project. Update, view changes and submit your work.');
   $('path-help').textContent = say('只需选择项目根目录。工具自动寻找工作流指令；缺失或存在多个候选时禁用对应入口，不执行发现的文件。已有手动路径会保留到本页保存，保存后改用自动发现。','Choose only the project root. Workflow instructions are discovered automatically; missing or ambiguous matches disable that workflow. Discovery never executes files. Saving switches legacy manual paths to automatic discovery.');
   $('directory').addEventListener('input', () => { active().directory = $('directory').value; markDirty(); });
   $('project').addEventListener('change', () => { draft.activeProjectId = $('project').value; markDirty(); render(); });

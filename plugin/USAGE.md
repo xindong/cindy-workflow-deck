@@ -35,6 +35,8 @@ Choose only a project root in plugin settings, save and inspect. Names are deriv
 
 ## 基础Git / Basic Git
 
-基础界面支持状态、差异、历史、分支、勾选文件暂存/取消暂存、提交、获取、快进拉取、推送与创建PR。main、master及本地已知origin默认分支禁止直接提交和推送，先建工作分支，再通过PR合入。保留原生hooks，不强推、不丢弃改动。项目规则与hooks未就绪时阻塞；文档测试和审批仍须实际完成并人工确认，不能把发现文件当作自动通过。PR依赖本机已安装并登录的gh，不自动合并。
+基础界面只保留“更新项目、查看我的改动、提交我的修改”，先支持已有项目。提交只需勾选文件、写一句说明、核对团队要求后确认；内部自动建立工作分支、运行项目检查、上传并送审，不直接提交主分支、不自动合并。单个PR模板会创建待负责人完善的草稿，不替人勾选验收。异常或结果不明时保留文件并停止，先请负责人核对。专业Git工具与原五工作流保留在高级入口（桌面为折叠的更多工具）。
 
-Basic Git uses the saved repository root and preserves native project hooks. Primary-branch commits/pushes are blocked; create a work branch and use a PR. Manual tests and approvals must be completed before confirmation. A stale or consumed review cannot be replayed. AI diagnostics and standalone advanced workflows are not available yet.
+项目规则和hooks仍有效；文档中的测试、审批、资源锁定等必须实际完成，不用确认勾选代替执行。需要负责人预先配置好本机Git、团队远端和gh审核账号。没有AI也能使用日常Git；AI诊断和独立端高级工作流尚未实现。
+
+Daily work supports existing projects: Update project, View my changes, and Submit my changes. Select files, describe the change, verify team prerequisites and confirm. A work branch, native checks, upload and review are handled internally; no primary-branch commit or automatic merge. A team PR template creates an unchecked draft for the project owner to complete. Uncertain results stop without replay. Professional Git tools remain in the advanced entry. Native hooks and actual manual prerequisites still apply; the owner must configure Git, the remote and an authenticated gh CLI first.

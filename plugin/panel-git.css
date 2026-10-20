@@ -23,6 +23,23 @@ textarea { width:100%; max-width:100%; padding:8px; font:inherit; color:inherit;
 #git-gate { border-left:3px solid var(--text-secondary,#737373); padding-left:10px; }
 #git-files { margin:14px 0; } #git-rules { max-height:340px; overflow:auto; }
 @media(prefers-color-scheme:dark) { textarea { background:var(--surface,#262626); } }
+.beginner-heading { display:flex; align-items:start; justify-content:space-between; gap:12px; margin:18px 0; }
+.beginner-heading h2 { font-size:21px; margin:0; }
+.beginner-heading p { color:var(--text-secondary,#737373); font-size:13px; margin:7px 0 0; }
+.beginner-heading>button { font-size:12px; white-space:nowrap; }
+.beginner-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.beginner-actions button { padding:18px 14px; text-align:left; border-radius:12px; }
+.beginner-actions strong,.beginner-actions span { display:block; }
+.beginner-actions strong { font-size:15px; }
+.beginner-actions span { margin-top:6px; font-size:12px; color:var(--text-secondary,#737373); line-height:1.5; }
+.beginner-message { font-size:13px; line-height:1.7; margin:18px 0; }
+.beginner-sheet { border:1px solid var(--border-default,#d7d7d4); border-radius:12px; padding:16px; margin:16px 0; }
+.beginner-sheet h3 { font-size:16px; margin:0; }
+.beginner-sheet p { color:var(--text-secondary,#737373); font-size:12px; }
+.beginner-file { padding:10px 0; border-bottom:1px solid var(--border-default,#d7d7d4); }
+.beginner-file span { overflow-wrap:anywhere; } .beginner-file strong { display:block; font-size:11px; color:var(--text-secondary,#737373); margin-bottom:4px; }
+#beginner-result-details,#git-expert { margin:16px 0; font-size:12px; }
+@media(max-width:560px) { .beginner-actions { grid-template-columns:1fr; } .beginner-actions button { padding:14px; } }
 
 }
 .configuration { padding:12px; width:100%; overflow:auto; flex:1; }
@@ -30,3 +47,4 @@ body { display:flex; flex-direction:column; }
 .view-tabs { display:flex; gap:8px; padding:8px; }
 .view-tabs button { border:1px solid var(--border-default,#d7d7d4); background:var(--surface,#fff); color:var(--text-primary,#262626); border-radius:8px; padding:8px; }
 #advanced-view { flex:1; min-height:0; }
+#git-expert.configuration { flex:0 0 auto; margin:0; padding:8px; max-height:40dvh; overflow:auto; }

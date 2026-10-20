@@ -1,6 +1,8 @@
+import { mountBeginner } from './beginner-ui.js';
 export function mountGit({transport,context,notice,english=false}) {
   const $=id=>document.getElementById(id);
-  let state, busy=false, inspectedContext='';
+  let state, busy=false, inspectedContext='',beginner;
+  const ready=()=>context().ready && !!state && inspectedContext===contextKey();
   const contextKey=()=>JSON.stringify([context().projectId,context().revision]);
   if(english) {
     const labels={'基础 · Git':'Basic · Git','项目配置':'Project settings','高级 · 工作流':'Advanced · Workflows','刷新状态':'Refresh status','工作区差异':'Working tree diff','暂存区差异':'Staged diff','提交历史':'History','项目规则与 hooks（操作前必读）':'Project rules and hooks (read before acting)','工作分支名称':'Work branch name','新建并切换分支':'Create and switch branch','切换已有分支':'Switch existing branch','暂存选中文件':'Stage selected files','取消选中文件暂存':'Unstage selected files','提交信息':'Commit message','提交暂存内容':'Commit staged changes','获取远端':'Fetch origin','快进拉取':'Fast-forward pull','推送当前工作分支':'Push work branch','创建 PR':'Create PR','目标分支':'Base branch','PR 标题':'PR title','PR 描述':'PR description','我已阅读适用规则，并完成此次操作要求的测试、审批等人工前提':'I reviewed the applicable rules and completed required tests, approvals and other manual prerequisites','先选择并保存项目根目录，再刷新 Git 状态。':'Choose and save a project root, then refresh Git status.','需要本机已安装并登录 gh。先推送工作分支；不会自动合并 PR。按项目模板填写描述。':'Requires an installed and authenticated gh CLI. Push the branch first; PRs are not automatically merged. Follow the project PR template.','主分支禁止直接提交和推送；先创建工作分支，再通过 PR 合入。自动检查仅覆盖下方列明的分支、状态和 hooks。文档中的测试、审批、锁定与业务条件仍需逐项核对，不能用勾选替代执行。':'Direct commits and pushes to primary branches are blocked. Create a work branch and merge through a PR. Automatic checks cover the displayed branch, state and hooks only. Tests, approvals, locks and business requirements in documents still require manual verification.'};
@@ -11,6 +13,7 @@ export function mountGit({transport,context,notice,english=false}) {
   function buttons() {
     const ready=context().ready && !busy && !!state && inspectedContext===contextKey();
     $('git-refresh').disabled=busy || !context().ready;
+    beginner?.update();
     for(const button of document.querySelectorAll('[data-git]')) {
       const action=button.dataset.git, read=['diff','diff-staged','history'].includes(action);
       button.disabled=!ready || (!read && (!$('git-confirm').checked || !state.hooksReady || state.incomplete)) || (['commit','push','pr'].includes(action) && state.protectedBranches.includes(state.branch));
@@ -32,12 +35,13 @@ export function mountGit({transport,context,notice,english=false}) {
     for(const item of state.changes) {const label=document.createElement('label'),check=document.createElement('input'),text=document.createElement('span');label.className='check';check.type='checkbox';check.value=item.path;text.textContent=item.status+' '+item.path;label.append(check,text);$('git-files').append(label);}
     $('git-base').replaceChildren(...state.protectedBranches.map(b=>new Option(b,b)));
     $('git-branches').replaceChildren(...state.branches.map(b=>new Option(b,b)));
+    beginner?.render();
     const templates=state.sources.filter(s=>/pull_request_template/i.test(s.path));if(templates.length===1 && !$('git-body').value)$('git-body').value=templates[0].content;
   }
   async function run(work) {
     if(busy)return;busy=true;buttons();
-    try {await work();}catch(e){state=undefined;$('git-confirm').checked=false;say((e.code?e.code+' · ':'')+e.message+'\n请刷新核对实际状态；未自动重试。');}
-    finally {busy=false;buttons();}
+    try {await work();}catch(e){state=undefined;$('git-confirm').checked=false;beginner?.error(e);say((e.code?e.code+' · ':'')+e.message+'\n请刷新核对实际状态；未自动重试。');}
+    finally {busy=false;buttons();if(state)beginner?.render();}
   }
   $('git-refresh').onclick=()=>run(refresh);
   $('git-confirm').onchange=buttons;
@@ -49,7 +53,9 @@ export function mountGit({transport,context,notice,english=false}) {
   function tab(git) {$('git-view').hidden=!git;$('config-view').hidden=git;$('git-tab').setAttribute('aria-pressed',String(git));$('config-tab').setAttribute('aria-pressed',String(!git));buttons();}
   $('git-tab').onclick=()=>tab(true);$('config-tab').onclick=()=>tab(false);
   // Keep configuration reachable on first use; configured projects open the basic Git view.
-  tab(!!document.getElementById('basic-view') && !!context().projectId);
+  tab(!!context().projectId);
   document.getElementById('configuration-form').addEventListener('input',()=>{state=undefined;buttons();});
-  addEventListener('focus',buttons);buttons();
+  beginner=mountBeginner({state:()=>state,ready,isBusy:()=>busy,call,refresh,perform:run,english});
+  document.addEventListener('configuration-ready',()=>{buttons();if(context().ready)void run(refresh);});
+  addEventListener('focus',buttons);buttons();if(context().ready)void run(refresh);
 }

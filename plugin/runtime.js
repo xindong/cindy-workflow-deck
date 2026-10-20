@@ -46,7 +46,7 @@ async function refreshSidebar() {
 const executionLog = createExecutionLog({ store, changed: result => channel.postMessage({ from: 'main', type: 'execution-log', result }) });
 const configure = createConfigurationController({ store,
   git: async (dir, params) => {
-    const reply = await cindy.node.request({method:'project/git',params:{...params,dir},timeoutMs:120000});
+    const reply = await cindy.node.request({method:'project/git',params:{...params,dir},timeoutMs:120000,...(params.action?.startsWith('beginner-')?{maxTotalMs:900000}:{})});
     if(!reply.ok || reply.error) throw Object.assign(new Error(reply.error?.message || reply.message || 'Git 操作未完成，请刷新核对'),{code:reply.error?.data?.code || reply.errorCode || 'GIT_OPERATION_FAILED'});
     return reply.result;
   },

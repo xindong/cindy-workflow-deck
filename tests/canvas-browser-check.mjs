@@ -29,7 +29,7 @@ try {
  await page.locator('#refresh').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
  await page.evaluate(()=>document.getElementById('test-cards').hidden=true);
  const dock=await page.locator('.dock').boundingBox(),canvas=await page.locator('.execution').boundingBox();
- assert.ok(dock.y>550&&dock.height<=60);assert.ok(canvas.height>400);assert.ok(Math.abs(dock.x+dock.width/2-200)<2);
+ assert.ok(dock.y>550&&dock.height<=60);assert.ok(canvas.height>400,JSON.stringify({dock,canvas}));assert.ok(Math.abs(dock.x+dock.width/2-200)<2);
  await page.locator('main').screenshot({path:resolve(artifacts,'workflow-canvas-empty-light.png')});
  await page.locator('#details-toggle').click();await page.locator('#goal').fill('实现日志区');await page.locator('#details-toggle').click();
  await page.evaluate(()=>mockHost.options.autoSwitch=true);
