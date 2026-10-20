@@ -40,6 +40,6 @@ jobs:
         with:
           node-version: '22'
       - name: Test shared configuration and standalone service without Cindy
-        run: node --test tests/project-config.test.mjs tests/dual-project-service.test.mjs
+        run: node --test tests/project-config.test.mjs tests/dual-project-service.test.mjs tests/automatic-discovery.test.mjs
       - name: Check desktop shell syntax
         run: node --check desktop/main.cjs && node --check desktop/preload.cjs

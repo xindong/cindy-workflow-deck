@@ -24,8 +24,8 @@ Provide the project workflow files and PR skill listed above; missing files disa
 
 Progress is explicitly reported by AI through report_progress, not a mirror of full terminal output. AI completion and Host turn end are separate. Logs retain a bounded tail. If a receipt is uncertain, check the task list before clicking again. Upgrade Cindy for a missing or explicitly unsupported interface; permission denial and network/storage failures require their own remedies. The Node worker has system-account privileges; its fixed-path read checks are not an OS sandbox.
 
-## 自定义项目流程配置 / Custom workflow paths
+## 项目根目录配置 / Project root settings
 
-插件详情配置页可添加项目目录并填写各流程文件路径（项目相对路径优先，外部绝对路径需显式允许）。保存后可只读检查；配置项目里留空表示禁用此项，不再退回旧固定路径。未配置项目仍使用上方默认查找方式。使用工作流任务时仍需在对应本地聊天绑定，配置不能改写Host工作目录或伪造会话授权。
+只需在插件详情配置页添加并选择项目根目录，名称自动生成，保存后点击检查。五类工作流指令自动寻找，不要求逐项填写。优先_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md和项目内xd-pr-review/SKILL.md；未找到时在项目内有限查找对应名称。多个候选、搜索未完成、不可读或缺失时禁用对应入口并显示原因。自动发现只读，不执行文件、不查全盘；旧手动配置在本页保存后切换为自动发现。派发仍需目标本地聊天绑定，配置不能改写Host工作目录与授权。
 
-Add projects and instruction file paths in plugin settings. Relative paths resolve inside the selected project; external absolute paths require explicit permission. Blank paths disable configured flows. Unconfigured projects retain the legacy defaults. Task launches still use the verified bound chat and Host authorization.
+Choose only a project root in plugin settings, save and inspect. Names are derived automatically. Workflow instructions are discovered inside that project; missing, ambiguous or incomplete discovery disables only the affected workflow. Discovery is read-only and never executes files. Saving switches legacy manual configurations to automatic discovery. Launches still use the verified bound chat and Host authorization.

@@ -20,7 +20,7 @@ globalThis.cindy={
   calls.inspections.push(req);if(options.failNode)return{ok:false};
   const defaults={experiment:'_S/experiment.md',feature:'_S/feature.md',tooling:'_S/tooling.md',pr:'.agents/skills/xd-pr-review/SKILL.md',merge:'_E/merge.md'};
   return{ok:true,result:{checkedAt:new Date().toISOString(),workflows:Object.fromEntries(Object.keys(defaults).map(id=>{
-   const configured=req.params?.project?.workflows[id];
+   const configured=req.params?.project?.workflows?.[id];
    const file=configured?configured.path:defaults[id];
    const present=!!file&&(options.files==='all'||options.files==='partial'&&id==='feature');
    return[id,{ok:present,reason:!file?'not_configured':id==='pr'?'skill_unverified':'missing',source:file?(file.startsWith('/')?file:(req.params?.dir||context.workdir)+'/'+file):''}];
