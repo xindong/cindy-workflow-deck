@@ -26,6 +26,6 @@ Progress is explicitly reported by AI through report_progress, not a mirror of f
 
 ## 项目根目录配置 / Project root settings
 
-只需在插件详情配置页添加并选择项目根目录，名称自动生成，保存后点击检查。五类工作流指令自动寻找，不要求逐项填写。优先_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md和项目内xd-pr-review/SKILL.md；未找到时在项目内有限查找对应名称。多个候选、搜索未完成、不可读或缺失时禁用对应入口并显示原因。自动发现只读，不执行文件、不查全盘；旧手动配置在本页保存后切换为自动发现。派发仍需目标本地聊天绑定，配置不能改写Host工作目录与授权。
+只需在插件详情配置页添加并选择项目根目录，名称自动生成，保存后点击检查。五类工作流指令自动寻找，不要求逐项填写。优先_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md或_E/merged.md和项目内xd-pr-review/SKILL.md；未找到时在项目内有限查找对应名称。PR技能多个副本内容完全相同时固定顺序选一份，内容不同仍禁用；每份内容比较上限1MB。其它多候选、搜索未完成、不可读或缺失时禁用对应入口并显示原因。自动发现只读，不执行文件、不查全盘；旧手动配置在本页保存后切换为自动发现。派发仍需目标本地聊天绑定，配置不能改写Host工作目录与授权。
 
 Choose only a project root in plugin settings, save and inspect. Names are derived automatically. Workflow instructions are discovered inside that project; missing, ambiguous or incomplete discovery disables only the affected workflow. Discovery is read-only and never executes files. Saving switches legacy manual configurations to automatic discovery. Launches still use the verified bound chat and Host authorization.

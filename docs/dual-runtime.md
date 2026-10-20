@@ -4,9 +4,9 @@
 
 ### 自动寻找工作流指令
 
-优先检查_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md；PR检查项目内.agents/.claude/.cindy/.codex的skills/xd-pr-review/SKILL.md。PR多个候选禁用并展示来源，不使用全局技能冒充该项目配置。约定文件为空、不可读或是符号链接时直接报告，不静默退回其它文件。
+优先检查_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md或_E/merged.md；PR检查项目内.agents/.claude/.cindy/.codex的skills/xd-pr-review/SKILL.md。PR多个候选逐字节比较（每份上限1MB），内容完全相同按.agents→.claude→.cindy→.codex固定顺序选择并记录副本；内容不同、无法读取或超限时禁用并展示来源，不使用全局技能冒充该项目配置。约定文件为空、不可读或是符号链接时直接报告，不静默退回其它文件。
 
-缺少约定文件时，仅在选择的项目内查找同名experiment.md、feature.md、tooling.md、merge.md及pr.md/pr-review.md，最多5层、3000个条目；跳过.git、node_modules、vendor、dist、build、desktop-builds、artifacts、coverage和虚拟环境，不跟随符号链接。只有唯一匹配才启用；未找到、多个候选、搜索未完成分别提示。每次检查重新发现，不缓存已失效的路径。这里只发现Markdown指令，不猜任意脚本名称，也不自动执行内容。
+缺少约定文件时，仅在选择的项目内查找同名experiment.md、feature.md、tooling.md、merge.md/merged.md及pr.md/pr-review.md，最多5层、3000个条目；跳过.git、node_modules、vendor、dist、build、desktop-builds、artifacts、coverage和虚拟环境，不跟随符号链接。只有唯一匹配才启用；未找到、多个候选、搜索未完成分别提示。每次检查重新发现，不缓存已失效的路径。这里只发现Markdown指令，不猜任意脚本名称，也不自动执行内容。
 
 ## 在Cindy里配置
 

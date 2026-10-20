@@ -4,14 +4,46 @@ const path = require('node:path');
 const os = require('node:os');
 const AUTO_FILES = { experiment: '_S/experiment.md', feature: '_S/feature.md', tooling: '_S/tooling.md', merge: '_E/merge.md' };
 const SKILL_PATHS = ['.agents', '.claude', '.cindy', '.codex'].map(dir => dir + '/skills/xd-pr-review/SKILL.md');
+const MERGE_PATHS = ['_E/merge.md','_E/merged.md'];
+async function selectMatches(matches, compareCopies = false) {
+  if (matches.length < 2) return matches[0] || {ok:false,reason:'missing'};
+  const candidates = matches.map(item=>item.source);
+  if (compareCopies) {
+    let first;
+    for (const source of candidates) {
+      let handle;
+      try {
+        const constants = require('node:fs').constants;
+        handle = await fs.open(source,constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
+        const stat = await handle.stat();
+        if (!stat.isFile() || stat.size === 0) return {ok:false,reason:'check_failed',candidates};
+        const limit = 1024*1024;
+        if (stat.size > limit) return {ok:false,reason:'comparison_limit',candidates};
+        const buffer=Buffer.alloc(limit+1);let length=0;
+        while (length<buffer.length) {
+          const {bytesRead}=await handle.read(buffer,length,buffer.length-length,null);
+          if (!bytesRead) break;length+=bytesRead;
+        }
+        if (length>limit) return {ok:false,reason:'comparison_limit',candidates};
+        if (length!==stat.size) return {ok:false,reason:'check_failed',candidates};
+        const bytes=buffer.subarray(0,length);
+        if (first && !first.equals(bytes)) return {ok:false,reason:'ambiguous',candidates};
+        first=bytes;
+      } catch { return {ok:false,reason:'check_failed',candidates}; }
+      finally { if(handle) await handle.close(); }
+    }
+    return {...matches[0],identicalCopies:candidates};
+  }
+  return {ok:false,reason:'ambiguous',candidates};
+}
 async function discover(root) {
   const workflows = {}, unresolved = new Set();
   for (const id of ['experiment','feature','tooling','pr','merge']) {
-    const candidates = id === 'pr' ? SKILL_PATHS : [AUTO_FILES[id]];
+    const candidates = id === 'pr' ? SKILL_PATHS : id === 'merge' ? MERGE_PATHS : [AUTO_FILES[id]];
     const checked = await Promise.all(candidates.map(file => probe(root,file)));
     const matches = checked.filter(item => item.ok);
     const failure = checked.find(item => !item.ok && item.reason !== 'missing');
-    workflows[id] = failure || (matches.length > 1 ? {ok:false,reason:'ambiguous',candidates:matches.map(item=>item.source)} : matches[0] || {ok:false,reason:'missing'});
+    workflows[id] = failure || await selectMatches(matches,id==='pr');
     if (!matches.length && !failure) unresolved.add(id);
   }
   if (!unresolved.size) return {workflows,checkedAt:new Date().toISOString()};
@@ -31,7 +63,7 @@ async function discover(root) {
         await walk(target,depth+1);
       } else if (entry.isFile()) {
         for (const id of unresolved) {
-          const expected = id === 'pr' ? ['pr.md','pr-review.md'] : [id+'.md'];
+          const expected = id === 'pr' ? ['pr.md','pr-review.md'] : id === 'merge' ? ['merge.md','merged.md'] : [id+'.md'];
           if (!expected.includes(entry.name)) continue;
           const relative = path.relative(root,target).split(path.sep).join('/');
           const item = await probe(root,relative);
@@ -86,6 +118,8 @@ async function inspectProject(dir, home = os.homedir(), project) {
   const files = { experiment: '_S/experiment.md', feature: '_S/feature.md', tooling: '_S/tooling.md', merge: '_E/merge.md' };
   const workflows = {};
   for (const [id, file] of Object.entries(files)) workflows[id] = await probe(root, file);
+  const mergeChecked = await Promise.all(MERGE_PATHS.map(file=>probe(root,file)));
+  workflows.merge = mergeChecked.find(item=>!item.ok && item.reason!=='missing') || await selectMatches(mergeChecked.filter(item=>item.ok));
   const candidates = [
     [root, '.agents/skills/xd-pr-review/SKILL.md'], [root, '.claude/skills/xd-pr-review/SKILL.md'],
     [root, '.cindy/skills/xd-pr-review/SKILL.md'], [home, '.agents/skills/xd-pr-review/SKILL.md'],
