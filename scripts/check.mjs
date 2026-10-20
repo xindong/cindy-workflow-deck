@@ -17,7 +17,7 @@ for (const flow of WORKFLOWS) assert.ok(buildPrompt(flow.id).includes(manifest.i
 assert.equal(manifest.agent.tasks, true); // Legacy record inspection only.
 assert.deepEqual(manifest.card, {});
 assert.equal(manifest.agent.background, true);
-assert.equal(manifest.agent.errand, undefined);
+assert.equal(manifest.agent.errand, true);
 assert.equal(manifest.panel.html, 'panel.html');
 assert.equal(manifest.mainView, undefined);
 assert.equal(manifest.panel.position, 'left');

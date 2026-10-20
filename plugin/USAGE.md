@@ -6,11 +6,13 @@
 
 项目自行提供非空、可读普通文件：实验用 _S/experiment.md，功能用 _S/feature.md，工具用 _S/tooling.md，合并用 _E/merge.md。PR 需 xd-pr-review/SKILL.md。插件检查项目 .agents/skills、.claude/skills、.cindy/skills，以及用户 .agents/skills、.claude/skills、.codex/skills 中的该技能。未确认仅代表这些路径没有可用文件，不代表所有宿主技能不存在。符号链接不作为可用流程。缺少哪项只禁用对应按钮；插件不捆绑、创建或执行流程正文，流程由新任务的 AI 读取。
 
-## 绑定与启动
+## 选择项目与启动
 
-在本地项目聊天发送 $jixin-make-a-wish，点击新的“绑定工具栏”卡片。绑定只检查，不启动任务。面板“目标与目录”可补充下一次工作目标。每次点击新建独立任务，不复制聊天历史；Host 从来源聊天继承目录、Agent 和模型，权限仍由 Host 管理，不保证继承完全访问。只读聊天和远程工作目录不启动流程。
+在插件配置中添加项目，点击“选择项目目录”亲选根目录并保存；面板自动发现指令并启用可用按钮。无需发送工具命令或点聊天卡，切换聊天也不改变项目。每次点击创建新的独立任务，使用唯一sessionKey，不复制聊天历史。模型与权限由Cindy插件任务设置管理。
 
-发起间隔至少10秒；切到本插件确认创建的任务保留原来源绑定，陌生聊天先禁用。更新、停用重启插件或重启 Cindy 后，回到目标聊天取得新卡重绑。目录变化、来源归档或关联权限失效也可能要求重绑。检查失败可刷新；重复点旧卡不会重复派发。
+直接目录派发使用Host的agent.errand能力，安装更新会展示新增权限。只允许一个此类任务运行，发起间隔至少10秒；面板运行中每5秒查询状态，完成后恢复按钮。回执不确定不会重发；先核对任务列表，再用“解除阻塞（不重发）”允许后续新任务。旧任务的未核实状态仍保留。
+
+根目录须经宿主选择器亲选；手填路径或失效授权请重新选择。Host原生插件任务目录覆盖优先，须与当前项目一致；AI在操作前核对实际目录，不一致必须停止。配置不授予完全访问权限，不创建或执行项目脚本。旧聊天绑定卡仅兼容未配置项目，不是正常使用的前置条件。
 
 ## 日志与恢复
 
@@ -20,12 +22,12 @@ AI 使用 report_progress 回报实际步骤、输出摘要、阻塞或完成；
 
 ## English quick start
 
-Provide the project workflow files and PR skill listed above; missing files disable only their own actions. Send $jixin-make-a-wish in a local project chat, click a fresh binding card, then choose an action. Each click creates an independent task using Host-managed source directory, Agent, model and permissions, without copying chat history. Wait at least 10 seconds between launches. Plugin-created tasks keep the original source binding; unrelated chats do not. Rebind after plugin/Cindy restarts or updates. Remote workspaces and read-only sources cannot launch workflows.
+Select the project root with Choose directory in plugin settings and save. Available workflow buttons activate automatically; no chat command or card binding is needed. Each click creates an independent task with a unique sessionKey. Model and permissions come from Cindy plugin task settings. Direct launch uses agent.errand, which is disclosed during installation. Only one workflow runs at a time, with at least 10 seconds between launches; the panel queries running jobs every five seconds. After checking an uncertain task in the task list, unlock explicitly without resending it. Keep any native task directory override consistent with the selected root; tasks must stop on a mismatch.
 
 Progress is explicitly reported by AI through report_progress, not a mirror of full terminal output. AI completion and Host turn end are separate. Logs retain a bounded tail. If a receipt is uncertain, check the task list before clicking again. Upgrade Cindy for a missing or explicitly unsupported interface; permission denial and network/storage failures require their own remedies. The Node worker has system-account privileges; its fixed-path read checks are not an OS sandbox.
 
 ## 项目根目录配置 / Project root settings
 
-只需在插件详情配置页添加并选择项目根目录，名称自动生成，保存后点击检查。五类工作流指令自动寻找，不要求逐项填写。优先_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md或_E/merged.md和项目内xd-pr-review/SKILL.md；未找到时在项目内有限查找对应名称。PR技能多个副本内容完全相同时固定顺序选一份，内容不同仍禁用；每份内容比较上限1MB。其它多候选、搜索未完成、不可读或缺失时禁用对应入口并显示原因。自动发现只读，不执行文件、不查全盘；旧手动配置在本页保存后切换为自动发现。派发仍需目标本地聊天绑定，配置不能改写Host工作目录与授权。
+只需在插件详情配置页添加并选择项目根目录，名称自动生成，保存后点击检查。五类工作流指令自动寻找，不要求逐项填写。优先_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md或_E/merged.md和项目内xd-pr-review/SKILL.md；未找到时在项目内有限查找对应名称。PR技能多个副本内容完全相同时固定顺序选一份，内容不同仍禁用；每份内容比较上限1MB。其它多候选、搜索未完成、不可读或缺失时禁用对应入口并显示原因。自动发现只读，不执行文件、不查全盘；旧手动配置在本页保存后切换为自动发现。保存后直接从面板派发，不依赖聊天；Host仍负责目录授权和任务设置。
 
-Choose only a project root in plugin settings, save and inspect. Names are derived automatically. Workflow instructions are discovered inside that project; missing, ambiguous or incomplete discovery disables only the affected workflow. Discovery is read-only and never executes files. Saving switches legacy manual configurations to automatic discovery. Launches still use the verified bound chat and Host authorization.
+Choose only a project root in plugin settings, save and inspect. Names are derived automatically. Workflow instructions are discovered inside that project; missing, ambiguous or incomplete discovery disables only the affected workflow. Discovery is read-only and never executes files. Saving switches legacy manual configurations to automatic discovery. Launch directly from the panel using the selected root and Host authorization.

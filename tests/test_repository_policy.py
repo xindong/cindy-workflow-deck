@@ -46,7 +46,8 @@ class RepositoryPolicyTests(unittest.TestCase):
 
     def test_wrong_command_in_user_instructions(self):
         p = self.root / 'plugin/USAGE.md'
-        p.write_text(p.read_text().replace('$jixin-make-a-wish', '$Jixin-Make-A-Wish'))
+        # Direct project setup no longer needs a command in the usage text.
+        p.write_text(p.read_text() + '\n$Jixin-Make-A-Wish\n')
         self.reject('noncanonical plugin command')
 
     def test_old_html_title(self):

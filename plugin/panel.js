@@ -7,33 +7,33 @@ const usage = {
 };
 const strings = {
   'zh-CN': {
-    unbound:'未绑定项目', bind:'在目标项目聊天发送 $jixin-make-a-wish，点一次“绑定工具栏”。新任务继承绑定聊天的目录与模型。',
+    unbound:'未选择项目', bind:'在插件配置中点击“选择项目目录”并保存，即可直接使用工作流，无需聊天绑定。',
     none:'没有可用流程', partial:'可用流程', checking:'正在检查流程…', readonly:'当前聊天为只读，工作流不可启动', failed:'无法检查目录，请刷新或重新绑定', ready:'点击图标启动',
     goal:'补充目标（可选）', refresh:'重新检查流程', details:'目标与目录', action:'点击后：新建独立任务，', independent:'不复制聊天记录；权限由 Cindy 管理。',
     nofiles:'此目录未检测到可用的流程文件或可确认的 PR 技能，所有工作流已禁用。',
     accepted:'新任务已受理：', rejected:'未启动：', uncertain:'派发结果待核实，请先查看 Cindy 任务列表，勿重复点击。', preparing:'正在核对流程并发起任务…',
     checked:'上次检查：', cooldown:'两次发起至少间隔10秒，请稍候。', busy:'上一条请求正在受理，请稍候。',
-    reasons:{ comparison_limit:'PR技能副本超过1MB，未自动比较或启用。',ambiguous:'发现多个候选文件，请按项目约定整理后刷新。',discovery_incomplete:'查找范围达到上限，无法确认唯一流程文件。',not_configured:'旧配置禁用了此流程，可在插件配置保存根目录以启用自动查找。',platform_mismatch:'文件路径属于其它操作系统，请重新配置。', unbound:'当前聊天尚未绑定。请在目标聊天发送 $jixin-make-a-wish 并点击绑定。', readonly:'当前绑定聊天为只读，不启动会修改项目的任务。', checking:'尚在检查流程，检查完成前不可点击。',check_failed:'检查未成功，无法确认流程可用；不会把错误当作“文件不存在”。',missing:'流程文件不存在。',empty:'流程文件为空。',symlink:'流程路径含符号链接，未将其视为可用文件。',not_directory:'流程父路径不是目录。',not_file:'流程路径不是普通文件。',unreadable:'没有读取此流程的权限。',skill_unverified:'未在已检查的项目或用户技能路径确认 xd-pr-review；不代表所有宿主技能都不存在。',cooldown:'两次发起至少间隔10秒，请稍候。',busy:'上一条请求正在受理，请稍候。'},
+    reasons:{ comparison_limit:'PR技能副本超过1MB，未自动比较或启用。',ambiguous:'发现多个候选文件，请按项目约定整理后刷新。',discovery_incomplete:'查找范围达到上限，无法确认唯一流程文件。',not_configured:'旧配置禁用了此流程，可在插件配置保存根目录以启用自动查找。',platform_mismatch:'文件路径属于其它操作系统，请重新配置。', unbound:'尚未绑定项目。请在插件配置选择项目根目录并保存，无需聊天绑定。', readonly:'当前绑定聊天为只读，不启动会修改项目的任务。', checking:'尚在检查流程，检查完成前不可点击。',check_failed:'检查未成功，无法确认流程可用；不会把错误当作“文件不存在”。',missing:'流程文件不存在。',empty:'流程文件为空。',symlink:'流程路径含符号链接，未将其视为可用文件。',not_directory:'流程父路径不是目录。',not_file:'流程路径不是普通文件。',unreadable:'没有读取此流程的权限。',skill_unverified:'未在已检查的项目或用户技能路径确认 xd-pr-review；不代表所有宿主技能都不存在。',cooldown:'两次发起至少间隔10秒，请稍候。',busy:'上一条请求正在受理，请稍候。'},
     actions:{experiment:'读取实验流程，探索并验证方案。',feature:'读取功能流程，按目标实现功能。',tooling:'读取工具流程，开发或改进工具。',pr:'调用 xd-pr-review，提交并跟进 PR 流程。',merge:'读取合并流程，核对分支后清理并更新 main。'},
-    errors:{SOURCE_CHANGED:'聊天已切换，请在当前项目重新绑定。',FLOW_UNAVAILABLE:'流程不可用或聊天已切换，请查看悬停说明。',RATE_LIMITED:'触发过快，请等待10秒后再试。',PERMISSION_DENIED:'Cindy 未授予此会话关联或发起权限，请重新绑定并检查插件权限。',JOURNAL_FULL:'待核实记录已满，请先核对任务列表。',STORAGE_UNAVAILABLE:'插件记录不可用，本次结果未确认。'},
+    errors:{BUSY:'已有工作流运行，请等待完成。',INVALID_REQUEST:'目录授权无效，请在插件配置重新点击“选择项目目录”并保存。',MODEL_UNAVAILABLE:'模型不可用，请检查 Cindy 插件任务设置。',SOURCE_CHANGED:'聊天已切换，请在当前项目重新绑定。',FLOW_UNAVAILABLE:'流程不可用或聊天已切换，请查看悬停说明。',RATE_LIMITED:'触发过快，请等待10秒后再试。',PERMISSION_DENIED:'Cindy 未授予此会话关联或发起权限，请重新绑定并检查插件权限。',JOURNAL_FULL:'待核实记录已满，请先核对任务列表。',STORAGE_UNAVAILABLE:'插件记录不可用，本次结果未确认。'},
   },
   en: {
-    unbound:'No project bound',bind:'In your project chat, send $jixin-make-a-wish and click Bind toolbar once. New tasks use that chat directory and model.',
+    unbound:'No project selected',bind:'Choose and save the project root in plugin settings to use workflows directly. No chat binding is required.',
     none:'No available workflows',partial:'Available workflows',checking:'Checking workflows…',readonly:'Read-only chat; workflows unavailable',failed:'Cannot inspect directory. Refresh or rebind.',ready:'Start a workflow',
     goal:'Work goal (optional)',refresh:'Recheck workflows',details:'Goal and directory',action:'On click: create a new task and ',independent:'Chat history is not copied. Cindy manages permissions.',
     nofiles:'No usable workflow files or verified PR skill were found here. All workflow actions are disabled.',
     accepted:'New task accepted: ',rejected:'Not started: ',uncertain:'Delivery is unverified. Check the Cindy task list before clicking again.',preparing:'Checking workflows and starting task…',
     checked:'Last checked: ',cooldown:'Wait at least 10 seconds between launches.',busy:'A previous request is being accepted.',
-    reasons:{comparison_limit:'PR skill copies exceed the 1MB comparison limit; workflow is disabled.',ambiguous:'Multiple instruction files found. Arrange project files and refresh.',discovery_incomplete:'Search limit reached; the workflow path is unverified.',not_configured:'Legacy configuration disables this workflow. Save the project root to enable automatic discovery.',platform_mismatch:'This path belongs to another operating system. Reconfigure it.',unbound:'This chat is not bound. Send $jixin-make-a-wish in your project chat and click Bind toolbar.',readonly:'The bound chat is read-only. Project-changing workflows cannot start.',checking:'The workflow check has not finished.',check_failed:'Inspection failed. This does not mean the file is missing.',missing:'The workflow file does not exist.',empty:'The workflow file is empty.',symlink:'A workflow path contains a symlink and is not accepted.',not_directory:'A parent path is not a directory.',not_file:'The workflow path is not a regular file.',unreadable:'The workflow file is not readable.',skill_unverified:'xd-pr-review was not verified in checked project/user skill paths. Other Host skills may still exist.',cooldown:'Wait at least 10 seconds between launches.',busy:'A previous request is being accepted.'},
+    reasons:{comparison_limit:'PR skill copies exceed the 1MB comparison limit; workflow is disabled.',ambiguous:'Multiple instruction files found. Arrange project files and refresh.',discovery_incomplete:'Search limit reached; the workflow path is unverified.',not_configured:'Legacy configuration disables this workflow. Save the project root to enable automatic discovery.',platform_mismatch:'This path belongs to another operating system. Reconfigure it.',unbound:'Select and save a project root in plugin settings. No chat binding is required.',readonly:'The bound chat is read-only. Project-changing workflows cannot start.',checking:'The workflow check has not finished.',check_failed:'Inspection failed. This does not mean the file is missing.',missing:'The workflow file does not exist.',empty:'The workflow file is empty.',symlink:'A workflow path contains a symlink and is not accepted.',not_directory:'A parent path is not a directory.',not_file:'The workflow path is not a regular file.',unreadable:'The workflow file is not readable.',skill_unverified:'xd-pr-review was not verified in checked project/user skill paths. Other Host skills may still exist.',cooldown:'Wait at least 10 seconds between launches.',busy:'A previous request is being accepted.'},
     actions:{experiment:'read the experiment flow to explore and validate an idea.',feature:'read the feature flow to implement your goal.',tooling:'read the tooling flow to build or improve tools.',pr:'use xd-pr-review to submit and follow a PR.',merge:'read the merge flow to check branches, clean up and update main.'},
-    errors:{SOURCE_CHANGED:'The chat changed. Bind this project first.',FLOW_UNAVAILABLE:'Workflow unavailable or chat changed. Check its tooltip.',RATE_LIMITED:'Wait 10 seconds before trying again.',PERMISSION_DENIED:'Cindy did not grant this chat association or launch permission. Rebind and check plugin permissions.',JOURNAL_FULL:'Too many unverified records. Check the task list.',STORAGE_UNAVAILABLE:'Plugin journal unavailable. Delivery is not confirmed.'},
+    errors:{BUSY:'A workflow is already running.',INVALID_REQUEST:'Reselect the root with Choose directory in plugin settings.',MODEL_UNAVAILABLE:'Check the model in Cindy plugin task settings.',SOURCE_CHANGED:'The chat changed. Bind this project first.',FLOW_UNAVAILABLE:'Workflow unavailable or chat changed. Check its tooltip.',RATE_LIMITED:'Wait 10 seconds before trying again.',PERMISSION_DENIED:'Cindy did not grant this chat association or launch permission. Rebind and check plugin permissions.',JOURNAL_FULL:'Too many unverified records. Check the task list.',STORAGE_UNAVAILABLE:'Plugin journal unavailable. Delivery is not confirmed.'},
   },
 };
 const compactCopy={
-  'zh-CN':{actions:{experiment:'新建独立任务，读取实验流程并验证方案。',feature:'新建独立任务，读取功能流程并实现目标。',tooling:'新建独立任务，读取工具流程并开发工具。',pr:'新建独立任务，调用 PR 审查技能。',merge:'新建独立任务，核对并清理分支。'},unbound:'先在项目聊天发送 $jixin-make-a-wish，点击绑定工具栏。',skill_unverified:'常见技能路径未确认 xd-pr-review；其它宿主技能可能存在。',nofiles:'全部流程不可用。'},
-  en:{actions:{experiment:'New independent task: read the experiment flow and validate an idea.',feature:'New independent task: read the feature flow and implement your goal.',tooling:'New independent task: read the tooling flow and build tools.',pr:'New independent task: use the PR review skill.',merge:'New independent task: check and clean up branches.'},unbound:'Project not bound. Send $jixin-make-a-wish in its chat and click Bind toolbar.',skill_unverified:'PR skill not verified in checked paths. Other Host skills may exist.',nofiles:'All workflows are unavailable.'},
+  'zh-CN':{actions:{experiment:'新建独立任务，读取实验流程并验证方案。',feature:'新建独立任务，读取功能流程并实现目标。',tooling:'新建独立任务，读取工具流程并开发工具。',pr:'新建独立任务，调用 PR 审查技能。',merge:'新建独立任务，核对并清理分支。'},unbound:'在插件配置选择项目根目录并保存。',skill_unverified:'常见技能路径未确认 xd-pr-review；其它宿主技能可能存在。',nofiles:'全部流程不可用。'},
+  en:{actions:{experiment:'New independent task: read the experiment flow and validate an idea.',feature:'New independent task: read the feature flow and implement your goal.',tooling:'New independent task: read the tooling flow and build tools.',pr:'New independent task: use the PR review skill.',merge:'New independent task: check and clean up branches.'},unbound:'Choose and save the project root in plugin settings.',skill_unverified:'PR skill not verified in checked paths. Other Host skills may exist.',nofiles:'All workflows are unavailable.'},
 };
-let locale='en', state={state:'unbound',workflows:{}}, pending=false, tipFlow='', cooldownTimer;
+let locale='en', state={state:'unbound',workflows:{}}, pending=false, tipFlow='', cooldownTimer, projectPollTimer;
 let executions=[], selectedTask='', logSignature='';
 const logCopy={
   'zh-CN':{title:'执行记录',help:'实际步骤与输出由 AI 回报；运行状态由 Cindy 提供。',empty:'等待工作流开始',hint:'点击底部工作流按钮，在这里查看步骤与输出。',waiting:'任务已受理，等待执行回报',task:'选择工作流任务',step:'执行步骤',output:'操作输出',completed:'AI 报告完成',blocked:'遇到阻塞',host:'Cindy 状态',error:'执行记录未能保存或读取，请查看任务聊天。'},
@@ -104,6 +104,10 @@ function buildButtons(){
 }
 function render(){
   renderLogs();
+  clearTimeout(projectPollTimer);
+  if(state.mode==='project' && state.busy && !state.verificationNeeded) projectPollTimer=setTimeout(()=>{void request('sidebar').then(value=>{state=value;render();return request('execution-log');}).then(value=>{executions=value;renderLogs();}).catch(()=>feedback(t().failed));},5000);
+  $('project-acknowledge').hidden=!state.verificationNeeded;
+  $('project-acknowledge').textContent=locale==='zh-CN'?'已检查任务列表，解除阻塞（不重发）':'I checked the task list; unlock without resending';
   const available=Object.values(state.workflows||{}).filter(item=>item.enabled).length;
   $('toolbar').classList.toggle('unavailable',!available||pending);
   for(const button of $('toolbar').querySelectorAll('button')){const flow=WORKFLOWS.find(flow=>flow.id===button.dataset.workflow);button.setAttribute('aria-label',locale==='zh-CN'?flow.label:flow.en);button.setAttribute('aria-disabled',String(pending||!state.workflows?.[flow.id]?.enabled));}
@@ -112,9 +116,11 @@ function render(){
   $('summary').textContent=pending?t().preparing:state.state==='unbound'?t().bind:state.state==='checking'?t().checking:state.state==='readonly'?t().readonly:state.state==='check_failed'?t().failed:state.busy?t().busy:Date.now()<state.nextLaunchAt?t().cooldown:!available?t().none:available<5?t().partial+' '+available+'/5':t().ready;
   $('refresh').setAttribute('aria-label',t().refresh);$('details-toggle').setAttribute('aria-label',t().details);
   if(state.state==='check_failed'&&state.checkError)$('summary').textContent+=' · '+state.checkError;
+  if(state.mode==='project' && state.busy)$('summary').textContent=state.verificationNeeded?(locale==='zh-CN'?'结果待核实：请先检查任务列表，再手动解除阻塞。':'Unverified result. Check the task list before unlocking.'):(locale==='zh-CN'?'工作流任务运行中，完成后自动恢复按钮。':'Workflow running. Buttons return when it finishes.');
+  if(state.dispatchError)feedback((locale==='zh-CN'?'任务失败：':'Task failed: ')+(t().errors[state.dispatchError]||state.dispatchError));
   if(state.state==='unsupported')$('summary').textContent=upgrade(locale);
-  $('usage-title').textContent=locale==='zh-CN'?'使用说明':'Usage';$('usage-text').textContent=usage[locale];
-  $('goal-label').textContent=t().goal;$('binding-help').textContent=t().bind;$('check-time').textContent=state.checkedAt?t().checked+new Date(state.checkedAt).toLocaleTimeString(locale):'';
+  $('usage-title').textContent=locale==='zh-CN'?'使用说明':'Usage';$('usage-text').textContent=state.mode==='project'?(locale==='zh-CN'?'选择项目根目录并保存，自动发现五工作流；无需工具命令或聊天绑定，切换聊天不改变项目。每次点击创建独立任务，模型与权限由 Cindy 插件任务设置决定。目录须经宿主选择器亲选；如有原生任务目录覆盖，请保持与项目一致，否则任务应停止。宿主目前同时只允许一个此类工作流运行，两次启动至少间隔10秒；完成后按钮自动恢复。回执不确定时只查询，不自动重发；核对任务列表后可手动解除阻塞。日志由 AI 通过 report_progress 回报。':'Choose and save a root to discover workflows. No command or chat binding is needed; changing chats does not change projects. Each click starts an independent task using Cindy plugin model and permission settings. The root must be selected with the Host picker. Keep any native task directory override consistent. One workflow can run at a time, with at least 10 seconds between starts. Completion restores the buttons. Uncertain requests are never replayed; check the task list before unlocking. AI reports progress using report_progress.'):usage[locale];
+  $('goal-label').textContent=t().goal;$('binding-help').textContent=state.mode==='project'?(locale==='zh-CN'?'项目来自插件配置。无需聊天绑定；模型与权限使用 Cindy 的插件任务设置。':'Project selected in settings. No chat binding. Cindy plugin task settings control model and permissions.'):t().bind;$('check-time').textContent=state.checkedAt?t().checked+new Date(state.checkedAt).toLocaleTimeString(locale):'';
   clearTimeout(cooldownTimer);
   if(state.nextLaunchAt>Date.now())cooldownTimer=setTimeout(()=>{void request('sidebar').then(value=>{state=value;render();});},state.nextLaunchAt-Date.now()+20);
   if(tipFlow){const flow=WORKFLOWS.find(flow=>flow.id===tipFlow);const button=$('toolbar').querySelector('[data-workflow="'+tipFlow+'"]');if(flow&&button)showTip(flow,button);}
@@ -122,9 +128,10 @@ function render(){
 async function launch(id){
   const sourceSessionId=state.sessionId;pending=true;render();feedback(t().preparing);
   try{await wake();const result=await request('sidebar-launch',{workflowId:id,sourceSessionId,goal:$('goal').value});
-    feedback(result.state==='accepted'?t().accepted+result.sessionId:result.state==='rejected'?t().rejected+(result.code==='UNSUPPORTED_HOST'?upgrade(locale):t().errors[result.code]||result.code):t().uncertain);
+    feedback(result.state==='accepted'?t().accepted+(result.sessionId||result.jobId):result.state==='rejected'?t().rejected+(result.code==='UNSUPPORTED_HOST'?upgrade(locale):t().errors[result.code]||result.code):t().uncertain);
   }catch{feedback(t().uncertain);}finally{pending=false;try{state=await request('sidebar');}catch{}render();}
 }
+$('project-acknowledge').addEventListener('click',async()=>{try{state=await request('project-acknowledge');render();}catch{feedback(t().failed);}});
 $('refresh').addEventListener('click',async()=>{hideTip();$('refresh').disabled=true;try{await wake();state=await request('inspect');render();}catch{feedback(t().failed);}finally{$('refresh').disabled=false;}});
 $('details-toggle').addEventListener('click',()=>{hideTip();$('details').hidden=!$('details').hidden;$('details-toggle').setAttribute('aria-expanded',String(!$('details').hidden));});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'){hideTip();$('details').hidden=true;$('details-toggle').setAttribute('aria-expanded','false');}});

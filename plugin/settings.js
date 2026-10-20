@@ -49,7 +49,7 @@ async function start() {
   $('heading').textContent = say('项目与流程配置','Project and workflow settings');
   $('intro').textContent = transport.standalone
     ? say('独立桌面 · 无需 Cindy。此阶段提供配置与只读项目检查；Git 写入及 AI 接入尚未开放。','Standalone desktop · No Cindy required. Configuration and read-only inspection are available; Git writes and AI integrations are not yet enabled.')
-    : say('Cindy 插件配置 · 项目选择仅配置文件检查。高级任务仍需在目标项目聊天绑定，以使用 Host 的真实目录与授权。','Cindy settings · Directory selection configures file inspection. Advanced tasks still require binding in the target project chat using Host authorization.');
+    : say('Cindy 插件配置 · 选择项目根目录并保存后，即可在工作流面板使用，无需发送工具命令或绑定聊天。请使用“选择项目目录”完成宿主目录授权。','Cindy settings · Choose and save a project root to use the toolbar directly. No chat command or binding is required. Use Choose directory for Host authorization.');
   $('path-help').textContent = say('只需选择项目根目录。工具自动寻找工作流指令；缺失或存在多个候选时禁用对应入口，不执行发现的文件。已有手动路径会保留到本页保存，保存后改用自动发现。','Choose only the project root. Workflow instructions are discovered automatically; missing or ambiguous matches disable that workflow. Discovery never executes files. Saving switches legacy manual paths to automatic discovery.');
   $('directory').addEventListener('input', () => { active().directory = $('directory').value; markDirty(); });
   $('project').addEventListener('change', () => { draft.activeProjectId = $('project').value; markDirty(); render(); });
@@ -59,7 +59,7 @@ async function start() {
   $('configuration-form').addEventListener('submit', event => { event.preventDefault(); void run(async () => {
     const configuration = normalizeConfiguration({ ...draft, projects: draft.projects.map(project => ({id: project.id, directory: project.directory, discovery: 'auto'})) });
     state = await transport.call('config-save', { expectedRevision: state.revision, configuration });
-    draft = structuredClone(state.configuration); dirty = false; render(); notice(say('配置已保存。未创建任务或执行脚本。','Configuration saved. No task or script was executed.'));
+    draft = structuredClone(state.configuration); dirty = false; render(); notice(say('项目已保存，面板将自动检查并启用可用流程。未创建任务或执行脚本。','Project saved. The toolbar will check and enable available workflows. No task or script was executed.'));
   }); });
   $('reload').addEventListener('click', () => run(async () => {
     if (dirty) { notice(say('有未保存修改；再次点击“重新加载”将丢弃这些配置编辑。','Unsaved edits; click Reload again to discard configuration edits.')); if (!$('reload').dataset.confirm) { $('reload').dataset.confirm = 'yes'; return; } }

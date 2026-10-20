@@ -2,9 +2,9 @@
   "schemaVersion": 3,
   "id": "jixin-make-a-wish",
   "name": "极心许愿",
-  "description": "工作流小工具栏与项目配置页；支持按项目配置指令文件，绑定聊天后点击新建独立任务。",
+  "description": "选择项目根目录，自动发现工作流，在插件面板直接创建独立任务。",
   "whenToUse": "开始实验性工作、功能开发、工具开发、提交 PR 或整理分支时使用工作流快捷面板。",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "minCindyVersion": "0.1.109",
   "entry": "main.js",
   "launch": "resident",
@@ -12,7 +12,7 @@
   "tools": [
     {
       "name": "get_workflows",
-      "description": "在当前本地项目聊天显示绑定工具栏卡片；目录匹配插件配置时检查自定义指令文件，未配置项目沿用默认检查。绑定不执行脚本；侧边按钮新建继承绑定聊天目录与模型的独立任务。",
+      "description": "显示兼容聊天绑定卡。推荐直接在插件配置选择项目根目录，无需调用工具或绑定聊天即可从面板启动独立任务。",
       "parameters": {
         "type": "object",
         "properties": {},
@@ -54,7 +54,8 @@
   ],
   "agent": {
     "tasks": true,
-    "background": true
+    "background": true,
+    "errand": true
   },
   "locales": {
     "en": "locales/en.json",
