@@ -1,6 +1,6 @@
 {
   "name": "极心许愿",
-  "description": "Select a project root, discover workflows and start independent tasks directly in the plugin.",
+  "description": "Project Git operations with native hooks and branch gates; advanced workflows create independent tasks.",
   "whenToUse": "Starting experiments, developing features or tools, submitting pull requests, or cleaning up branches.",
   "tools": {
     "get_workflows": {

@@ -1,4 +1,4 @@
-# 双形态第一阶段：项目配置与只读检查
+# 双形态：项目配置、基础Git与工作流
 
 当前已实现：同一份项目模型和页面分别接入Cindy设置与独立Electron桌面。用户只填写/选择项目根目录，项目名自动取目录名，不显示五项脚本路径、外部路径开关或文件选择按钮。支持多项目、保存重载、并发修订冲突保护。检查只读，不执行脚本或改写目标项目。
 
@@ -26,7 +26,7 @@
 
 忽略安装scripts是为了明确分开下载Electron与本仓hook安装；开发提交仍需单独运行python3 scripts/install_hooks.py。Electron版本和完整依赖已锁定。桌面窗口提供仅项目根目录的配置页面和系统目录选择器，两端共用同一自动发现逻辑。
 
-配置保存在本应用系统userData目录中的projects.json，不写入项目，不与Cindy/kv自动同步。保存采用修订校验和原子替换；只支持单实例持久写入。本地只读检查额外显示实际Git根目录、分支、变更及项目根AGENTS.md/CONTRIBUTING.md的存在情况。规则发现不是完整嵌套规则解析或提交准入，界面明确标识；没有实现Git写入、AI调用和独立工作流执行，不能用此阶段程序宣称完整开发工具已交付。
+配置保存在本应用系统userData目录中的projects.json，不写入项目，不与Cindy/kv自动同步。保存采用修订校验和原子替换；只支持单实例持久写入。本地只读检查额外显示实际Git根目录、分支、变更及项目根AGENTS.md/CONTRIBUTING.md的存在情况。规则发现不是完整嵌套规则解析或提交准入，界面明确标识；基础Git读写已接入共享服务，详见basic-git.md；AI调用与独立工作流执行尚未实现。
 
 macOS和Windows开发机均可运行npm run desktop:package，生成忽略目录desktop-builds/中的平台包。macOS生成.app及ZIP；Windows x64生成便携ZIP，解压后打开“极心许愿.exe”，须保留同目录运行库和resources文件夹，不能单独复制exe。包含Electron运行时，不要求使用者安装Node或Cindy；Git检查需要本机已安装Git。macOS使用ad-hoc签名，未做Developer ID签名/公证；Windows尚未代码签名，不冒称系统已信任。
 
@@ -38,3 +38,5 @@ Desktop packages工作流在main推送或手动触发时构建Windows x64包，�
 - npm run test:release：版本/发布/规范门禁；package-lock随版本文件同步。
 - npm run check：设置页CSP、manifest引用、共享与桌面代码语法及规范检查。
 - 浏览器/桌面验收：设置PLAYWRIGHT_MODULE_PATH为已安装Playwright的index.mjs路径，PLAYWRIGHT_BROWSERS_PATH为浏览器缓存后，运行node tests/dual-ui-check.mjs。启动真实Electron并使用临时用户数据/项目，再以模拟Host验证Cindy配置页。安装依赖后也可不设置PLAYWRIGHT_MODULE_PATH，默认使用锁定的playwright-core；仅桌面验收设JIXIN_NATIVE_ONLY=1，并用JIXIN_DESKTOP_EXECUTABLE指向打包后的可执行文件。不会在真实用户项目执行Git写入或AI任务。
+
+基础Git验收：node tests/git-ui-check.mjs，真实Electron临时仓库完成分支/暂存/提交、DCO，模拟Host验证基础/高级切换、Git RPC和320/860px明暗布局。未创建真实远端PR，未执行新版安装。

@@ -45,6 +45,11 @@ async function refreshSidebar() {
 }
 const executionLog = createExecutionLog({ store, changed: result => channel.postMessage({ from: 'main', type: 'execution-log', result }) });
 const configure = createConfigurationController({ store,
+  git: async (dir, params) => {
+    const reply = await cindy.node.request({method:'project/git',params:{...params,dir},timeoutMs:120000});
+    if(!reply.ok || reply.error) throw Object.assign(new Error(reply.error?.message || reply.message || 'Git 操作未完成，请刷新核对'),{code:reply.error?.data?.code || reply.errorCode || 'GIT_OPERATION_FAILED'});
+    return reply.result;
+  },
   pick: () => { if (typeof cindy.pick !== 'function') throw Object.assign(new Error('请升级 Cindy 以选择目录'), { code: 'UNSUPPORTED_HOST' }); return cindy.pick({ mode: 'directory', title: '配置项目与流程文件' }); },
   inspect: (dir, project) => inspectWithHost(cindy.node, dir, project),
   changed: () => { channel.postMessage({ from: 'main', type: 'configuration-changed' }); void refreshSidebar().then(result => channel.postMessage({ from: 'main', type: 'sidebar-state', result })).catch(error => console.error('Configuration refresh failed:', error.code || error.name)); },

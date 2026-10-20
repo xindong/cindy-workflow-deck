@@ -15,3 +15,10 @@ pre { font: 12px/1.7 ui-monospace,monospace; white-space: pre-wrap; overflow-wra
 @media(prefers-color-scheme:dark) { body { color:var(--text-primary,#e5e5e5); } input,select,button { background:var(--surface,#262626); border-color:var(--border-default,#525252); } }
 
 
+
+[hidden] { display:none !important; }
+textarea { width:100%; max-width:100%; padding:8px; font:inherit; color:inherit; background:var(--surface,#fff); border:1px solid var(--border-default,#d7d7d4); border-radius:6px; }
+.check { display:flex; align-items:start; gap:8px; } .check input { width:auto; flex:none; margin-top:3px; }
+#git-gate { border-left:3px solid var(--text-secondary,#737373); padding-left:10px; }
+#git-files { margin:14px 0; } #git-rules { max-height:340px; overflow:auto; }
+@media(prefers-color-scheme:dark) { textarea { background:var(--surface,#262626); } }

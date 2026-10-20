@@ -9,7 +9,7 @@ const context=await browser.newContext({viewport:{width:360,height:720}}), panel
 const errors=[];for(const page of [panel,settings])page.on('pageerror',e=>errors.push(e.message));
 const tools=panel.locator('.tool[aria-disabled="false"]');
 try {
-  await panel.goto(base+'/panel.html?direct=1');
+  await panel.goto(base+'/panel.html?direct=1');await panel.locator('#advanced-mode').click();
   await panel.locator('#summary').filter({hasText:'插件配置'}).waitFor();
   await settings.goto(base+'/settings.html');await settings.locator('#add').click();
   await settings.locator('#pick-directory').click();await settings.locator('#directory').waitFor();
@@ -28,7 +28,7 @@ try {
   // The real poll timer restores the buttons and authoritative task receipt.
   await tools.nth(4).waitFor({timeout:12000});
   await panel.locator('#task-select option[value="task-direct-1"]').waitFor({state:'attached'});
-  await panel.reload();await tools.nth(4).waitFor();
+  await panel.reload();await panel.locator('#advanced-mode').click();await tools.nth(4).waitFor();
   assert.equal(await panel.evaluate(()=>mockHost.calls.cards.length),0);
   await panel.evaluate(()=>mockHost.options.lose=true);
   await panel.locator('[data-workflow="tooling"]').click();

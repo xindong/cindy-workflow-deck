@@ -1,5 +1,5 @@
 import { configurationState, updateConfiguration } from './core/project-config.mjs';
-export function createConfigurationController({ store, pick, inspect, changed = () => {} }) {
+export function createConfigurationController({ store, pick, inspect, git, changed = () => {} }) {
   return async function handle(method, params = {}) {
     switch (method) {
       case 'config-read': return configurationState(await store.read());
@@ -12,6 +12,13 @@ export function createConfigurationController({ store, pick, inspect, changed = 
         const result = await pick();
         if (!result?.ok || !result.path) throw Object.assign(new Error(result?.message || '目录选择未完成'), { code: result?.errorCode || 'CANCELLED' });
         return { path: result.path };
+      }
+      case 'git-request': {
+        const current = configurationState(await store.read());
+        if(current.revision !== params.revision) throw Object.assign(new Error('项目配置已变化，请重新加载'),{code:'CONFIG_CONFLICT'});
+        const project = current.configuration.projects.find(p=>p.id===current.configuration.activeProjectId && p.id===params.projectId);
+        if(!project || !git) throw new Error('请先保存项目或升级插件');
+        return git(project.directory,params);
       }
       case 'config-inspect': {
         const current = configurationState(await store.read());

@@ -60,7 +60,7 @@ try {
   const base=await new Promise((yes,no)=>{server.stdout.once('data',data=>yes(data.toString().trim()));server.once('error',no);});
   browser=await chromium.launch({headless:true});
   const context=await browser.newContext({viewport:{width:400,height:780}});
-  const panel=await context.newPage();panel.on('pageerror',e=>errors.push(e.message));await panel.goto(base+'/panel.html');await panel.locator('#source-card button').waitFor();
+  const panel=await context.newPage();panel.on('pageerror',e=>errors.push(e.message));await panel.goto(base+'/panel.html');await panel.locator('#advanced-mode').click();await panel.locator('#source-card button').waitFor();
   const settings=await context.newPage();settings.on('pageerror',e=>errors.push(e.message));await settings.goto(base+'/settings.html');await settings.locator('#add:not(:disabled)').waitFor();
   await settings.locator('#add').click();await settings.locator('#pick-directory').click();await awaitCondition(settings,()=>document.getElementById('directory').value==='/preview/selected-project');
   assert.equal(await settings.locator('#project-name, [id^=flow-], [id^=external-]').count(),0);

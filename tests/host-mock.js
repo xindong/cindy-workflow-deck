@@ -18,6 +18,7 @@ globalThis.cindy={
  },
  node:{async request(req){
   calls.inspections.push(req);if(options.failNode)return{ok:false};
+  if(req.method==='project/git') return {ok:true,result:{root:req.params.dir,branch:'main',head:'fixture',changes:[],branches:['main'],protectedBranches:['main','master'],sources:[{path:'AGENTS.md',content:'Main requires PR.'}],incomplete:false,hooksPath:'.git/hooks',hooks:[],hooksReady:true,requirements:{},token:'mock-review-token'}};
   const defaults={experiment:'_S/experiment.md',feature:'_S/feature.md',tooling:'_S/tooling.md',pr:'.agents/skills/xd-pr-review/SKILL.md',merge:'_E/merge.md'};
   return{ok:true,result:{checkedAt:new Date().toISOString(),workflows:Object.fromEntries(Object.keys(defaults).map(id=>{
    const configured=req.params?.project?.workflows?.[id];

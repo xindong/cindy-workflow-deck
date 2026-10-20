@@ -112,7 +112,7 @@ function render(){
   $('toolbar').classList.toggle('unavailable',!available||pending);
   for(const button of $('toolbar').querySelectorAll('button')){const flow=WORKFLOWS.find(flow=>flow.id===button.dataset.workflow);button.setAttribute('aria-label',locale==='zh-CN'?flow.label:flow.en);button.setAttribute('aria-disabled',String(pending||!state.workflows?.[flow.id]?.enabled));}
   const basename=(state.directory||'').replace(/[\\/]+$/,'').split(/[\\/]/).pop();
-  $('project-name').textContent=basename||t().unbound;$('directory').textContent=state.directory||t().unbound;
+  $('project-name').textContent=basename||t().unbound;$('workflow-directory').textContent=state.directory||t().unbound;
   $('summary').textContent=pending?t().preparing:state.state==='unbound'?t().bind:state.state==='checking'?t().checking:state.state==='readonly'?t().readonly:state.state==='check_failed'?t().failed:state.busy?t().busy:Date.now()<state.nextLaunchAt?t().cooldown:!available?t().none:available<5?t().partial+' '+available+'/5':t().ready;
   $('refresh').setAttribute('aria-label',t().refresh);$('details-toggle').setAttribute('aria-label',t().details);
   if(state.state==='check_failed'&&state.checkError)$('summary').textContent+=' · '+state.checkError;

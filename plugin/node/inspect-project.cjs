@@ -137,11 +137,12 @@ function startStdio() {
     let request;
     try {
       request = JSON.parse(line);
+      if (request.method === 'project/git') { const result = await require('./git-service.cjs').gitRequest(request.params?.dir, request.params); process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:request.id,result}) + '\n'); return; }
       if (request.method !== 'project/inspect') return process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Unknown method' } }) + '\n');
       const result = await inspectProject(request.params?.dir, undefined, request.params?.project);
       process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) + '\n');
-    } catch {
-      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request?.id ?? null, error: { code: -32000, message: 'PROJECT_CHECK_FAILED' } }) + '\n');
+    } catch (error) {
+      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request?.id ?? null, error: { code: -32000, message: error.message || 'PROJECT_CHECK_FAILED', data: {code:error.code || 'PROJECT_CHECK_FAILED'} } }) + '\n');
     }
   });
 }

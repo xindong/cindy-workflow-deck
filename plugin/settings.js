@@ -1,3 +1,4 @@
+import { mountGit } from './git-ui.js';
 import { FLOW_IDS, newProject, normalizeConfiguration } from './core/project-config.mjs';
 import { createSettingsTransport } from './settings-transport.js';
 const transport = createSettingsTransport();
@@ -41,15 +42,16 @@ async function load() {
   render(); $('inspection').textContent = ''; notice(say('已加载。配置只保存在此设备，不写入目标项目。','Loaded. Settings stay on this device and do not modify the target project.'));
 }
 async function start() {
+  busy=true; buttons();
   if (transport.standalone) english = !navigator.language.toLowerCase().startsWith('zh');
   else { const response = await fetch('/app-context'); if (!response.ok) throw new Error('Cannot read app context'); const data = await response.json(); english = !(data.context?.locale || 'en').startsWith('zh'); }
   document.documentElement.dataset.runtime = transport.standalone ? 'desktop' : 'cindy';
   document.documentElement.lang = english ? 'en' : 'zh-CN';
   for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = tr(element.dataset.i18n);
-  $('heading').textContent = say('项目与流程配置','Project and workflow settings');
+  $('heading').textContent = say('Git 与工作流','Git and workflows');
   $('intro').textContent = transport.standalone
-    ? say('独立桌面 · 无需 Cindy。此阶段提供配置与只读项目检查；Git 写入及 AI 接入尚未开放。','Standalone desktop · No Cindy required. Configuration and read-only inspection are available; Git writes and AI integrations are not yet enabled.')
-    : say('Cindy 插件配置 · 选择项目根目录并保存后，即可在工作流面板使用，无需发送工具命令或绑定聊天。请使用“选择项目目录”完成宿主目录授权。','Cindy settings · Choose and save a project root to use the toolbar directly. No chat command or binding is required. Use Choose directory for Host authorization.');
+    ? say('独立桌面 · 无需 Cindy。基础 Git 与项目配置；高级工作流使用 Cindy 面板，AI 诊断尚未开放。','Standalone desktop · No Cindy required. Configuration and read-only inspection are available; Git writes and AI integrations are not yet enabled.')
+    : say('选择并保存项目根目录。基础界面管理 Git，高级界面启动项目工作流。请使用“选择项目目录”完成宿主目录授权。','Choose and save a project root. Use Basic for Git and Advanced for project workflows. Use Choose directory for Host authorization.');
   $('path-help').textContent = say('只需选择项目根目录。工具自动寻找工作流指令；缺失或存在多个候选时禁用对应入口，不执行发现的文件。已有手动路径会保留到本页保存，保存后改用自动发现。','Choose only the project root. Workflow instructions are discovered automatically; missing or ambiguous matches disable that workflow. Discovery never executes files. Saving switches legacy manual paths to automatic discovery.');
   $('directory').addEventListener('input', () => { active().directory = $('directory').value; markDirty(); });
   $('project').addEventListener('change', () => { draft.activeProjectId = $('project').value; markDirty(); render(); });
@@ -74,7 +76,8 @@ async function start() {
     lines.push(say('规则来源（仅发现，尚未执行提交门禁）：','Rule sources (discovery only, commit gate not executed): '), ...(result.rules || []).map(p => p.path));
     $('inspection').textContent = lines.join('\n'); notice(say('只读检查完成，没有运行项目脚本。','Read-only inspection completed; no project scripts were executed.'));
   }));
-  await load();
+  await load(); busy=false; buttons();
+  mountGit({transport, english, context:()=>({projectId:state?.configuration.activeProjectId,revision:state?.revision,ready:!dirty && !busy && !!active()}), notice});
 }
 void start().catch(error => { busy = true; notice(error.message); buttons(); });
 addEventListener('pagehide', () => transport.close());

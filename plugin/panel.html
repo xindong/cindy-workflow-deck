@@ -1,6 +1,25 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>极心许愿</title><link rel="stylesheet" href="panel.css"></head>
-<body><main>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>极心许愿</title><link rel="stylesheet" href="panel.css"><link rel="stylesheet" href="panel-git.css"></head>
+<body><nav class="view-tabs" aria-label="界面"><button id="basic-mode" type="button">基础 · Git</button><button id="advanced-mode" type="button">高级 · 工作流</button></nav><section id="basic-view" class="configuration"><header><h1 id="heading">项目与流程配置</h1><p id="intro"></p></header>
+<nav class="row" aria-label="视图"><button id="git-tab" type="button">Git</button><button id="config-tab" type="button">项目配置</button></nav>
+<section id="git-view" hidden><h2>Git</h2><p id="git-state">先选择并保存项目根目录，再刷新 Git 状态。</p><div class="row"><button id="git-refresh" disabled>刷新状态</button><button data-git="diff" disabled>工作区差异</button><button data-git="diff-staged" disabled>暂存区差异</button><button data-git="history" disabled>提交历史</button></div>
+<p id="git-gate" role="status"></p><details><summary>项目规则与 hooks（操作前必读）</summary><p>主分支禁止直接提交和推送；先创建工作分支，再通过 PR 合入。自动检查仅覆盖下方列明的分支、状态和 hooks。文档中的测试、审批、锁定与业务条件仍需逐项核对，不能用勾选替代执行。</p><div id="git-rules"></div></details>
+<label class="check"><input id="git-confirm" type="checkbox">我已阅读适用规则，并完成此次操作要求的测试、审批等人工前提</label>
+<label>工作分支名称<input id="git-branch" list="git-branches" placeholder="feature/my-change"></label><datalist id="git-branches"></datalist><div class="row"><button data-git="branch-create" disabled>新建并切换分支</button><button data-git="branch-switch" disabled>切换已有分支</button></div>
+<div id="git-files"></div><div class="row"><button data-git="stage" disabled>暂存选中文件</button><button data-git="unstage" disabled>取消选中文件暂存</button></div>
+<label>提交信息<textarea id="git-message" rows="3" placeholder="feat(scope): 简短描述"></textarea></label><button data-git="commit" disabled>提交暂存内容</button>
+<div class="row actions"><button data-git="fetch" disabled>获取远端</button><button data-git="pull" disabled>快进拉取</button><button data-git="push" disabled>推送当前工作分支</button></div>
+<details><summary>创建 PR</summary><p>需要本机已安装并登录 gh。先推送工作分支；不会自动合并 PR。按项目模板填写描述。</p><label>目标分支<select id="git-base"></select></label><label>PR 标题<input id="git-title"></label><label>PR 描述<textarea id="git-body" rows="5"></textarea></label><button data-git="pr" disabled>创建 PR</button></details><pre id="git-output" role="log"></pre></section>
+<div id="config-view">
+<p id="notice" role="status" aria-live="polite"></p>
+<form id="configuration-form">
+<div class="row"><label><span data-i18n="project">当前项目</span><select id="project"></select></label><button type="button" id="add" disabled data-i18n="add">添加项目</button><button type="button" id="remove" disabled data-i18n="remove">移除</button></div>
+<fieldset id="fields" disabled><legend data-i18n="binding">项目绑定</legend><label><span data-i18n="directory">项目根目录</span><input id="directory" maxlength="2000" required></label><button id="pick-directory" type="button" data-i18n="chooseDirectory">选择项目目录</button>
+<p class="help" id="path-help"></p></fieldset>
+<div class="row actions"><button type="submit" id="save" disabled data-i18n="save">保存配置</button><button type="button" id="reload" disabled data-i18n="reload">重新加载</button><button type="button" id="inspect" disabled data-i18n="inspect">检查已保存项目</button></div>
+</form><section aria-labelledby="inspection-heading"><h2 id="inspection-heading" data-i18n="results">检查结果</h2><pre id="inspection"></pre></section>
+</div>
+</section><main id="advanced-view" hidden>
   <div class="project"><span class="project-dot" aria-hidden="true"></span><span id="project-name">…</span></div>
   <section class="execution" aria-labelledby="log-title"><header class="log-heading"><h1 id="log-title">执行记录</h1><span id="log-count"></span></header><p id="log-help" class="log-help"></p><label id="task-label" for="task-select"></label><select id="task-select"></select><div id="execution-log" class="log-list" role="log" aria-live="polite" aria-relevant="additions text"></div></section>
   <div class="bottom"><div class="dock"><nav id="toolbar" class="capsule" aria-label="工作流"></nav>
@@ -8,6 +27,6 @@
   <p id="summary" class="summary" role="status"></p>
   <button id="project-acknowledge" type="button" hidden></button>
   <p id="feedback" class="feedback" role="status" hidden></p>
-  <section id="details" class="details" hidden><p id="directory" class="path"></p><p id="binding-help"></p><label id="goal-label" for="goal"></label><textarea id="goal" rows="3" maxlength="4000"></textarea><p id="check-time"></p><details><summary id="usage-title"></summary><p id="usage-text"></p></details></section>
+  <section id="details" class="details" hidden><p id="workflow-directory" class="path"></p><p id="binding-help"></p><label id="goal-label" for="goal"></label><textarea id="goal" rows="3" maxlength="4000"></textarea><p id="check-time"></p><details><summary id="usage-title"></summary><p id="usage-text"></p></details></section>
   <aside id="tooltip" class="tooltip" role="tooltip" hidden><strong id="tip-title"></strong><p id="tip-action"></p><p id="tip-source"></p><p id="tip-reason"></p></aside>
-</div></main><script type="module" src="panel.js"></script></body></html>
+</div></main><script type="module" src="panel.js"></script><script type="module" src="panel-mode.js"></script></body></html>
