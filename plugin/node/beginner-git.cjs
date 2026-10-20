@@ -49,8 +49,9 @@ async function runBeginner(ctx,state,params,env) {
   }
   const base=await baseBranch(ctx,state);
   const submit=params.action==='beginner-submit';
-  let selected,message;
+  let selected,message,issue;
   if(submit) {
+    if(Array.isArray(params.paths)&&params.paths.length>200)fail('SELECT_FILES','一次最多提交200个文件，请分批选择。');
     if(!Array.isArray(params.paths)||!params.paths.length||params.paths.length>200||params.paths.some(p=>typeof p!=='string'||!state.changes.some(c=>c.path===p))) fail('SELECT_FILES','请先勾选这次要提交的文件。');
     if(typeof params.summary!=='string'||!params.summary.trim()||params.summary.length>160||/[\r\n]/.test(params.summary)) fail('WRITE_SUMMARY','请用一句话说明这次改了什么。');
     if(state.changes.some(c=>c.status[0]!==' '&&c.status[0]!=='?')) fail('EXISTING_STAGED_CHANGES','项目里还有之前准备提交的内容。为了不把其它人的修改一起提交，请让负责人先核对。');
@@ -60,11 +61,12 @@ async function runBeginner(ctx,state,params,env) {
     message=state.requirements.conventional ? 'chore: '+params.summary.trim() : params.summary.trim();
     if(/^Claude-Session:/mi.test(message)) fail('WRITE_SUMMARY','请只填写修改内容，不要填写会话链接。');
     if(state.sources.filter(s=>/pull_request_template/i.test(s.path)).length>1) fail('REVIEW_TEMPLATE_AMBIGUOUS','团队有多种送审模板，需要负责人确认本次使用哪一种。文件未提交或上传。');
+    if(params.issue!=null)issue=await require('./github-issues.cjs').validateIssue(ctx,params.issue,env);
     // Verify the review component before creating branches or touching the index.
-    try {await execute('gh',['auth','status'],{cwd:ctx.root,env,timeout:20000,maxBuffer:256*1024,windowsHide:true});}
+    try {await execute('gh',['auth','status',...(issue?['--hostname','github.com']:[])],{cwd:ctx.root,env,timeout:20000,maxBuffer:256*1024,windowsHide:true});}
     catch {fail('REVIEW_ACCOUNT_REQUIRED','这台电脑还没有连接团队审核账号。请联系项目负责人完成连接；本次没有提交或上传。');}
   } else if(state.changes.length) fail('DIRTY_WORKTREE','你还有未提交的修改。请先提交，或者请负责人协助保留修改后再更新；工具不会覆盖它们。');
-  const record={id:params.operationId,action:params.action,state:'running',completed:[],step:'prepare',base,createdAt:new Date().toISOString()};
+  const record={id:params.operationId,action:params.action,state:'running',completed:[],step:'prepare',base,...(issue?{issue}:{}),createdAt:new Date().toISOString()};
   async function step(name,work) {
     record.step=name;process.stderr.write('beginner-step: '+name+'\n');await writeReceipt(ctx,record);
     const result=await work();record.completed.push(name);await writeReceipt(ctx,record);return result;
@@ -80,14 +82,14 @@ async function runBeginner(ctx,state,params,env) {
       const branch='work/change-'+Date.now().toString(36)+'-'+randomUUID().slice(0,8);record.branch=branch;
       await step('branch',()=>ctx.run(['switch','-c',branch]));
       await step('stage',()=>ctx.run(['add','--',...selected.map(p=>':(literal)'+p)]));
-      await step('commit',()=>ctx.run(['commit',...(state.requirements.signoff?['--signoff']:[]),'-m',message]));
+      await step('commit',()=>ctx.run(['commit',...(state.requirements.signoff?['--signoff']:[]),'-m',message,...(issue?['-m','Refs: '+issue.url]:[])]));
       record.commit=(await ctx.run(['rev-parse','HEAD'])).trim();
       await step('push',()=>ctx.run(['push','--set-upstream','origin','HEAD:refs/heads/'+branch]));
       const templates=state.sources.filter(s=>/pull_request_template/i.test(s.path));
       // Templates with team-specific checklists cannot be truthfully completed by a generic Git service.
-      const body=params.summary.trim()+'\n\n本次提交的文件：\n'+selected.map(p=>'- '+p).join('\n')+(templates.length===1?'\n\n'+templates[0].content:'');
+      const body=params.summary.trim()+(issue?'\n\n关联事项：'+issue.url:'')+'\n\n本次提交的文件：\n'+selected.map(p=>'- '+p).join('\n')+(templates.length===1?'\n\n'+templates[0].content:'');
       if(templates.length) record.templateNotice='项目有审核模板，请审核人在送审详情中核对其要求。';
-      const result=await step('review',()=>execute('gh',['pr','create',...(templates.length?['--draft']:[]),'--base',base,'--head',branch,'--title',message,'--body',body],{cwd:ctx.root,env,timeout:60000,maxBuffer:256*1024,windowsHide:true}));
+      const result=await step('review',()=>execute('gh',['pr','create',...(issue?['--repo','github.com/'+issue.repository]:[]),...(templates.length?['--draft']:[]),'--base',base,'--head',branch,'--title',message,'--body',body],{cwd:ctx.root,env,timeout:60000,maxBuffer:256*1024,windowsHide:true}));
       record.reviewUrl=result.stdout.trim();record.message=templates.length?'修改已上传，送审草稿需要负责人按模板完善。':'修改已提交，等待团队审核。';record.state=templates.length?'review-draft':'awaiting-review';
     }
     record.step='finished';await writeReceipt(ctx,record);return record;

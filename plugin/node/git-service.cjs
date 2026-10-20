@@ -81,7 +81,7 @@ async function gitRequest(directory,params={}) {
   const job=previous.then(async()=>{
     const ctx=await context(directory),run=ctx.run;
     let lock;
-    if(!['status','diff','history'].includes(action)) {
+    if(!['status','diff','history','issues-list'].includes(action)) {
       lock=path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim());
       try {await fs.mkdir(lock);}
       catch(error) {if(error.code==='EEXIST')fail('OPERATION_LOCKED','另一项项目操作正在执行，或上次操作意外中断。请先重新检查；仍无法继续时，让负责人核对实际状态和 Git 元数据中的 jixin-write.lock，不要重复提交。');throw error;}
@@ -93,6 +93,7 @@ async function gitRequest(directory,params={}) {
       for(const [key,t] of tickets) if(t.expires<Date.now()) tickets.delete(key);
       return {...state,token,beginnerReceipt:await require('./beginner-git.cjs').readReceipt(ctx)};
     }
+    if(action==='issues-list') return require('./github-issues.cjs').listIssues(ctx,params,environment());
     if(action==='diff') return {output:await run(['diff',...(params.staged?['--cached']:[]),'--no-ext-diff','--no-textconv','--stat','--patch'])};
     if(action==='history') return {output:await run(['log','-20','--format=%h %s (%an)','--no-show-signature'])};
     if(!['branch-create','branch-switch','stage','unstage','commit','fetch','pull','push','pr','beginner-submit','beginner-update','beginner-acknowledge'].includes(action)) fail('UNKNOWN_ACTION','不支持此 Git 操作');

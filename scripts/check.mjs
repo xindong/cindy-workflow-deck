@@ -53,7 +53,7 @@ for (const file of ['settings.html']) {
 }
 assert.equal(manifest.settingsHtml, 'settings.html');
 assert.equal(manifest.pick, true);
-for (const file of ['plugin/core/project-config.mjs', 'plugin/node/git-service.cjs', 'plugin/node/beginner-git.cjs', 'desktop/project-service.js', 'desktop/main.cjs', 'desktop/preload.cjs', 'scripts/package_desktop.mjs']) {
+for (const file of ['plugin/core/project-config.mjs', 'plugin/node/git-service.cjs', 'plugin/node/beginner-git.cjs', 'plugin/node/github-issues.cjs', 'desktop/project-service.js', 'desktop/main.cjs', 'desktop/preload.cjs', 'scripts/package_desktop.mjs']) {
   const result = spawnSync(process.execPath, ['--check', resolve(root, file)], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
 }

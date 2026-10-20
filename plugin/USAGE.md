@@ -40,3 +40,9 @@ Choose only a project root in plugin settings, save and inspect. Names are deriv
 项目规则和hooks仍有效；文档中的测试、审批、资源锁定等必须实际完成，不用确认勾选代替执行。需要负责人预先配置好本机Git、团队远端和gh审核账号。没有AI也能使用日常Git；AI诊断和独立端高级工作流尚未实现。
 
 Daily work supports existing projects: Update project, View my changes, and Submit my changes. Select files, describe the change, verify team prerequisites and confirm. A work branch, native checks, upload and review are handled internally; no primary-branch commit or automatic merge. A team PR template creates an unchecked draft for the project owner to complete. Uncertain results stop without replay. Professional Git tools remain in the advanced entry. Native hooks and actual manual prerequisites still apply; the owner must configure Git, the remote and an authenticated gh CLI first.
+
+### 批量选择与关联Issue
+
+文件清单提供全选、全不选与已选数量，单次最多200个。提交页点“加载我的事项”，从当前项目中“分配给我的 / 我创建的”开放GitHub Issue选择一项；显示当前仓库和实际gh登录账号，最多100项。关联会写入提交记录和PR描述，不自动关闭Issue。提交前重新核对事项状态和归属，失败不会开始本地提交。origin须指向GitHub.com；缺账号、网络或权限时提示负责人处理，不自动重试。
+
+Select all / Select none affect only the file checkboxes. Load my issues reads up to 100 open issues assigned to or created by the current gh account in the origin GitHub.com repository. The selected issue is revalidated before local changes and referenced in the commit and PR body; it is not automatically closed.
