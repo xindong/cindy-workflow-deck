@@ -14,11 +14,15 @@ export function normalizeConfiguration(value) {
   const projects = value.projects.map(project => {
     if (!project || typeof project.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(project.id) || seen.has(project.id)) fail('项目标识重复或无效');
     seen.add(project.id);
-    if (typeof project.name !== 'string' || !project.name.trim() || project.name.length > 80 || /[\x00-\x1f]/.test(project.name)) fail('项目名称无效');
     const directory = typeof project.directory === 'string' ? project.directory.trim() : '';
     const key = directoryKey(directory);
     if (roots.has(key)) fail('同一目录只能配置一次');
     roots.add(key);
+    if (project.discovery === 'auto' || !project.workflows) {
+      const name = directory.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || directory;
+      return { id: project.id, name: name.slice(0,80), directory, discovery: 'auto' };
+    }
+    if (typeof project.name !== 'string' || !project.name.trim() || project.name.length > 80 || /[\x00-\x1f]/.test(project.name)) fail('项目名称无效');
     const workflows = {};
     for (const id of FLOW_IDS) {
       const item = project.workflows?.[id];
