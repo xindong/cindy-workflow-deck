@@ -42,8 +42,35 @@ test('dependencies and empty canonical instructions are not eligible fallback ma
   const result=await f.inspect();assert.equal(result.workflows.experiment.reason,'missing');assert.equal(result.workflows.feature.reason,'empty');
 });
 test('multiple project PR skills are ambiguous and no global skill is used',async t=>{
-  const f=await fixture(t);await f.put('.claude/skills/xd-pr-review/SKILL.md');await f.put('.agents/skills/xd-pr-review/SKILL.md');
+  const f=await fixture(t);await f.put('.claude/skills/xd-pr-review/SKILL.md','different instructions');await f.put('.agents/skills/xd-pr-review/SKILL.md');
   assert.equal((await f.inspect()).workflows.pr.reason,'ambiguous');
+});
+test('identical project PR skills resolve deterministically and changed copies become ambiguous',async t=>{
+  const f=await fixture(t);
+  const first=await f.put('.agents/skills/xd-pr-review/SKILL.md');
+  const second=await f.put('.claude/skills/xd-pr-review/SKILL.md');
+  let result=await f.inspect();
+  assert.equal(result.workflows.pr.ok,true);assert.equal(result.workflows.pr.source,first);
+  assert.deepEqual(result.workflows.pr.identicalCopies,[first,second]);
+  await f.put('.claude/skills/xd-pr-review/SKILL.md','changed');
+  result=await f.inspect();assert.equal(result.workflows.pr.reason,'ambiguous');
+});
+test('merged.md is discovered before a bounded fallback search and both names conflict safely',async t=>{
+  const f=await fixture(t);const file=await f.put('_E/merged.md');
+  await f.put('a/b/c/d/e/f/feature.md');
+  assert.equal((await f.inspect()).workflows.merge.source,file);
+  assert.equal((await inspectProject(f.root,f.root)).workflows.merge.source,file);
+  await f.put('_E/merge.md','other merge instructions');
+  assert.equal((await f.inspect()).workflows.merge.reason,'ambiguous');
+});
+test('relocated merged.md is recognized by bounded search',async t=>{
+  const f=await fixture(t);const file=await f.put('instructions/merged.md');
+  assert.equal((await f.inspect()).workflows.merge.source,file);
+});
+test('oversized duplicated PR instructions are not read without limit or accepted as identical',async t=>{
+  const f=await fixture(t);const large='x'.repeat(1024*1024+1);
+  await f.put('.agents/skills/xd-pr-review/SKILL.md',large);await f.put('.claude/skills/xd-pr-review/SKILL.md',large);
+  assert.equal((await f.inspect()).workflows.pr.reason,'comparison_limit');
 });
 test('incomplete bounded search does not claim uniqueness',async t=>{
   const f=await fixture(t);await f.put('docs/feature.md');await f.put('a/b/c/d/e/f/feature.md');
