@@ -1,0 +1,25 @@
+/* The plugin keeps its small icon dock; forms only appear after a click. */
+.compact-label { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip-path:inset(50%); white-space:nowrap; }
+.compact-anchor { display:inline-flex; flex:0 0 auto; border-radius:50%; }
+.view-tabs { gap:3px; flex-wrap:wrap; padding:6px; flex-shrink:0; }
+.view-tabs .compact-icon, .configuration .compact-icon { display:flex; align-items:center; justify-content:center; padding:0; width:36px; height:36px; border:0; border-radius:50%; background:transparent; color:var(--text-secondary,#737373); }
+.compact-icon svg { width:19px; height:19px; flex:none; }
+.compact-icon:hover, .compact-icon:focus-visible, .compact-anchor:focus-visible, .compact-icon[aria-pressed="true"] { background:var(--surface-chip,#eee); color:var(--text-primary,#262626); }
+#basic-view { padding:6px; min-height:0; }
+#basic-view>header { display:none; }
+#basic-view>nav { gap:3px; margin-bottom:8px; }
+#git-view .beginner-heading { margin:0 0 8px; display:flex; flex-wrap:wrap; gap:4px; }
+#git-view .beginner-heading>div { width:100%; min-width:0; }
+#git-view .beginner-heading h2 { margin:0; font-size:11px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#git-view .beginner-heading p { font-size:10px; margin:4px 0; }
+#git-view .beginner-actions { display:flex; flex-wrap:wrap; gap:3px; padding:5px; width:fit-content; max-width:100%; border:1px solid var(--border-default,#ddd); border-radius:24px; background:var(--surface-elevated,#fff); }
+#git-view .beginner-actions .compact-icon { width:36px; height:36px; padding:0; }
+#git-view #beginner-message[data-quiet="true"] { display:none; }
+#git-view .beginner-message { font-size:11px; margin:10px 0; }
+#git-view .beginner-sheet { padding:8px; margin:10px 0; }
+#git-view .beginner-sheet h3 { font-size:14px; }
+#compact-tooltip { z-index:30; }
+@media(max-width:180px) {
+  .view-tabs .compact-icon, .configuration .compact-icon, #git-view .beginner-actions .compact-icon { width:32px; height:32px; }
+  #git-view .beginner-actions { border-radius:18px; gap:2px; padding:4px; }
+}

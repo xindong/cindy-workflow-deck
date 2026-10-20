@@ -61,6 +61,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,english=f
     else if(receipt && receipt.state!=='acknowledged') message=receipt.message || say('上一次操作还需要核对，请联系项目负责人，不要重复提交。','The previous operation needs verification. Contact the project owner; do not submit again.');
     else message=say('更新不会覆盖未提交的修改；提交只包含你勾选的文件。','Updates preserve your unsubmitted work. Only selected files are submitted.');
     $('beginner-message').textContent=message;
+    $('beginner-message').dataset.quiet=String(current.hooksReady && !current.incomplete && (!receipt || receipt.state==='acknowledged'));
     $('beginner-detail').textContent=receipt ? [receipt.message||'',receipt.completed?.join(' → ')||'',receipt.reviewUrl||'',receipt.issue?say('关联事项：','Related issue: ')+receipt.issue.url:'',receipt.templateNotice||'',receipt.detail||''].filter(Boolean).join('\n') : '';
     $('beginner-result-details').hidden=!receipt;
     $('beginner-acknowledge').disabled=!receipt || !['running','blocked','needs-verification'].includes(receipt.state);
@@ -117,6 +118,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,english=f
     await call('beginner-acknowledge',{token:state().token,recordId:state().beginnerReceipt.id,rulesConfirmed:true});await refresh();
   });
   function error(problem) {
+    $('beginner-message').dataset.quiet='false';
     const messages={STALE_REVIEW:'文件或项目规则已经变化。请点“重新检查”，再选择要提交的内容。',HOOKS_NOT_READY:'项目的提交检查还没配置好，请联系项目负责人。文件没有被提交或上传。',NOT_PROJECT_ROOT:'请选择已有项目的最外层文件夹。',RULE_DISCOVERY_INCOMPLETE:'还不能完整确认团队规则，请联系项目负责人。',CONFIG_CONFLICT:'选择的项目发生了变化，请重新打开项目后再试。',RESPONSE_UNCONFIRMED:'操作结果还没确认。请点“重新检查”核对，不要再次提交。'};
     $('beginner-message').textContent=messages[problem.code]||problem.message||'操作未完成，请联系项目负责人。';
     $('beginner-detail').textContent=(problem.code||'')+'\n'+problem.message;$('beginner-result-details').hidden=false;

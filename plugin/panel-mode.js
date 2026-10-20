@@ -1,3 +1,4 @@
+import './panel-compact.js';
 import './settings.js';
 const $=id=>document.getElementById(id);
 const expert=$('git-expert');expert.classList.add('configuration');$('advanced-view').prepend(expert);
