@@ -62,7 +62,9 @@ async function snapshot({root,run}) {
     } catch(e) {if(e.code!=='ENOENT') throw e;}
   }
   let expectedHooks=false; try { expectedHooks=(await fs.stat(path.join(root,'.githooks'))).isDirectory(); } catch(e) {if(e.code!=='ENOENT') throw e;}
-  const hooksReady=(!expectedHooks || hookBase===path.join(root,'.githooks')) && hooks.every(h=>h.executable);
+  const trackedHooks=tracked.filter(p=>p.startsWith('.githooks/')&&!p.slice(10).includes('/')&&['pre-commit','prepare-commit-msg','commit-msg','pre-push','post-checkout','post-commit','post-merge'].includes(p.slice(10)));
+  expectedHooks=expectedHooks||trackedHooks.length>0;
+  const hooksReady=(!expectedHooks || hookBase===path.join(root,'.githooks')) && hooks.every(h=>h.executable) && trackedHooks.every(p=>hooks.some(h=>h.name===p.slice(10)));
   const rulesText=sources.map(s=>s.content).join('\n');
   const requirements={signoff:/DCO|Signed-off-by:/i.test(rulesText),conventional:/<type>\(<scope>\)|Conventional Commits/i.test(rulesText)};
   const value={root,branch,head,changes,branches,protectedBranches,sources,incomplete,hooksPath:hookBase,hooks,hooksReady,requirements};
@@ -88,6 +90,7 @@ async function gitRequest(directory,params={}) {
     }
     try {
     const state=await snapshot(ctx);
+    if(action==='prepare') return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:params.confirmProjectSetup===true});
     if(action==='status') {
       const token=randomUUID();tickets.set(token,{root,fingerprint:state.fingerprint,expires:Date.now()+10*60*1000});
       for(const [key,t] of tickets) if(t.expires<Date.now()) tickets.delete(key);
@@ -109,7 +112,7 @@ async function gitRequest(directory,params={}) {
       if(!prior || prior.id!==params.recordId) fail('STALE_REVIEW','需要重新检查上次操作记录。');
       await service.acknowledge(ctx,prior);return {message:'已记录核对，不会重放原操作。'};
     }
-    if(action.startsWith('beginner-')) return require('./beginner-git.cjs').runBeginner(ctx,state,params,environment());
+    if(action.startsWith('beginner-')) return await require('./beginner-git.cjs').runBeginner(ctx,state,params,environment());
     if(state.protectedBranches.includes(state.branch) && ['commit','push','pr'].includes(action)) fail('PROTECTED_BRANCH','当前为主分支 '+state.branch+'：禁止直接提交或推送。请新建工作分支，提交后通过 PR 合入。');
     let args;
     if(action.startsWith('branch-')) {

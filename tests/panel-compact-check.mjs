@@ -12,7 +12,7 @@ try {
   const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/app-context',r=>r.fulfill({json:{context:{locale:lang}}}));
   await page.goto(base+'/panel.html?direct=1');await page.locator('#add:not(:disabled)').waitFor({state:'attached'});
-  if(lang==='zh-CN') {if(!await page.locator('#config-view').isVisible())await page.locator('#config-tab').click();await page.locator('#add').click();await page.locator('#pick-directory').click();await page.locator('#save').click();}
+  if(lang==='zh-CN') {if(!await page.locator('#config-view').isVisible())await page.locator('#config-tab').click();await page.locator('#project-manager').evaluate(e=>e.open=true);await page.locator('#project-manager').evaluate(e=>e.open=true);await page.locator('#add').click();await page.locator('#pick-directory').click();await page.locator('#save').click();}
   if(await page.locator('#git-tab').isVisible())await page.locator('#git-tab').click();await page.locator('#beginner-submit:not(:disabled)').waitFor();
   for(const width of [120,320,860])for(const theme of ['light','dark']) {
    await page.setViewportSize({width,height:820});await page.goto(base+'/panel.html?direct=1&theme='+theme);
@@ -43,8 +43,8 @@ try {
   await page.locator('#basic-mode').hover();await page.locator('#compact-tooltip:not([hidden])').waitFor();
   await page.screenshot({path:'artifacts/compact-advanced-'+lang+'.png',fullPage:true});
   await page.locator('#basic-mode').click();
-  await page.locator('#config-tab').click();assert.equal(await page.locator('#config-view').isVisible(),true);
-  await page.locator('#config-tab').click();assert.equal(await page.locator('#git-view').isVisible(),true);
+  await page.locator('#config-tab').click();await page.locator('#project-manager').evaluate(e=>e.open=true);assert.equal(await page.locator('#config-view').isVisible(),true);
+  await page.locator('#config-tab').click();await page.locator('#project-manager').evaluate(e=>e.open=true);assert.equal(await page.locator('#git-view').isVisible(),true);
   await page.locator('#beginner-submit').focus();await page.locator('#compact-tooltip:not([hidden])').waitFor();
   assert.match(await page.locator('#compact-tooltip').textContent(),lang==='en'?/Choose files/:/文件选择/);
   assert.deepEqual(errors,[]);await page.close();

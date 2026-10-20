@@ -39,3 +39,9 @@ textarea { width:100%; max-width:100%; padding:8px; font:inherit; color:inherit;
 .beginner-file span { overflow-wrap:anywhere; } .beginner-file strong { display:block; font-size:11px; color:var(--text-secondary,#737373); margin-bottom:4px; }
 #beginner-result-details,#git-expert { margin:16px 0; font-size:12px; }
 @media(max-width:560px) { .beginner-actions { grid-template-columns:1fr; } .beginner-actions button { padding:14px; } }
+
+.quick-project { padding:12px 0; }
+#quick-project { font-weight:500; max-width:100%; white-space:normal; }
+#setup-root,#setup-status { font-size:12px; overflow-wrap:anywhere; line-height:1.65; }
+#setup-root { color:var(--text-secondary,#737373); }
+#project-manager,#setup-details { margin:14px 0; font-size:12px; }

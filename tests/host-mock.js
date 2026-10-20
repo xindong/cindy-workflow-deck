@@ -18,6 +18,7 @@ globalThis.cindy={
  },
  node:{async request(req){
   calls.inspections.push(req);if(options.failNode)return{ok:false};
+  if(req.method==='project/git' && req.params.action==='prepare') return {ok:true,result:{state:'ready',completed:['项目提交检查已就绪'],blockers:[],message:'项目本地准备已完成。'}};
   if(req.method==='project/git' && req.params.action==='issues-list') return {ok:true,result:{repository:'team/art',login:'artist',issues:[{number:12,title:'调整角色颜色',url:'https://github.com/team/art/issues/12',repository:'team/art'}]}};
   if(req.method==='project/git' && req.params.action==='beginner-submit') {options.beginnerReceipt={id:req.params.operationId,issue:req.params.issue,state:'awaiting-review',message:'修改已提交，等待团队审核。',completed:['branch','stage','commit','push','review']};return {ok:true,result:options.beginnerReceipt};}
   if(req.method==='project/git') return {ok:true,result:{root:req.params.dir,branch:'main',head:'fixture',changes:options.beginnerReceipt?[]:[{status:'??',path:'角色.png'}],fingerprint:options.beginnerReceipt?'after':'before',beginnerReceipt:options.beginnerReceipt||null,branches:['main'],protectedBranches:['main','master'],sources:[{path:'AGENTS.md',content:'Main requires PR.'}],incomplete:false,hooksPath:'.git/hooks',hooks:[],hooksReady:true,requirements:{},token:'mock-review-token'}};

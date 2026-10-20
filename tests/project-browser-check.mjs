@@ -11,7 +11,7 @@ const tools=panel.locator('.tool[aria-disabled="false"]');
 try {
   await panel.goto(base+'/panel.html?direct=1');await panel.locator('#advanced-mode').click();
   await panel.locator('#summary').filter({hasText:'插件配置'}).waitFor();
-  await settings.goto(base+'/settings.html');await settings.locator('#add').click();
+  await settings.goto(base+'/settings.html');await settings.locator('#project-manager').evaluate(e=>e.open=true);await settings.locator('#add').click();
   await settings.locator('#pick-directory').click();await settings.locator('#directory').waitFor();
   await settings.locator('#save').click();await settings.locator('#notice').filter({hasText:'项目已保存'}).waitFor();
   await tools.nth(4).waitFor();

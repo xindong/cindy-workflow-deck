@@ -48,3 +48,9 @@ body { display:flex; flex-direction:column; }
 .view-tabs button { border:1px solid var(--border-default,#d7d7d4); background:var(--surface,#fff); color:var(--text-primary,#262626); border-radius:8px; padding:8px; }
 #advanced-view { flex:1; min-height:0; }
 #git-expert.configuration { flex:0 0 auto; margin:0; padding:8px; max-height:40dvh; overflow:auto; }
+
+.quick-project { padding:12px 0; }
+#quick-project { font-weight:500; max-width:100%; white-space:normal; }
+#setup-root,#setup-status { font-size:12px; overflow-wrap:anywhere; line-height:1.65; }
+#setup-root { color:var(--text-secondary,#737373); }
+#project-manager,#setup-details { margin:14px 0; font-size:12px; }

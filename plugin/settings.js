@@ -1,9 +1,19 @@
 import { mountGit } from './git-ui.js';
-import { FLOW_IDS, newProject, normalizeConfiguration } from './core/project-config.mjs';
+import { FLOW_IDS, newProject, normalizeConfiguration, directoryKey } from './core/project-config.mjs';
 import { createSettingsTransport } from './settings-transport.js';
 const transport = createSettingsTransport();
 const $ = id => document.getElementById(id);
 let english = false, state, draft, dirty = false, busy = false;
+// Daily users choose one folder. Retain the manual manager for maintainers.
+const manager=document.createElement('details'),managerTitle=document.createElement('summary');manager.id='project-manager';
+const form=$('configuration-form');form.before(manager);manager.append(managerTitle,form,$('inspection').closest('section'));
+const quick=document.createElement('section');quick.className='quick-project';
+const choose=document.createElement('button');choose.id='quick-project';choose.type='button';choose.disabled=true;
+const selectedRoot=document.createElement('p');selectedRoot.id='setup-root';
+const setupStatus=document.createElement('p');setupStatus.id='setup-status';setupStatus.setAttribute('role','status');
+const setupDetails=document.createElement('details'),setupTitle=document.createElement('summary'),setupOutput=document.createElement('pre');setupDetails.id='setup-details';setupDetails.hidden=true;setupDetails.append(setupTitle,setupOutput);
+quick.append(choose,selectedRoot,setupStatus,setupDetails);manager.before(quick);
+
 const words = {
   zh: { project:'当前项目',add:'添加项目',remove:'移除',binding:'项目绑定',name:'项目名称',directory:'项目根目录',chooseDirectory:'选择项目目录',save:'保存配置',reload:'重新加载',inspect:'检查已保存项目',results:'检查结果',external:'允许此项使用项目外的绝对路径',chooseFile:'选择指令文件',experiment:'实验',feature:'功能',tooling:'工具',pr:'PR 审查',merge:'合并 / 清理' },
   en: { project:'Active project',add:'Add project',remove:'Remove',binding:'Project binding',name:'Project name',directory:'Project root directory',chooseDirectory:'Choose directory',save:'Save configuration',reload:'Reload',inspect:'Inspect saved project',results:'Inspection results',external:'Allow an absolute path outside this project',chooseFile:'Choose instruction file',experiment:'Experiment',feature:'Feature',tooling:'Tooling',pr:'PR review',merge:'Merge / cleanup' },
@@ -12,8 +22,9 @@ const tr = key => words[english ? 'en' : 'zh'][key];
 const say = (zh, en) => english ? en : zh;
 function notice(message) { $('notice').textContent = message; }
 function active() { return draft?.projects.find(p => p.id === draft.activeProjectId); }
-function markDirty() { dirty = true; $('inspection').textContent = ''; buttons(); }
+function markDirty() { setupStatus.textContent='';setupDetails.hidden=true;dirty = true; $('inspection').textContent = ''; buttons(); }
 function buttons() {
+  choose.disabled=busy||!draft;selectedRoot.textContent=active()?.directory||say('还没有选择项目目录。','No project folder selected.');
   $('fields').disabled = busy || !active();
   for (const id of ['add','remove','save','reload','project']) $(id).disabled = busy || (id === 'remove' && !active()) || (id === 'add' && (draft?.projects.length || 0) >= 8);
   $('inspect').disabled = busy || dirty || !active();
@@ -39,7 +50,26 @@ async function run(work) {
 async function load() {
   const result = await transport.call('config-read');
   state = result; draft = structuredClone(result.configuration); dirty = false;
-  render(); $('inspection').textContent = ''; notice(say('已加载。配置只保存在此设备，不写入目标项目。','Loaded. Settings stay on this device and do not modify the target project.'));
+  setupStatus.textContent='';setupDetails.hidden=true;render(); $('inspection').textContent = ''; notice(say('选择一次项目目录，工具会自动保存并按项目规则完成本地准备。','Choose a project folder once. Settings are saved and local preparation follows project rules.'));
+}
+async function saveAndPrepare() {
+  const configuration=normalizeConfiguration({...draft,projects:draft.projects.map(project=>({id:project.id,directory:project.directory,discovery:'auto'}))});
+  state=await transport.call('config-save',{expectedRevision:state.revision,configuration});
+  draft=structuredClone(state.configuration);dirty=false;render();
+  if(!active()){notice(say('项目配置已保存。','Project settings saved.'));setupStatus.textContent='';setupDetails.hidden=true;return false;}
+  notice(say('项目已保存，正在自动准备…','Project saved. Preparing local settings…'));
+  setupStatus.textContent=say('正在按项目规则准备，请稍候…','Preparing using project rules…');
+  setupDetails.hidden=true;
+  try {
+    const result=await transport.call('git-request',{projectId:state.configuration.activeProjectId,revision:state.revision,action:'prepare',confirmProjectSetup:true});
+    setupStatus.textContent=result.message||say('本地准备结果待确认，请重新选择目录检查。','Local preparation is unverified. Choose the folder again to check.');
+    setupOutput.textContent=[...(result.completed||[]),...(result.blockers||[]).map(b=>b.message)].join('\n');setupDetails.hidden=!setupOutput.textContent;
+    notice(result.state==='ready'?say('项目已保存，已完成本地准备。','Project saved. Local preparation completed.'):say('项目已保存；还有一项准备需要处理，请看上方说明。','Project saved. Preparation needs attention; see above.'));
+    return result.state==='ready';
+  } catch(error) {
+    setupStatus.textContent=say('项目已保存，但自动准备未完成。','Project saved, but automatic preparation did not complete.');
+    throw error;
+  }
 }
 async function start() {
   busy=true; buttons();
@@ -47,6 +77,16 @@ async function start() {
   else { const response = await fetch('/app-context'); if (!response.ok) throw new Error('Cannot read app context'); const data = await response.json(); english = !(data.context?.locale || 'en').startsWith('zh'); }
   document.documentElement.dataset.runtime = transport.standalone ? 'desktop' : 'cindy';
   document.documentElement.lang = english ? 'en' : 'zh-CN';
+  choose.textContent=say('选择项目目录，自动准备','Choose project folder and prepare');
+  managerTitle.textContent=say('项目管理与详细检查（负责人）','Project management and checks (maintainer)');
+  setupTitle.textContent=say('查看自动准备结果','Preparation details');
+  choose.onclick=()=>run(async()=>{
+    const picked=await transport.call('config-pick-directory');
+    let project=draft.projects.find(p=>p.directory&&directoryKey(p.directory)===directoryKey(picked.path));
+    if(!project){if(draft.projects.length>=8)throw new Error(say('已有8个项目，请负责人先移除不再使用的项目。','Eight projects already exist. Ask the maintainer to remove an unused project.'));project={...newProject(),directory:picked.path,discovery:'auto'};draft.projects.push(project);}
+    draft.activeProjectId=project.id;markDirty();render();
+    if(await saveAndPrepare())$('git-tab').click();
+  });
   for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = tr(element.dataset.i18n);
   $('heading').textContent = say('极心许愿','Jixin');
   $('intro').textContent = transport.standalone
@@ -59,9 +99,7 @@ async function start() {
   $('remove').addEventListener('click', () => { draft.projects = draft.projects.filter(p => p.id !== draft.activeProjectId); draft.activeProjectId = draft.projects[0]?.id || ''; markDirty(); render(); });
   $('pick-directory').addEventListener('click', () => run(async () => { const result = await transport.call('config-pick-directory'); active().directory = result.path; markDirty(); render(); }));
   $('configuration-form').addEventListener('submit', event => { event.preventDefault(); void run(async () => {
-    const configuration = normalizeConfiguration({ ...draft, projects: draft.projects.map(project => ({id: project.id, directory: project.directory, discovery: 'auto'})) });
-    state = await transport.call('config-save', { expectedRevision: state.revision, configuration });
-    draft = structuredClone(state.configuration); dirty = false; render(); notice(say('项目已保存，面板将自动检查并启用可用流程。未创建任务或执行脚本。','Project saved. The toolbar will check and enable available workflows. No task or script was executed.'));
+    await saveAndPrepare();
   }); });
   $('reload').addEventListener('click', () => run(async () => {
     if (dirty) { notice(say('有未保存修改；再次点击“重新加载”将丢弃这些配置编辑。','Unsaved edits; click Reload again to discard configuration edits.')); if (!$('reload').dataset.confirm) { $('reload').dataset.confirm = 'yes'; return; } }
