@@ -35,7 +35,7 @@ function show(button, anchor) {
   tip.hidden = false; tip.style.left = "6px"; tip.style.top = "6px";
   const r = anchor.getBoundingClientRect(), box = tip.getBoundingClientRect();
   tip.style.left = Math.max(6, Math.min(r.left, innerWidth - box.width - 6)) + "px";
-  tip.style.top = Math.max(6, Math.min(r.bottom + 8, innerHeight - box.height - 6)) + "px";
+  tip.style.top = Math.max(6, Math.min(r.top >= box.height + 14 ? r.top - box.height - 8 : r.bottom + 8, innerHeight - box.height - 6)) + "px";
 }
 for (const [id, lines] of Object.entries(paths)) {
   const button = document.getElementById(id);
