@@ -76,7 +76,7 @@ try {
   assert.equal(await settings.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await panel.locator('#source-card button').click();await panel.locator('#binding-result-1').waitFor();
   await settings.locator('#inspect').click();await awaitCondition(settings,()=>document.getElementById('inspection').textContent.includes('/preview/selected-project'));
-  assert.equal(await panel.evaluate(()=>mockHost.calls.inspections.at(-1).params.project.discovery),'auto');
+  assert.equal(await panel.evaluate(()=>mockHost.calls.inspections.filter(req=>req.method==='project/inspect').at(-1).params.project.discovery),'auto');
   await settings.emulateMedia({colorScheme:'dark'});await settings.setViewportSize({width:280,height:780});
   assert.equal(await settings.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await settings.screenshot({path:join(root,'artifacts/cindy-settings-narrow-dark.png'),fullPage:true});

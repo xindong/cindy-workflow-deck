@@ -4,7 +4,7 @@
   "name": "极心许愿",
   "description": "基础Git操作保留项目hooks与分支门禁；高级工作流直接创建独立任务。",
   "whenToUse": "开始实验性工作、功能开发、工具开发、提交 PR 或整理分支时使用工作流快捷面板。",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "minCindyVersion": "0.1.109",
   "entry": "main.js",
   "launch": "resident",
