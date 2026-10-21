@@ -6,26 +6,52 @@
 
 项目自行提供非空、可读普通文件：实验用 _S/experiment.md，功能用 _S/feature.md，工具用 _S/tooling.md，合并用 _E/merge.md。PR 需 xd-pr-review/SKILL.md。插件检查项目 .agents/skills、.claude/skills、.cindy/skills，以及用户 .agents/skills、.claude/skills、.codex/skills 中的该技能。未确认仅代表这些路径没有可用文件，不代表所有宿主技能不存在。符号链接不作为可用流程。缺少哪项只禁用对应按钮；插件不捆绑、创建或执行流程正文，流程由新任务的 AI 读取。
 
-## 绑定与启动
+## 选择项目与启动
 
-在本地项目聊天发送 $jixin-make-a-wish，点击新的“绑定工具栏”卡片。绑定只检查，不启动任务。面板“目标与目录”可补充下一次工作目标。每次点击新建独立任务，不复制聊天历史；Host 从来源聊天继承目录、Agent 和模型，权限仍由 Host 管理，不保证继承完全访问。只读聊天和远程工作目录不启动流程。
+在插件配置中添加项目，点击“选择项目目录”亲选根目录并保存；面板自动发现指令并启用可用按钮。无需发送工具命令或点聊天卡，切换聊天也不改变项目。每次点击创建新的独立任务，使用唯一sessionKey，不复制聊天历史。模型与权限由Cindy插件任务设置管理。
 
-发起间隔至少10秒；切到本插件确认创建的任务保留原来源绑定，陌生聊天先禁用。更新、停用重启插件或重启 Cindy 后，回到目标聊天取得新卡重绑。目录变化、来源归档或关联权限失效也可能要求重绑。检查失败可刷新；重复点旧卡不会重复派发。
+直接目录派发使用Host的agent.errand能力，安装更新会展示新增权限。只允许一个此类任务运行，发起间隔至少10秒；面板运行中每5秒查询状态，完成后恢复按钮。回执不确定不会重发；先核对任务列表，再用“解除阻塞（不重发）”允许后续新任务。旧任务的未核实状态仍保留。
+
+根目录须经宿主选择器亲选；手填路径或失效授权请重新选择。Host原生插件任务目录覆盖优先，须与当前项目一致；AI在操作前核对实际目录，不一致必须停止。配置不授予完全访问权限，不创建或执行项目脚本。旧聊天绑定卡仅兼容未配置项目，不是正常使用的前置条件。
 
 ## 日志与恢复
 
 AI 使用 report_progress 回报实际步骤、输出摘要、阻塞或完成；不是全部终端 stdout。Cindy 旁听事件仅是运行元数据；AI 报告完成与 Host 本轮结束分别展示，都不能替代业务验收。可选择任务查看保留的日志尾部；容量有限，旧日志会淘汰。无回报时等待或查看任务聊天，不假称完成。派发回执不确定时先检查任务列表，不连续重试，以免重复创建任务。
 
-缺少必要接口或宿主明确不支持时提示升级 Cindy；权限拒绝需检查插件授权和关联，网络、磁盘错误需按原错误处理，不能用其它通道绕过。面板的分离窗口、最小化和恢复由 Cindy 标题栏提供。Node 进程有当前系统账号权限，检查逻辑只读固定流程路径，不是操作系统级沙箱。
+缺少必要接口或宿主明确不支持时提示升级 Cindy；权限拒绝需检查插件授权和关联，网络、磁盘错误需按原错误处理，不能用其它通道绕过。面板的分离窗口、最小化和恢复由 Cindy 标题栏提供。Node 进程有当前系统账号权限，流程发现只读；基础Git写操作会运行项目hooks及过滤器，不是操作系统级沙箱。
 
 ## English quick start
 
-Provide the project workflow files and PR skill listed above; missing files disable only their own actions. Send $jixin-make-a-wish in a local project chat, click a fresh binding card, then choose an action. Each click creates an independent task using Host-managed source directory, Agent, model and permissions, without copying chat history. Wait at least 10 seconds between launches. Plugin-created tasks keep the original source binding; unrelated chats do not. Rebind after plugin/Cindy restarts or updates. Remote workspaces and read-only sources cannot launch workflows.
+Select the project root with Choose directory in plugin settings and save. Available workflow buttons activate automatically; no chat command or card binding is needed. Each click creates an independent task with a unique sessionKey. Model and permissions come from Cindy plugin task settings. Direct launch uses agent.errand, which is disclosed during installation. Only one workflow runs at a time, with at least 10 seconds between launches; the panel queries running jobs every five seconds. After checking an uncertain task in the task list, unlock explicitly without resending it. Keep any native task directory override consistent with the selected root; tasks must stop on a mismatch.
 
 Progress is explicitly reported by AI through report_progress, not a mirror of full terminal output. AI completion and Host turn end are separate. Logs retain a bounded tail. If a receipt is uncertain, check the task list before clicking again. Upgrade Cindy for a missing or explicitly unsupported interface; permission denial and network/storage failures require their own remedies. The Node worker has system-account privileges; its fixed-path read checks are not an OS sandbox.
 
 ## 项目根目录配置 / Project root settings
 
-只需在插件详情配置页添加并选择项目根目录，名称自动生成，保存后点击检查。五类工作流指令自动寻找，不要求逐项填写。优先_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md或_E/merged.md和项目内xd-pr-review/SKILL.md；未找到时在项目内有限查找对应名称。PR技能多个副本内容完全相同时固定顺序选一份，内容不同仍禁用；每份内容比较上限1MB。其它多候选、搜索未完成、不可读或缺失时禁用对应入口并显示原因。自动发现只读，不执行文件、不查全盘；旧手动配置在本页保存后切换为自动发现。派发仍需目标本地聊天绑定，配置不能改写Host工作目录与授权。
+只需在插件详情配置页添加并选择项目根目录，名称自动生成，保存后点击检查。五类工作流指令自动寻找，不要求逐项填写。优先_S/experiment.md、_S/feature.md、_S/tooling.md、_E/merge.md或_E/merged.md和项目内xd-pr-review/SKILL.md；未找到时在项目内有限查找对应名称。PR技能多个副本内容完全相同时固定顺序选一份，内容不同仍禁用；每份内容比较上限1MB。其它多候选、搜索未完成、不可读或缺失时禁用对应入口并显示原因。自动发现只读，不执行文件、不查全盘；旧手动配置在本页保存后切换为自动发现。保存后直接从面板派发，不依赖聊天；Host仍负责目录授权和任务设置。
 
-Choose only a project root in plugin settings, save and inspect. Names are derived automatically. Workflow instructions are discovered inside that project; missing, ambiguous or incomplete discovery disables only the affected workflow. Discovery is read-only and never executes files. Saving switches legacy manual configurations to automatic discovery. Launches still use the verified bound chat and Host authorization.
+Choose only a project root in plugin settings, save and inspect. Names are derived automatically. Workflow instructions are discovered inside that project; missing, ambiguous or incomplete discovery disables only the affected workflow. Discovery is read-only and never executes files. Saving switches legacy manual configurations to automatic discovery. Launch directly from the panel using the selected root and Host authorization.
+
+
+## 基础Git / Basic Git
+
+基础界面只保留“更新项目、查看我的改动、提交我的修改”，先支持已有项目。提交只需勾选文件、写一句说明、核对团队要求后确认；内部自动建立工作分支、运行项目检查、上传并送审，不直接提交主分支、不自动合并。单个PR模板会创建待负责人完善的草稿，不替人勾选验收。异常或结果不明时保留文件并停止，先请负责人核对。专业Git工具与原五工作流保留在高级入口（桌面为折叠的更多工具）。
+
+项目规则和hooks仍有效；文档中的测试、审批、资源锁定等必须实际完成，不用确认勾选代替执行。需要负责人预先配置好本机Git、团队远端和gh审核账号。没有AI也能使用日常Git；AI诊断和独立端高级工作流尚未实现。
+
+Daily work supports existing projects: Update project, View my changes, and Submit my changes. Select files, describe the change, verify team prerequisites and confirm. A work branch, native checks, upload and review are handled internally; no primary-branch commit or automatic merge. A team PR template creates an unchecked draft for the project owner to complete. Uncertain results stop without replay. Professional Git tools remain in the advanced entry. Native hooks and actual manual prerequisites still apply; the owner must configure Git, the remote and an authenticated gh CLI first.
+
+### 批量选择与关联Issue
+
+文件清单提供全选、全不选与已选数量，单次最多200个。提交页点“加载我的事项”，从当前项目中“分配给我的 / 我创建的”开放GitHub Issue选择一项；显示当前仓库和实际gh登录账号，最多100项。关联会写入提交记录和PR描述，不自动关闭Issue。提交前重新核对事项状态和归属，失败不会开始本地提交。origin须指向GitHub.com；缺账号、网络或权限时提示负责人处理，不自动重试。
+
+Select all / Select none affect only the file checkboxes. Load my issues reads up to 100 open issues assigned to or created by the current gh account in the origin GitHub.com repository. The selected issue is revalidated before local changes and referenced in the commit and PR body; it is not automatically closed.
+
+
+## 自动补齐提交署名 / Git identity
+
+选择目录后自动检查项目的有效 Git 姓名和邮箱；已有署名不覆盖。缺少时只对 origin 指向 GitHub.com 的项目读取本机 GitHub CLI 当前登录账号（须已有 gh 登录及网络连接），显示姓名、邮箱和来源，点击“一键补齐提交署名”只补缺失项并写入当前项目，不更改全局设置。姓名优先账号显示名，未公开显示名时使用登录名；邮箱使用 GitHub 的 ID+登录名免公开地址，不公开私人邮箱。写入前重新验证账号，账号变化需重新检测。无法读取时提示连接账号后重新检测，无需手填署名；不会自行安装 CLI、发起登录或借用项目历史作者。该功能两端共用，同样保留项目检查及提交规则。
+
+After choosing a folder, missing Git identity can be filled in one click from the locally signed-in GitHub.com CLI account. Existing fields are preserved. Missing email uses the account's GitHub noreply address; writes are project-local only. The account is checked again before saving. If unavailable, connect GitHub CLI and check again; identity is never inferred from project authors.
+
+更新会先在临时副本预检冲突，通过后保留本地修改（含原暂存状态与新增文件）、快进拉取并取回。冲突预检失败不改变原文件；取回异常保留安全备份并阻止重复执行。目录选择等待用户确认或取消，不再套用30秒请求超时。

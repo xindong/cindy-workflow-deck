@@ -1,0 +1,56 @@
+@scope (.configuration) {
+
+* { box-sizing: border-box; min-width: 0; }
+& { margin: 0; padding: 12px; color: var(--text-primary,#262626); }
+.configuration { max-width: 860px; margin: 0 auto; }
+h1 { font-size: 19px; margin: 0 0 8px; } h2 { font-size: 14px; }
+p { line-height: 1.65; overflow-wrap: anywhere; } .help, #intro { color: var(--text-secondary,#737373); font-size: 12px; }
+label { display: grid; gap: 6px; margin: 10px 0; font-size: 13px; }
+input,select,button { max-width: 100%; border: 1px solid var(--border-default,#d7d7d4); border-radius: 6px; background: var(--surface,#fff); color: inherit; font: inherit; padding: 8px; }
+input,select { width: 100%; } button { cursor: pointer; } button:disabled { cursor: default; opacity: .55; }
+button:focus-visible,input:focus-visible,select:focus-visible { outline: 2px solid var(--text-secondary,#737373); outline-offset: 2px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; } .row>label { flex: 1 1 180px; }
+fieldset { border: 1px solid var(--border-default,#d7d7d4); border-radius: 8px; margin: 16px 0; padding: 10px 14px; }
+.actions { margin: 14px 0; } #notice { white-space: pre-wrap; font-size: 13px; }
+pre { font: 12px/1.7 ui-monospace,monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media(prefers-color-scheme:dark) { & { color:var(--text-primary,#e5e5e5); } input,select,button { background:var(--surface,#262626); border-color:var(--border-default,#525252); } }
+
+
+
+[hidden] { display:none !important; }
+textarea { width:100%; max-width:100%; padding:8px; font:inherit; color:inherit; background:var(--surface,#fff); border:1px solid var(--border-default,#d7d7d4); border-radius:6px; }
+.check { display:flex; align-items:start; gap:8px; } .check input { width:auto; flex:none; margin-top:3px; }
+#git-gate { border-left:3px solid var(--text-secondary,#737373); padding-left:10px; }
+#git-files { margin:14px 0; } #git-rules { max-height:340px; overflow:auto; }
+@media(prefers-color-scheme:dark) { textarea { background:var(--surface,#262626); } }
+.beginner-heading { display:flex; align-items:start; justify-content:space-between; gap:12px; margin:18px 0; }
+.beginner-heading h2 { font-size:21px; margin:0; }
+.beginner-heading p { color:var(--text-secondary,#737373); font-size:13px; margin:7px 0 0; }
+.beginner-heading>button { font-size:12px; white-space:nowrap; }
+.beginner-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.beginner-actions button { padding:18px 14px; text-align:left; border-radius:12px; }
+.beginner-actions strong,.beginner-actions span { display:block; }
+.beginner-actions strong { font-size:15px; }
+.beginner-actions span { margin-top:6px; font-size:12px; color:var(--text-secondary,#737373); line-height:1.5; }
+.beginner-message { font-size:13px; line-height:1.7; margin:18px 0; }
+.beginner-sheet { border:1px solid var(--border-default,#d7d7d4); border-radius:12px; padding:16px; margin:16px 0; }
+.beginner-sheet h3 { font-size:16px; margin:0; }
+.beginner-sheet p { color:var(--text-secondary,#737373); font-size:12px; }
+.beginner-file { padding:10px 0; border-bottom:1px solid var(--border-default,#d7d7d4); }
+.beginner-file span { overflow-wrap:anywhere; } .beginner-file strong { display:block; font-size:11px; color:var(--text-secondary,#737373); margin-bottom:4px; }
+#beginner-result-details,#git-expert { margin:16px 0; font-size:12px; }
+@media(max-width:560px) { .beginner-actions { grid-template-columns:1fr; } .beginner-actions button { padding:14px; } }
+
+}
+.configuration { padding:12px; width:100%; overflow:auto; flex:1; }
+body { display:flex; flex-direction:column; }
+.view-tabs { display:flex; gap:8px; padding:8px; }
+.view-tabs button { border:1px solid var(--border-default,#d7d7d4); background:var(--surface,#fff); color:var(--text-primary,#262626); border-radius:8px; padding:8px; }
+#advanced-view { flex:1; min-height:0; }
+#git-expert.configuration { flex:0 0 auto; margin:0; padding:8px; max-height:40dvh; overflow:auto; }
+
+.quick-project { padding:12px 0; }
+#quick-project { font-weight:500; max-width:100%; white-space:normal; }
+#setup-root,#setup-status { font-size:12px; overflow-wrap:anywhere; line-height:1.65; }
+#setup-root { color:var(--text-secondary,#737373); }
+#project-manager,#setup-details { margin:14px 0; font-size:12px; }

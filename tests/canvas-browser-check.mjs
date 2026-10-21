@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE_PATH).href);
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE_PATH ? pathToFileURL(process.env.PLAYWRIGHT_MODULE_PATH).href : 'playwright-core');
 const server=spawn('python3',[resolve(import.meta.dirname,'serve-preview.py')],{stdio:['ignore','pipe','inherit']});
 const base=await new Promise((yes,no)=>{server.stdout.once('data',data=>yes(data.toString().trim()));server.once('error',no);});
 const browser=await chromium.launch({headless:true,...(process.env.WORKFLOW_BROWSER_EXECUTABLE?{executablePath:process.env.WORKFLOW_BROWSER_EXECUTABLE}:{})});const page=await browser.newPage({viewport:{width:400,height:720},deviceScaleFactor:2});
@@ -14,7 +14,7 @@ async function report(status,title,detail,id='report-'+Date.now()) {
  await page.locator('.log-entry h2').filter({hasText:title}).waitFor();
 }
 try {
- await page.goto(base+'/panel.html');await page.locator('#source-card button').waitFor();
+ await page.goto(base+'/panel.html');await page.locator('#advanced-mode').press('Enter');await page.locator('#source-card button').waitFor();
  assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),5);
  await tool('feature').hover();assert.ok((await page.locator('#tip-reason').textContent()).includes('尚未绑定'));
  await page.keyboard.press('Escape');await page.locator('#source-card button').click();await page.locator('#binding-result-1').waitFor();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
@@ -29,7 +29,7 @@ try {
  await page.locator('#refresh').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
  await page.evaluate(()=>document.getElementById('test-cards').hidden=true);
  const dock=await page.locator('.dock').boundingBox(),canvas=await page.locator('.execution').boundingBox();
- assert.ok(dock.y>550&&dock.height<=60);assert.ok(canvas.height>400);assert.ok(Math.abs(dock.x+dock.width/2-200)<2);
+ assert.ok(dock.y>550&&dock.height<=60);assert.ok(canvas.height>400,JSON.stringify({dock,canvas}));assert.ok(Math.abs(dock.x+dock.width/2-200)<2);
  await page.locator('main').screenshot({path:resolve(artifacts,'workflow-canvas-empty-light.png')});
  await page.locator('#details-toggle').click();await page.locator('#goal').fill('实现日志区');await page.locator('#details-toggle').click();
  await page.evaluate(()=>mockHost.options.autoSwitch=true);
@@ -59,7 +59,7 @@ try {
  assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns.length),2);
  assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns[1].sessionId),'source-chat');
  await page.locator('#task-select').selectOption('preview-task-1');assert.equal(await page.locator('.log-entry').count(),5);
- await page.reload();await page.locator('#task-select').waitFor();await page.locator('#task-select').selectOption('preview-task-1');await page.locator('.log-entry').nth(4).waitFor();assert.equal(await page.locator('.log-entry').count(),5);
+ await page.reload();await page.locator('#advanced-mode').press('Enter');await page.locator('#task-select').waitFor();await page.locator('#task-select').selectOption('preview-task-1');await page.locator('.log-entry').nth(4).waitFor();assert.equal(await page.locator('.log-entry').count(),5);
  await page.locator('#source-card button').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
  await page.evaluate(()=>mockHost.deliver({type:'event',name:'did-session-switched',data:{sessionId:'unrelated',workdir:mockHost.context.workdir}}));
  assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),5);
@@ -77,7 +77,7 @@ try {
  assert.ok((await page.locator('#usage-text').textContent()).includes('不是完整终端输出'));
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await page.evaluate(()=>cindy.agent.run=globalThis.savedAgentRun);await page.locator('#refresh').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
- await page.route('**/app-context',route=>route.fulfill({json:{context:{locale:'ja'}}}));await page.reload();await page.getByText('Execution log',{exact:true}).waitFor();
+ await page.route('**/app-context',route=>route.fulfill({json:{context:{locale:'ja'}}}));await page.reload();await page.locator('#advanced-mode').press('Enter');await page.getByText('Execution log',{exact:true}).waitFor();
  await page.locator('#details-toggle').click();await page.locator('#usage-title').click();assert.ok((await page.locator('#usage-text').textContent()).includes('not full terminal output'));
  assert.deepEqual(errors,[]);console.log('Canvas browser checks passed: foreground child switch before receipt, cooldown auto-unlock, second workflow launch from original source, unrelated chat disabled, bottom toolbar, logs, persisted reload, replay, safe text, 280px, light/dark, locale. Screenshots are simulated Host data.');
 } finally {await browser.close();server.kill();await once(server,'exit');}

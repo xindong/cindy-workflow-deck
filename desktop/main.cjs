@@ -30,7 +30,7 @@ async function boot() {
   });
   ipcMain.handle('jixin:request', async (event, method, params) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('Invalid caller');
-    if (!['config-read','config-save','config-pick-directory','config-pick-file','config-inspect'].includes(method)) return { ok: false, code: 'UNSUPPORTED_OPERATION', message: '此操作尚未开放' };
+    if (!['config-read','config-save','config-pick-directory','config-pick-file','config-inspect','git-request'].includes(method)) return { ok: false, code: 'UNSUPPORTED_OPERATION', message: '此操作尚未开放' };
     try { return { ok: true, result: await service(method, params) }; }
     catch (error) { return { ok: false, code: error.code || 'OPERATION_FAILED', message: error.message }; }
   });

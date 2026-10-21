@@ -1,10 +1,29 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>极心许愿</title><link rel="stylesheet" href="settings.css"></head><body>
 <main class="configuration"><header><h1 id="heading">项目与流程配置</h1><p id="intro"></p></header>
+<nav class="row" aria-label="视图"><button id="git-tab" type="button">日常工作</button><button id="config-tab" type="button">项目配置</button></nav>
+<section id="git-view" hidden>
+<header class="beginner-heading"><div><h2 id="beginner-project">我的项目</h2><p id="beginner-state" role="status">选择已有项目后，就可以开始工作。</p></div><button id="git-refresh" type="button" disabled>重新检查</button></header>
+<div class="beginner-actions"><button id="beginner-update" type="button" disabled><strong>更新项目</strong><span>拿到团队最新内容</span></button><button id="beginner-view" type="button" disabled><strong>查看我的改动</strong><span>看这次改了哪些文件</span></button><button id="beginner-submit" type="button" disabled><strong>提交我的修改</strong><span>选文件，写一句说明</span></button></div>
+<p id="beginner-message" class="beginner-message" role="status" aria-live="polite"></p>
+<section id="beginner-sheet" class="beginner-sheet" hidden><h3 id="beginner-sheet-title">这次改了什么？</h3><p id="beginner-sheet-help"></p><div id="beginner-selection" class="row"><button id="beginner-all" type="button">全选</button><button id="beginner-none" type="button">全不选</button><span id="beginner-selected" role="status"></span></div><div id="beginner-files"></div><label id="beginner-summary-label">用一句话说明<textarea id="beginner-summary" rows="2" maxlength="160" placeholder="例如：调整了角色衣服的颜色"></textarea></label>
+<section id="beginner-issue-section" hidden><h4>关联 GitHub 事项（Issue）</h4><div class="row"><label>事项范围<select id="beginner-issue-scope"><option value="assigned">分配给我的</option><option value="created">我创建的</option></select></label><button id="beginner-issue-load" type="button">加载我的事项</button></div><label>对应事项<select id="beginner-issue"><option value="">暂不关联</option></select></label><p id="beginner-issue-status" role="status">只读取当前项目、当前 GitHub 账号的未关闭事项；关联不会自动关闭事项。</p></section><div id="beginner-confirmation" hidden><p id="beginner-plan"></p><details id="beginner-team-rules"><summary>本项目的提交要求（不确定请联系负责人）</summary><div id="beginner-rules"></div></details><label id="beginner-manual-label" class="check"><input id="beginner-manual" type="checkbox"><span>如果团队要求这次修改先做验收或审批，我已经完成。</span></label><div class="row"><button id="beginner-confirm" type="button" disabled>确认提交</button><button id="beginner-cancel" type="button">先不操作</button></div></div></section>
+<details id="beginner-result-details"><summary>操作详情（可交给项目负责人）</summary><pre id="beginner-detail"></pre></details>
+<details id="git-expert"><summary>更多工具（项目负责人）</summary><p id="git-state">先选择并保存项目根目录，再刷新 Git 状态。</p><div class="row"><button data-git="diff" disabled>工作区差异</button><button data-git="diff-staged" disabled>暂存区差异</button><button data-git="history" disabled>提交历史</button></div>
+<p id="git-gate" role="status"></p><details><summary>项目规则与 hooks（操作前必读）</summary><p>主分支禁止直接提交和推送；先创建工作分支，再通过 PR 合入。自动检查仅覆盖下方列明的分支、状态和 hooks。文档中的测试、审批、锁定与业务条件仍需逐项核对，不能用勾选替代执行。</p><div id="git-rules"></div></details>
+<label class="check"><input id="git-confirm" type="checkbox">我已阅读适用规则，并完成此次操作要求的测试、审批等人工前提</label>
+<label>工作分支名称<input id="git-branch" list="git-branches" placeholder="feature/my-change"></label><datalist id="git-branches"></datalist><div class="row"><button data-git="branch-create" disabled>新建并切换分支</button><button data-git="branch-switch" disabled>切换已有分支</button></div>
+<div id="git-files"></div><div class="row"><button data-git="stage" disabled>暂存选中文件</button><button data-git="unstage" disabled>取消选中文件暂存</button></div>
+<label>提交信息<textarea id="git-message" rows="3" placeholder="feat(scope): 简短描述"></textarea></label><button data-git="commit" disabled>提交暂存内容</button>
+<div class="row actions"><button data-git="fetch" disabled>获取远端</button><button data-git="pull" disabled>快进拉取</button><button data-git="push" disabled>推送当前工作分支</button></div>
+<details><summary>创建 PR</summary><p>需要本机已安装并登录 gh。先推送工作分支；不会自动合并 PR。按项目模板填写描述。</p><label>目标分支<select id="git-base"></select></label><label>PR 标题<input id="git-title"></label><label>PR 描述<textarea id="git-body" rows="5"></textarea></label><button data-git="pr" disabled>创建 PR</button></details><pre id="git-output" role="log"></pre><button id="beginner-acknowledge" type="button" disabled>我已核对上次操作，允许后续新操作</button></details>
+</section>
+<div id="config-view">
 <p id="notice" role="status" aria-live="polite"></p>
 <form id="configuration-form">
-<div class="row"><label><span data-i18n="project">当前项目</span><select id="project"></select></label><button type="button" id="add" data-i18n="add">添加项目</button><button type="button" id="remove" data-i18n="remove">移除</button></div>
-<fieldset id="fields"><legend data-i18n="binding">项目绑定</legend><label><span data-i18n="directory">项目根目录</span><input id="directory" maxlength="2000" required></label><button id="pick-directory" type="button" data-i18n="chooseDirectory">选择项目目录</button>
+<div class="row"><label><span data-i18n="project">当前项目</span><select id="project"></select></label><button type="button" id="add" disabled data-i18n="add">添加项目</button><button type="button" id="remove" disabled data-i18n="remove">移除</button></div>
+<fieldset id="fields" disabled><legend data-i18n="binding">项目绑定</legend><label><span data-i18n="directory">项目根目录</span><input id="directory" maxlength="2000" required></label><button id="pick-directory" type="button" data-i18n="chooseDirectory">选择项目目录</button>
 <p class="help" id="path-help"></p></fieldset>
-<div class="row actions"><button type="submit" id="save" data-i18n="save">保存配置</button><button type="button" id="reload" data-i18n="reload">重新加载</button><button type="button" id="inspect" data-i18n="inspect">检查已保存项目</button></div>
+<div class="row actions"><button type="submit" id="save" disabled data-i18n="save">保存配置</button><button type="button" id="reload" disabled data-i18n="reload">重新加载</button><button type="button" id="inspect" disabled data-i18n="inspect">检查已保存项目</button></div>
 </form><section aria-labelledby="inspection-heading"><h2 id="inspection-heading" data-i18n="results">检查结果</h2><pre id="inspection"></pre></section>
+</div>
 </main><script type="module" src="settings.js"></script></body></html>

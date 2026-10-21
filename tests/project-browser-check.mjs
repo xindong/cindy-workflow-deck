@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { resolve } from 'node:path';
+import { chromium } from 'playwright-core';
+const server=spawn('python3',[resolve(import.meta.dirname,'serve-preview.py')],{stdio:['ignore','pipe','inherit']});
+const base=await new Promise((yes,no)=>{server.stdout.once('data',b=>yes(b.toString().trim()));server.once('error',no);});
+const browser=await chromium.launch({headless:true});
+const context=await browser.newContext({viewport:{width:360,height:720}}), panel=await context.newPage(), settings=await context.newPage();
+const errors=[];for(const page of [panel,settings])page.on('pageerror',e=>errors.push(e.message));
+const tools=panel.locator('.tool[aria-disabled="false"]');
+try {
+  await panel.goto(base+'/panel.html?direct=1');await panel.locator('#advanced-mode').click();
+  await panel.locator('#summary').filter({hasText:'插件配置'}).waitFor();
+  await settings.goto(base+'/settings.html');await settings.locator('#project-manager').evaluate(e=>e.open=true);await settings.locator('#add').click();
+  await settings.locator('#pick-directory').click();await settings.locator('#directory').waitFor();
+  await settings.locator('#save').click();await settings.locator('#notice').filter({hasText:'项目已保存'}).waitFor();
+  await tools.nth(4).waitFor();
+  assert.equal(await panel.evaluate(()=>mockHost.calls.cards.length),0);
+  assert.equal(await panel.evaluate(()=>mockHost.calls.errands.length),0);
+  assert.equal(await settings.locator('#directory').inputValue(),'/preview/selected-project');
+  await panel.evaluate(()=>mockHost.deliver({type:'event',name:'did-session-switched',data:{sessionId:'unrelated',workdir:'/other'}}));
+  assert.equal(await tools.count(),5);
+  await panel.locator('[data-workflow="feature"]').click();
+  await panel.locator('#feedback').filter({hasText:'新任务已受理：direct-1'}).waitFor();
+  await panel.locator('#summary').filter({hasText:'运行中'}).waitFor();
+  assert.equal(await panel.evaluate(()=>mockHost.calls.errands[0].workingDir),'/preview/selected-project');
+  await panel.evaluate(()=>{mockHost.options.jobStatus='done';mockHost.advanceTime();});
+  // The real poll timer restores the buttons and authoritative task receipt.
+  await tools.nth(4).waitFor({timeout:12000});
+  await panel.locator('#task-select option[value="task-direct-1"]').waitFor({state:'attached'});
+  await panel.reload();await panel.locator('#advanced-mode').click();await tools.nth(4).waitFor();
+  assert.equal(await panel.evaluate(()=>mockHost.calls.cards.length),0);
+  await panel.evaluate(()=>mockHost.options.lose=true);
+  await panel.locator('[data-workflow="tooling"]').click();
+  await panel.locator('#project-acknowledge').waitFor();
+  assert.equal(await panel.evaluate(()=>mockHost.calls.errands.length),1);
+  await panel.locator('#project-acknowledge').click();
+  await panel.evaluate(()=>mockHost.advanceTime());await panel.locator('#refresh').click();await tools.nth(4).waitFor();
+  assert.equal(await panel.evaluate(()=>mockHost.calls.errands.length),1);
+  await panel.setViewportSize({width:280,height:580});
+  assert.equal(await panel.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  assert.deepEqual(errors,[]);
+  console.log('Direct project UI passed: choose/save, zero chat binding, session switch, independent dispatch, completion poll, reload, uncertainty unlock, narrow layout.');
+} finally {await browser.close();server.kill();}

@@ -1,7 +1,9 @@
+import { gitWithHost } from './git-host.js';
 import { configurationState, projectForDirectory } from './core/project-config.mjs';
 import { createConfigurationController } from './configuration-controller.js';
 import { createExecutionLog } from './execution-log.js';
 import { createSidebar } from './sidebar-state.js';
+import { createProjectSidebar } from './project-sidebar.js';
 import { createController } from './controller.js';
 import { CHANNEL, WORKFLOWS } from './workflows.js';
 import { inspectWithHost } from './host-compat.js';
@@ -32,12 +34,22 @@ const sidebar = createSidebar({ agent: cindy.agent, store, inspect: async dir =>
     const project = projectForDirectory(configurationState(await store.read()).configuration, dir);
     return inspectWithHost(cindy.node, dir, project);
   },
-  changed: view => channel.postMessage({ from: 'main', type: 'sidebar-state', result: view }) });
+  changed: view => { if (!projectSidebar.view().directory) channel.postMessage({ from: 'main', type: 'sidebar-state', result: view }); } });
+const projectSidebar = createProjectSidebar({ agent: cindy.agent, store,
+  inspect: (dir, project) => inspectWithHost(cindy.node, dir, project),
+  changed: view => { if (view.directory) channel.postMessage({ from: 'main', type: 'sidebar-state', result: view }); },
+});
+const activeSidebar = () => projectSidebar.view().directory ? projectSidebar : sidebar;
+async function refreshSidebar() {
+  await projectSidebar.refresh();
+  return activeSidebar() === projectSidebar ? projectSidebar.view() : sidebar.refresh();
+}
 const executionLog = createExecutionLog({ store, changed: result => channel.postMessage({ from: 'main', type: 'execution-log', result }) });
 const configure = createConfigurationController({ store,
+  git: (dir, params) => gitWithHost(cindy.node, dir, params),
   pick: () => { if (typeof cindy.pick !== 'function') throw Object.assign(new Error('请升级 Cindy 以选择目录'), { code: 'UNSUPPORTED_HOST' }); return cindy.pick({ mode: 'directory', title: '配置项目与流程文件' }); },
   inspect: (dir, project) => inspectWithHost(cindy.node, dir, project),
-  changed: () => { channel.postMessage({ from: 'main', type: 'configuration-changed' }); void sidebar.refresh().catch(error => console.error('Configuration refresh failed:', error.code || error.name)); },
+  changed: () => { channel.postMessage({ from: 'main', type: 'configuration-changed' }); void refreshSidebar().then(result => channel.postMessage({ from: 'main', type: 'sidebar-state', result })).catch(error => console.error('Configuration refresh failed:', error.code || error.name)); },
 });
 const pendingBindings = new Map();
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -69,11 +81,12 @@ channel.onmessage = ({ data }) => {
     switch (data.type) {
       case 'list': return controller.list();
       case 'refresh': return controller.refresh();
-      case 'sidebar': return sidebar.view();
+      case 'sidebar': return refreshSidebar();
       case 'execution-log': return executionLog.list();
-      case 'inspect': return sidebar.refresh();
+      case 'inspect': return refreshSidebar();
+      case 'project-acknowledge': return projectSidebar.acknowledge();
       case 'sidebar-launch': {
-        const result = await sidebar.launch(data.reqId, data.workflowId, data.sourceSessionId, data.goal || '');
+        const result = await activeSidebar().launch(data.reqId, data.workflowId, data.sourceSessionId, data.goal || '');
         channel.postMessage({ from: 'main', type: 'execution-log', result: await executionLog.list() });
         return result;
       }
@@ -95,6 +108,7 @@ export function handleHostMessage(message) {
   if (message.type === 'tool-call' && message.tool === 'report_progress') {
     void (async () => {
       try {
+        if (activeSidebar() === projectSidebar) await projectSidebar.refresh();
         const result = await executionLog.report(message.args?.session_context, message.args || {}, message.callId);
         await cindy.send({ type: 'tool-result', callId: message.callId, ok: true, result });
       } catch (error) {
@@ -104,7 +118,7 @@ export function handleHostMessage(message) {
   }
   if (message.type === 'host-context-changed') channel.postMessage({ from: 'main', type: 'locale-changed' });
   if (message.type === 'event' && message.name === 'did-session-switched') {
-    sidebar.switchSession(message.data?.sessionId, message.data?.workdir, Number(message.dropped) > 0); return;
+    if (activeSidebar() === sidebar) sidebar.switchSession(message.data?.sessionId, message.data?.workdir, Number(message.dropped) > 0); return;
   }
   if (message.type === 'event' && Number(message.dropped) > 0) sidebar.switchSession('', '', true);
   if (message.type === 'event' && message.name === 'did-session-archived') sidebar.forgetSession(message.data?.sessionId);
