@@ -1,0 +1,39 @@
+/* Keep the agreed canvas + single bottom-centred capsule in both modes. */
+.compact-label { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip-path:inset(50%); white-space:nowrap; }
+.compact-anchor { display:inline-flex; flex:0 0 auto; border-radius:50%; }
+.compact-icon { display:flex; align-items:center; justify-content:center; padding:0; width:36px; height:36px; border:0; border-radius:50%; background:transparent; color:var(--text-secondary,#737373); }
+.compact-icon svg { width:19px; height:19px; flex:none; }
+.compact-icon:hover,.compact-icon:focus-visible,.compact-anchor:focus-visible { background:var(--surface-chip,#eee); color:var(--text-primary,#262626); }
+.compact-icon:disabled { opacity:.35; cursor:default; }
+.compact-anchor:focus-visible { outline:2px solid var(--focus-ring,#417cdd); outline-offset:2px; }
+#basic-view { padding:16px 12px 0; min-height:0; }
+#basic-view>header,#basic-view>nav { display:none; }
+#git-view { display:flex; flex-direction:column; height:100%; min-height:0; overflow:auto; }
+#git-view .beginner-heading { margin:0; display:block; flex-shrink:0; }
+#git-view .beginner-heading h2 { margin:0; font-size:11px; font-weight:500; color:var(--text-secondary,#737373); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#git-view .beginner-heading p { font-size:11px; margin:7px 0; }
+.basic-empty { flex:1; min-height:80px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; font-size:12px; line-height:1.7; color:var(--text-secondary,#737373); padding:16px; }
+#git-view:has(#beginner-sheet:not([hidden])) .basic-empty { display:none; }
+#git-view #beginner-message[data-quiet="true"] { display:none; }
+#git-view .beginner-message { font-size:11px; margin:10px 0; flex-shrink:0; }
+#git-view .beginner-sheet { padding:12px; margin:10px 0; }
+#git-view .beginner-sheet h3 { font-size:14px; }
+#compact-footer { display:flex; justify-content:center; padding:12px; flex-shrink:0; }
+#compact-footer .dock { flex-wrap:nowrap; gap:2px; width:fit-content; }
+#compact-footer .beginner-actions { display:flex; gap:2px; padding:0; margin:0; }
+#compact-footer .view-tabs { display:flex; gap:0; padding:0; }
+#compact-footer .controls { gap:0; padding-left:3px; }
+#compact-footer .common-controls { border-left:0; padding-left:0; }
+#compact-footer .view-tabs .compact-icon { border:0; padding:0; background:transparent; border-radius:50%; }
+#advanced-view { padding-bottom:0; }
+#compact-tooltip { z-index:30; }
+@media(max-width:340px) {
+ #compact-footer { padding:10px 8px; }
+ #compact-footer .compact-icon { width:32px; height:32px; }
+}
+@media(max-width:230px) {
+ #compact-footer .dock { flex-wrap:wrap; border-radius:18px; }
+ #compact-footer .beginner-actions { flex-wrap:wrap; justify-content:center; }
+ #compact-footer .controls { border-left:0; }
+ #basic-view { padding:10px 6px 0; }
+}

@@ -22,6 +22,7 @@ export function buildPrompt(id, context = '', configuredSource = '') {
   return [
     `用户从工作流快捷面板发起：${flow.label}。`,
     '这是一个全新的独立任务，不继承其他任务的聊天上下文。先读取并遵守当前项目适用的 AGENTS.md，核对工作目录、Git 分支和工作区状态。',
+    'Git 操作前读取项目贡献指南、治理文档、当前改动路径适用的嵌套 AGENTS.md 及其规则路由，逐项核实提交信息、DCO、LFS、测试、审批和 hooks 条件。缺失条件必须停止，不得使用 --no-verify、强推或关闭 hooks。main、master 及远端默认分支不允许直接提交或推送，必须使用工作分支并通过 PR 合入；不得为满足请求修改项目规则。',
     instruction,
     '不要覆盖或丢弃已有改动。根据当前项目和实际 Git/PR 状态开展工作；目标不明确或有多个候选时，先向用户确认。具体操作沿用任务权限和流程中的授权要求。',
     context.trim() ? `用户补充的工作目标（不是流程定义）：\n${context.trim()}` : '若流程需要具体开发目标、PR 或分支信息而当前项目无法确定，请先向用户询问。',

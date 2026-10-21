@@ -1,10 +1,10 @@
 {
   "name": "极心许愿",
-  "description": "Configure project workflow files in plugin settings, then bind a local chat to launch independent tasks.",
+  "description": "Project Git operations with native hooks and branch gates; advanced workflows create independent tasks.",
   "whenToUse": "Starting experiments, developing features or tools, submitting pull requests, or cleaning up branches.",
   "tools": {
     "get_workflows": {
-      "description": "Configure project workflow files in plugin settings, then bind a local chat to launch independent tasks."
+      "description": "Legacy chat binding card. Select a project root in plugin settings to use the toolbar without chat binding."
     }
   },
   "panel": {

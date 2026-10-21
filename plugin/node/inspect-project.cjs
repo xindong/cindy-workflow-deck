@@ -137,11 +137,17 @@ function startStdio() {
     let request;
     try {
       request = JSON.parse(line);
+      if (request.method === 'project/git') {
+        let result;
+        try { result={kind:'jixin-git-result-v1',ok:true,value:await require('./git-service.cjs').gitRequest(request.params?.dir, request.params)}; }
+        catch(error) { result={kind:'jixin-git-result-v1',ok:false,error:{code:error.code || 'GIT_OPERATION_FAILED',message:error.message || 'Git 操作未完成，请重新检查'}}; }
+        process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:request.id,result}) + '\n'); return;
+      }
       if (request.method !== 'project/inspect') return process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Unknown method' } }) + '\n');
       const result = await inspectProject(request.params?.dir, undefined, request.params?.project);
       process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) + '\n');
-    } catch {
-      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request?.id ?? null, error: { code: -32000, message: 'PROJECT_CHECK_FAILED' } }) + '\n');
+    } catch (error) {
+      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request?.id ?? null, error: { code: -32000, message: error.message || 'PROJECT_CHECK_FAILED', data: {code:error.code || 'PROJECT_CHECK_FAILED'} } }) + '\n');
     }
   });
 }
