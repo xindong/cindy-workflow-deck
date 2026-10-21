@@ -33,11 +33,25 @@ test('does not bind without confirmation and rejects remote changes',async t=>{
   const f=await fixture(t);await assert.rejects(f.act('ssh-identity-set',{sshIdentityFile:f.key}),{code:'SSH_IDENTITY_INVALID'});
   await f.act('ssh-identity-set',{confirmSshIdentity:true,sshIdentityFile:f.key});
   f.git(['remote','set-url','origin','git@example.test:other/project.git']);
-  await assert.rejects(gitRequest(f.root),{code:'SSH_IDENTITY_INVALID'});
+  const state=await gitRequest(f.root);assert.equal(state.sshIdentity.invalid,true);assert.ok(state.token);
+  await assert.rejects(f.act('fetch'),{code:'SSH_IDENTITY_INVALID'});
+  await f.act('ssh-identity-set',{confirmSshIdentity:true,sshIdentityFile:f.key});
+  assert.equal((await gitRequest(f.root)).sshIdentity.configured,true);
 });
 test('rejects loose key permissions and another project does not inherit a binding',async t=>{
   const a=await fixture(t),b=await fixture(t);await chmod(a.key,0o644);
   await assert.rejects(a.act('ssh-identity-set',{confirmSshIdentity:true,sshIdentityFile:a.key}),{code:'SSH_IDENTITY_INVALID'});
   await chmod(a.key,0o600);await a.act('ssh-identity-set',{confirmSshIdentity:true,sshIdentityFile:a.key});
   assert.equal((await gitRequest(b.root)).sshIdentity.configured,false);
+});
+
+test('replaced or missing SSH keys leave read-only status and rebind available after restart',async t=>{
+ const f=await fixture(t);await f.act('ssh-identity-set',{confirmSshIdentity:true,sshIdentityFile:f.key});
+ await rm(f.key);const state=await gitRequest(f.root);assert.equal(state.sshIdentity.invalid,true);
+ const fresh=createRequire(import.meta.url);delete fresh.cache[fresh.resolve('../plugin/node/git-service.cjs')];
+ const restarted=fresh('../plugin/node/git-service.cjs').gitRequest;
+ const replacement=join(f.root,'replacement');execFileSync('ssh-keygen',['-q','-t','ed25519','-N','','-f',replacement]);
+ const token=(await restarted(f.root)).token;
+ await restarted(f.root,{action:'ssh-identity-set',token,rulesConfirmed:true,confirmSshIdentity:true,sshIdentityFile:replacement});
+ assert.equal((await restarted(f.root)).sshIdentity.configured,true);
 });

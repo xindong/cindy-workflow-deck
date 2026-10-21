@@ -16,7 +16,7 @@ async function fixture(t,template=false) {
  await writeFile(join(root,'AGENTS.md'),'Use Conventional Commits. DCO required. Never commit directly to main. Use a PR.');
  if(template){await mkdir(join(root,'.github'));await writeFile(join(root,'.github/PULL_REQUEST_TEMPLATE.md'),'## Team verification\n- [ ] Art lead approved\n');}
  git(['add','.']);git(['commit','-qm','chore: initial']);const main=git(['rev-parse','HEAD']);
- execFileSync('git',['init','-q','--bare',remote]);git(['remote','add','origin',remote]);git(['push','-qu','origin','main']);git(['symbolic-ref','refs/remotes/origin/HEAD','refs/remotes/origin/main']);
+ execFileSync('git',['init','-q','--bare',remote]);git(['remote','add','origin',remote]);git(['push','-qu','origin','main']);git(['config','url.'+remote+'.insteadOf','https://github.com/fixture/project.git']);git(['remote','set-url','origin','https://github.com/fixture/project.git']);git(['symbolic-ref','refs/remotes/origin/HEAD','refs/remotes/origin/main']);
  const bin=join(root,'.git/bin');await mkdir(bin);const log=join(root,'.git/gh-args.json'),gh=join(bin,'gh');
  await writeFile(gh,'#!'+process.execPath+'\n'+
   'const fs=require("node:fs");const a=process.argv.slice(2);if(a[0]==="auth")process.exit(0);fs.writeFileSync('+JSON.stringify(log)+',JSON.stringify(a));if(fs.existsSync('+JSON.stringify(join(root,'.git/fail-review'))+')){console.error("Review result uncertain");process.exit(1);}console.log("https://example.test/team/repo/pull/1");\n');
@@ -29,7 +29,7 @@ test('beginner submits only chosen art files on a new branch, DCO + native hooks
  const operationId=randomUUID(),result=await f.act('beginner-submit',{operationId,paths:['hero.png'],summary:'调整角色颜色'});
  assert.equal(result.state,'awaiting-review');assert.match(f.git(['branch','--show-current']),/^work\/change-/);assert.equal(f.git(['rev-parse','main']),f.main);
  assert.equal(f.git(['diff-tree','--no-commit-id','--name-only','-r','HEAD']),'hero.png');assert.match(f.git(['log','-1','--format=%B']),/chore: 调整角色颜色[\s\S]*Signed-off-by: Art Fixture/);
- assert.equal(await readFile(join(f.root,'someone-else.txt'),'utf8'),'keep');const args=JSON.parse(await readFile(f.log,'utf8'));assert.equal(args[args.indexOf('--base')+1],'main');assert.equal(args.includes('--draft'),false);
+ assert.equal(await readFile(join(f.root,'someone-else.txt'),'utf8'),'keep');const args=JSON.parse(await readFile(f.log,'utf8'));assert.equal(args[args.indexOf('--base')+1],'main');assert.equal(args.includes('--draft'),false);assert.equal(args[args.indexOf('--repo')+1],'github.com/fixture/project');
  const head=f.git(['rev-parse','HEAD']);assert.equal((await f.act('beginner-submit',{operationId})).id,operationId);assert.equal(f.git(['rev-parse','HEAD']),head);
  assert.equal((await f.status()).beginnerReceipt.state,'awaiting-review');
 });
@@ -169,4 +169,33 @@ test('running, uncertain, submission and post-mutation receipts never become ret
  const {retryableFailure}=createRequire(import.meta.url)('../plugin/node/beginner-git.cjs');
  const safe={action:'beginner-update',state:'blocked',step:'preflight',completed:['fetch']};assert.equal(retryableFailure(safe),true);
  for(const patch of [{state:'running'},{state:'needs-verification'},{action:'beginner-submit'},{step:'merge'},{step:'stash'},{step:'restore'},{stash:'backup'},{completed:['fetch','stash']}])assert.equal(retryableFailure({...safe,...patch}),false);
+});
+
+test('submodule pointer changes block before local stash or fast-forward',async t=>{
+ const f=await fixture(t);await writeFile(join(f.root,'local.txt'),'keep');
+ const head=f.git(['rev-parse','HEAD']),status=f.git(['status','--porcelain']);
+ f.git(['switch','-qc','team-submodule']);
+ f.git(['update-index','--add','--cacheinfo','160000,'+head+',vendor']);
+ f.git(['commit','-qm','chore: add submodule']);f.git(['push','-q','origin','HEAD:main']);
+ f.git(['switch','-q','main']);
+ const result=await f.act('beginner-update');
+ assert.equal(result.state,'blocked');assert.equal(result.step,'preflight');assert.match(result.message,/子模块/);
+ assert.equal(f.git(['rev-parse','HEAD']),head);assert.equal(f.git(['status','--porcelain']),status);assert.equal(f.git(['stash','list']),'');
+});
+
+test('changed initialized submodule stays at its original revision and update reports blocked',async t=>{
+ const f=await fixture(t),source=join(f.root,'.git/vendor-source');await mkdir(source);
+ const vendor=args=>execFileSync('git',['-C',source,...args],{encoding:'utf8'}).trim();
+ vendor(['init','-qb','main']);vendor(['config','user.name','Fixture']);vendor(['config','user.email','fixture@example.test']);
+ await writeFile(join(source,'asset'),'old');vendor(['add','.']);vendor(['commit','-qm','old']);const old=vendor(['rev-parse','HEAD']);
+ await writeFile(join(source,'asset'),'new');vendor(['commit','-qam','new']);const next=vendor(['rev-parse','HEAD']);
+ f.git(['-c','protocol.file.allow=always','submodule','add','-q',source,'vendor']);
+ execFileSync('git',['-C',join(f.root,'vendor'),'checkout','-q',old]);
+ f.git(['add','.gitmodules','vendor']);f.git(['commit','-qm','chore: vendor baseline']);f.git(['push','-q','origin','main']);
+ const head=f.git(['rev-parse','HEAD']);f.git(['switch','-qc','team-vendor-update']);
+ f.git(['update-index','--cacheinfo','160000,'+next+',vendor']);f.git(['commit','-qm','chore: update vendor']);f.git(['push','-q','origin','HEAD:main']);f.git(['switch','-q','main']);
+ const result=await f.act('beginner-update');assert.equal(result.state,'blocked');assert.equal(result.step,'preflight');assert.match(result.message,/子模块/);
+ assert.equal(f.git(['rev-parse','HEAD']),head);assert.equal(f.git(['status','--porcelain']),'');
+ assert.equal(execFileSync('git',['-C',join(f.root,'vendor'),'rev-parse','HEAD'],{encoding:'utf8'}).trim(),old);
+ assert.equal(await readFile(join(f.root,'vendor/asset'),'utf8'),'old');
 });

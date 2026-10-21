@@ -9,15 +9,11 @@ function environment() {
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
   return { ...env, GIT_TERMINAL_PROMPT:'0', GCM_INTERACTIVE:'never', GIT_EDITOR:'true', GIT_SEQUENCE_EDITOR:'true' };
 }
-async function context(directory, skipSshBinding = false) {
+async function context(directory, skipSshBinding = false, allowInvalidIdentity = false) {
   await require('./ssh-agent-env.cjs').inheritSshAgent();
   if (typeof directory !== 'string' || !path.isAbsolute(directory)) fail('INVALID_DIRECTORY','请选择项目根目录');
   const root = await fs.realpath(directory);
-  let binary = 'git';
-  if (process.platform === 'win32') {
-    const portable = path.resolve(root, '../git/bin/git.exe');
-    try { await fs.access(portable); binary = portable; } catch (e) { if (e.code !== 'ENOENT') throw e; }
-  }
+  const binary = 'git'; // Use the installed Git, never a project-adjacent executable.
   const env = environment();
   const run = async (args, options = {}) => (await execute(binary, ['--no-optional-locks','-c','core.fsmonitor=false','-C',root,...args], {env,timeout:90000,maxBuffer:options.filenameList ? 16*1024*1024 : 2*1024*1024,windowsHide:true})).stdout;
   let toplevel;
@@ -25,9 +21,14 @@ async function context(directory, skipSshBinding = false) {
   catch(error) {if(error.code==='ENOENT')fail('GIT_REQUIRED','这台电脑尚未配置版本管理组件，请联系项目负责人。');fail('NOT_GIT_PROJECT','这个文件夹不是已准备好的团队项目。请选择已有项目的最外层文件夹，或联系项目负责人。');}
   if (toplevel !== root) fail('NOT_PROJECT_ROOT','请选择 Git 仓库根目录，不能在父仓库中执行');
   const ctx = {root,run,binary,env};
-  const identity = skipSshBinding ? null : await require('./project-ssh.cjs').load(ctx);
+  let identity, identityError;
+  try { identity = skipSshBinding ? null : await require('./project-ssh.cjs').load(ctx); }
+  catch (error) {
+    if (!allowInvalidIdentity) throw error;
+    identityError = {configured:false,invalid:true,code:'SSH_IDENTITY_INVALID',message:'项目 SSH 身份已失效，请重新确认绑定；联网操作已阻止。'};
+  }
   if (identity) env.GIT_SSH_COMMAND = identity.command;
-  return {...ctx,sshIdentity:identity ? {configured:true,keyName:identity.keyName,fingerprint:identity.fingerprint} : {configured:false}};
+  return {...ctx,sshIdentity:identityError || (identity ? {configured:true,keyName:identity.keyName,fingerprint:identity.fingerprint} : {configured:false})};
 }
 async function optional(run,args) { try { return (await run(args)).trim(); } catch (e) { if (e.code === 1) return ''; throw e; } }
 async function snapshot({root,run}) {
@@ -61,14 +62,14 @@ async function snapshot({root,run}) {
   const hooksPath=await optional(run,['config','--path','--get','core.hooksPath']);
   const hookBase=hooksPath ? path.resolve(root,hooksPath) : path.resolve(root,(await run(['rev-parse','--git-path','hooks'])).trim());
   const hooks=[];
-  for(const name of ['pre-commit','prepare-commit-msg','commit-msg','pre-push','post-checkout','post-commit','post-merge']) {
+  for(const name of require('./hook-names.cjs')) {
     try { const target=path.join(hookBase,name),content=await fs.readFile(target); let executable=true;
       if(process.platform!=='win32') {try {await fs.access(target,require('node:fs').constants.X_OK);}catch{executable=false;}}
       hooks.push({name,executable,hash:createHash('sha256').update(content).digest('hex')});
     } catch(e) {if(e.code!=='ENOENT') throw e;}
   }
   let expectedHooks=false; try { expectedHooks=(await fs.stat(path.join(root,'.githooks'))).isDirectory(); } catch(e) {if(e.code!=='ENOENT') throw e;}
-  const trackedHooks=tracked.filter(p=>p.startsWith('.githooks/')&&!p.slice(10).includes('/')&&['pre-commit','prepare-commit-msg','commit-msg','pre-push','post-checkout','post-commit','post-merge'].includes(p.slice(10)));
+  const trackedHooks=tracked.filter(p=>p.startsWith('.githooks/')&&!p.slice(10).includes('/')&&require('./hook-names.cjs').includes(p.slice(10)));
   expectedHooks=expectedHooks||trackedHooks.length>0;
   const hooksReady=(!expectedHooks || hookBase===path.join(root,'.githooks')) && hooks.every(h=>h.executable) && trackedHooks.every(p=>hooks.some(h=>h.name===p.slice(10)));
   const rulesText=sources.map(s=>s.content).join('\n');
@@ -87,7 +88,7 @@ async function gitRequest(directory,params={}) {
   const root=await fs.realpath(directory);
   const previous=queues.get(root)||Promise.resolve();
   const job=previous.then(async()=>{
-    const ctx=await context(directory,action==='ssh-identity-set'),run=ctx.run;
+    const ctx=await context(directory,action==='ssh-identity-set',action==='status'),run=ctx.run;
     let lock;
     if(!['status','diff','history','issues-list'].includes(action)) {
       lock=path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim());
@@ -147,8 +148,9 @@ async function gitRequest(directory,params={}) {
       if(state.changes.length) fail('DIRTY_WORKTREE','请先提交或处理工作区改动再创建 PR');
       if(typeof params.title!=='string'||!params.title.trim()||params.title.length>160||typeof params.body!=='string'||!params.body.trim()||params.body.length>64000) fail('PR_DESCRIPTION_REQUIRED','请填写符合项目模板的 PR 标题和描述');
       const base=state.protectedBranches.includes(params.base)?params.base:state.protectedBranches[0];
+      const github=require('./github-issues.cjs'),repo=await github.repository(ctx);
       try {
-        const {stdout}=await execute('gh',['pr','create','--base',base,'--head',state.branch,'--title',params.title,'--body',params.body],{cwd:root,env:ctx.env,timeout:90000,maxBuffer:1024*1024,windowsHide:true});
+        const {stdout}=await execute('gh',['pr','create','--repo','github.com/'+repo,'--base',base,'--head',state.branch,'--title',params.title,'--body',params.body],{...github.options(ctx,ctx.env),timeout:90000,maxBuffer:1024*1024});
         return {output:stdout};
       } catch(e) {
         if(e.code==='ENOENT') fail('PR_CLI_REQUIRED','未找到 gh，请安装并登录 GitHub CLI 后再创建PR。本次未创建PR。');

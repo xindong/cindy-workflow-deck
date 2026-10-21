@@ -1,6 +1,6 @@
 const fs=require('node:fs/promises');
 const path=require('node:path');
-const hookNames=['pre-commit','prepare-commit-msg','commit-msg','pre-push','post-checkout','post-commit','post-merge'];
+const hookNames=require('./hook-names.cjs');
 const problem=(code,message)=>Object.assign(new Error(message),{code});
 // Only declarative local Git settings are supported. Never execute instructions,
 // installers, hooks, login flows or package-manager commands during preparation.

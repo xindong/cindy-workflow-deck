@@ -55,7 +55,11 @@ export function createProjectSidebar({ store, agent, inspect, changed = () => {}
       if (record.mode !== 'project' || record.userChecked || record.state !== 'accepted' || record.jobStatus !== 'running') continue;
       let reply;
       try { reply = await agent.queryErrand({ jobId: record.jobId }); }
-      catch { unresolved = true; continue; }
+      catch {
+        unresolved = true;
+        await writeReceipt(key, { ...record, queryError: 'UNVERIFIED_RECEIPT' });
+        continue;
+      }
       if (!reply?.ok) {
         unresolved = true; // Expiry/restart is not proof that the task never ran.
         await writeReceipt(key, { ...record, queryError: reply?.errorCode || 'UNVERIFIED_RECEIPT' });

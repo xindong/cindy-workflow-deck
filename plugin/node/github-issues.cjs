@@ -3,9 +3,9 @@ const {promisify}=require('node:util');
 const execute=promisify(execFile);
 const fail=(code,message)=>{throw Object.assign(new Error(message),{code});};
 async function repository(ctx) {
- let remote;try {remote=(await ctx.run(['remote','get-url','origin'])).trim();}catch {fail('ISSUE_REPOSITORY_REQUIRED','当前项目还没有配置团队仓库，请联系项目负责人。');}
+ let remote;try {remote=(await ctx.run(['config','--get','remote.origin.url'])).trim();}catch {fail('ISSUE_REPOSITORY_REQUIRED','当前项目还没有配置团队仓库，请联系项目负责人。');}
  const match=remote.match(/^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?\/?$/);
- if(!match||[match[1],match[2]].some(s=>s==='.'||s==='..'))fail('ISSUE_REPOSITORY_REQUIRED','关联事项需要当前项目的 origin 指向 GitHub.com 仓库。请联系项目负责人核对，文件不会被改动。');
+ if(!match||[match[1],match[2]].some(s=>s==='.'||s==='..'))fail('ISSUE_REPOSITORY_REQUIRED','送审和关联事项需要当前项目的 origin 指向 GitHub.com 仓库。请联系项目负责人核对，文件不会被改动。');
  return match[1]+'/'+match[2];
 }
 function options(ctx,env) {
@@ -43,4 +43,4 @@ async function validateIssue(ctx,selection,env) {
  if(value.pull_request||value.state!=='open'||!own(value,login))fail('ISSUE_UNAVAILABLE','该事项已关闭，或不再属于当前登录账号。请重新加载并选择自己的未关闭事项；本次未提交文件。');
  return {...result,login};
 }
-module.exports={listIssues,validateIssue};
+module.exports={listIssues,validateIssue,repository,options};

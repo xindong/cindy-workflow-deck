@@ -68,11 +68,11 @@ test('linked worktrees use their own branch and index; subdirectory roots are re
  await mkdir(join(f.root,'subdir'));await assert.rejects(gitRequest(join(f.root,'subdir')),{code:'NOT_PROJECT_ROOT'});
 });
 test('PR uses exact title/body arguments through gh without shell or a real external PR', {skip:process.platform==='win32'},async t=>{
- const f=await fixture(t);await f.act('branch-create',{branch:'feature/pr'});
+ const f=await fixture(t);f.git(['remote','add','origin','https://github.com/team/current.git']);await f.act('branch-create',{branch:'feature/pr'});
  const bin=join(f.root,'.git','fixture-bin');await mkdir(bin);const gh=join(bin,'gh');
  await writeFile(gh,'#!/bin/sh\nprintf "%s\\n" "$@"\n');await chmod(gh,0o755);
  const old=process.env.PATH;process.env.PATH=bin+':'+old;
- try { const body='Checklist completed\nLiteral $(do-not-run) and backticks';const result=await f.act('pr',{title:'feat: fixture PR',body,base:'main'});assert.ok(result.output.includes(body));assert.match(result.output,/--base\nmain\n--head\nfeature\/pr/); }
+ try { const body='Checklist completed\nLiteral $(do-not-run) and backticks';const result=await f.act('pr',{title:'feat: fixture PR',body,base:'main'});assert.ok(result.output.includes(body));assert.match(result.output,/--repo\ngithub.com\/team\/current/);assert.match(result.output,/--base\nmain\n--head\nfeature\/pr/); }
  finally {process.env.PATH=old;}
 });
 
@@ -90,4 +90,15 @@ test('complete 500KB rule graph stays usable; aggregate and file-count limits st
   if(incomplete) await assert.rejects(f.act('branch-create',{branch:'feature/blocked-rules'}),{code:'RULE_DISCOVERY_INCOMPLETE'});
   else {assert.equal(state.sources.length,count+2); await f.act('branch-create',{branch:'feature/complete-rules'});}
  }
+});
+
+test('project-adjacent Windows git.exe is never selected as the Git runtime',async t=>{
+ const parent=await mkdtemp(join(tmpdir(),'jixin-runtime-'));t.after(()=>rm(parent,{recursive:true,force:true}));
+ const root=join(await realpath(parent),'project');await mkdir(root);
+ execFileSync('git',['-C',root,'init','-q','-b','main']);
+ const f={root},decoy=join(parent,'git/bin');await mkdir(decoy,{recursive:true});
+ await writeFile(join(decoy,'git.exe'),'untrusted project-adjacent executable');await chmod(join(decoy,'git.exe'),0o755);
+ const script="Object.defineProperty(process,'platform',{value:'win32'});require(process.argv[1]).gitRequest(process.argv[2]).then(s=>process.stdout.write(s.root)).catch(()=>process.exit(1));";
+ const output=execFileSync(process.execPath,['-e',script,createRequire(import.meta.url).resolve('../plugin/node/git-service.cjs'),f.root],{encoding:'utf8'});
+ assert.equal(output,f.root);
 });

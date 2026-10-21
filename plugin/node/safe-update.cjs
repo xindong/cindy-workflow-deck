@@ -12,6 +12,9 @@ async function preflight(ctx,state,target,env) {
   // Never temporarily shelve changes when fast-forwarding is impossible.
   try {await ctx.run(['merge-base','--is-ancestor',state.head,target]);}
   catch(error){if(error.code===1)throw Object.assign(new Error('本地版本与团队版本已分叉，请负责人处理。'),{code:'UPDATE_DIVERGED'});throw error;}
+  const changes=(await ctx.run(['diff','--raw','--no-ext-diff','--no-textconv','--no-abbrev','--no-renames','-z',state.head,target],{filenameList:true})).split('\0');
+  if(changes.some(row=>/^:(?:160000 \d{6}|\d{6} 160000) /.test(row)))
+    throw Object.assign(new Error('团队版本改变了子模块，请负责人完整更新子模块后再继续；本地文件尚未修改。'),{code:'UPDATE_SUBMODULE_REQUIRED'});
   const incoming=(await ctx.run(['ls-tree','-r','--name-only','-z',target],{filenameList:true})).split('\0').filter(Boolean);
   const ignored=(await ctx.run(['ls-files','--others','--ignored','--exclude-standard','-z'],{filenameList:true})).split('\0').filter(Boolean);
   const untracked=[...state.changes.filter(c=>c.status==='??').map(c=>c.path),...ignored];
