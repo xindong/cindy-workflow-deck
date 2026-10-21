@@ -130,11 +130,12 @@ test('ignored local files are protected even when ordinary Git status is clean',
 
 test('LFS rehearsal skips downloads only in the disposable worktree',async t=>{
  const f=await fixture(t);
- f.git(['config','filter.lfs.process','']);f.git(['config','filter.lfs.clean','cat']);f.git(['config','filter.lfs.smudge','cat']);
- await writeFile(join(f.root,'.gitattributes'),'*.asset filter=lfs');await writeFile(join(f.root,'hero.asset'),'pointer-only');
+ // A unique fixture driver cannot inherit the CI runner's real LFS process/required settings.
+ f.git(['config','filter.jixin-test-lfs.clean','cat']);f.git(['config','filter.jixin-test-lfs.smudge','cat']);f.git(['config','filter.jixin-test-lfs.required','true']);
+ await writeFile(join(f.root,'.gitattributes'),'*.asset filter=jixin-test-lfs');await writeFile(join(f.root,'hero.asset'),'pointer-only');
  f.git(['add','.']);f.git(['commit','-qm','add asset']);await writeFile(join(f.root,'AGENTS.md'),'local pending edit');
  const state=await f.status();const before=f.git(['status','--porcelain']);
- const env={...process.env,GIT_CONFIG_COUNT:'3',GIT_CONFIG_KEY_0:'filter.lfs.smudge',GIT_CONFIG_VALUE_0:'sh -c '+String.fromCharCode(39)+'test "$GIT_LFS_SKIP_SMUDGE" = 1 || exit 63; cat'+String.fromCharCode(39),GIT_CONFIG_KEY_1:'filter.lfs.required',GIT_CONFIG_VALUE_1:'true',GIT_CONFIG_KEY_2:'filter.lfs.clean',GIT_CONFIG_VALUE_2:'cat'};
+ const env={...process.env,GIT_CONFIG_COUNT:'3',GIT_CONFIG_KEY_0:'filter.jixin-test-lfs.smudge',GIT_CONFIG_VALUE_0:'sh -c '+String.fromCharCode(39)+'test "$GIT_LFS_SKIP_SMUDGE" = 1 || exit 63; cat'+String.fromCharCode(39),GIT_CONFIG_KEY_1:'filter.jixin-test-lfs.required',GIT_CONFIG_VALUE_1:'true',GIT_CONFIG_KEY_2:'filter.jixin-test-lfs.clean',GIT_CONFIG_VALUE_2:'cat'};
  await preflight({root:f.root,run:async args=>f.git(args)},state,state.head,env);
  assert.equal(f.git(['status','--porcelain']),before);assert.equal(env.GIT_LFS_SKIP_SMUDGE,process.env.GIT_LFS_SKIP_SMUDGE);
 });
