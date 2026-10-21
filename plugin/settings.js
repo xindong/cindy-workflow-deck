@@ -3,7 +3,8 @@ import { FLOW_IDS, newProject, normalizeConfiguration, directoryKey } from './co
 import { createSettingsTransport } from './settings-transport.js';
 const transport = createSettingsTransport();
 const $ = id => document.getElementById(id);
-let english = false, state, draft, dirty = false, busy = false;
+let english = false, state, draft, dirty = false, busy = false, identityCandidate=null;
+let configurationStale=false,synchronizing=false;
 // Daily users choose one folder. Retain the manual manager for maintainers.
 const manager=document.createElement('details'),managerTitle=document.createElement('summary');manager.id='project-manager';
 const form=$('configuration-form');form.before(manager);manager.append(managerTitle,form,$('inspection').closest('section'));
@@ -12,7 +13,9 @@ const choose=document.createElement('button');choose.id='quick-project';choose.t
 const selectedRoot=document.createElement('p');selectedRoot.id='setup-root';
 const setupStatus=document.createElement('p');setupStatus.id='setup-status';setupStatus.setAttribute('role','status');
 const setupDetails=document.createElement('details'),setupTitle=document.createElement('summary'),setupOutput=document.createElement('pre');setupDetails.id='setup-details';setupDetails.hidden=true;setupDetails.append(setupTitle,setupOutput);
-quick.append(choose,selectedRoot,setupStatus,setupDetails);manager.before(quick);
+const identityBox=document.createElement('section'),identityInfo=document.createElement('p'),identityFill=document.createElement('button');
+identityBox.id='identity-box';identityBox.hidden=true;identityInfo.id='identity-info';identityFill.id='identity-fill';identityFill.type='button';identityBox.append(identityInfo,identityFill);
+quick.append(choose,selectedRoot,setupStatus,identityBox,setupDetails);manager.before(quick);
 
 const words = {
   zh: { project:'当前项目',add:'添加项目',remove:'移除',binding:'项目绑定',name:'项目名称',directory:'项目根目录',chooseDirectory:'选择项目目录',save:'保存配置',reload:'重新加载',inspect:'检查已保存项目',results:'检查结果',external:'允许此项使用项目外的绝对路径',chooseFile:'选择指令文件',experiment:'实验',feature:'功能',tooling:'工具',pr:'PR 审查',merge:'合并 / 清理' },
@@ -22,8 +25,10 @@ const tr = key => words[english ? 'en' : 'zh'][key];
 const say = (zh, en) => english ? en : zh;
 function notice(message) { $('notice').textContent = message; }
 function active() { return draft?.projects.find(p => p.id === draft.activeProjectId); }
-function markDirty() { setupStatus.textContent='';setupDetails.hidden=true;dirty = true; $('inspection').textContent = ''; buttons(); }
+function clearIdentity(){identityCandidate=null;identityBox.hidden=true;}
+function markDirty() { clearIdentity();setupStatus.textContent='';setupDetails.hidden=true;dirty = true; $('inspection').textContent = ''; buttons(); }
 function buttons() {
+  identityFill.disabled=busy||dirty;
   choose.disabled=busy||!draft;selectedRoot.textContent=active()?.directory||say('还没有选择项目目录。','No project folder selected.');
   $('fields').disabled = busy || !active();
   for (const id of ['add','remove','save','reload','project']) $(id).disabled = busy || (id === 'remove' && !active()) || (id === 'add' && (draft?.projects.length || 0) >= 8);
@@ -45,12 +50,43 @@ async function run(work) {
   try { await work(); } catch (error) {
     if (error.code !== 'CANCELLED') notice((error.code ? error.code + ' · ' : '') + error.message);
     else notice(say('已取消选择，配置未改变。','Selection cancelled; configuration unchanged.'));
-  } finally { busy = false; buttons(); document.dispatchEvent(new Event('configuration-ready')); }
+  } finally { busy = false; buttons();if(configurationStale)await synchronizeConfiguration();document.dispatchEvent(new Event('configuration-ready')); }
+}
+function invalidateConfiguration(){
+  configurationStale=true;clearIdentity();
+  document.dispatchEvent(new Event('configuration-invalidated'));buttons();
+}
+async function synchronizeConfiguration(){
+  if(busy||synchronizing)return;
+  synchronizing=true;
+  try{
+    // A read only: never repeat an operation rejected by a stale revision.
+    const latest=await transport.call('config-read');
+    if(latest.revision===state?.revision){configurationStale=false;return;}
+    if(dirty){notice(say('另一处更新了项目配置；当前编辑已保留，请重新加载后核对。','Project settings changed elsewhere. Your edits are preserved; reload to review.'));return;}
+    state=latest;draft=structuredClone(latest.configuration);configurationStale=false;
+    clearIdentity();setupStatus.textContent='';setupDetails.hidden=true;render();
+    notice(say('已同步最新项目配置；请核对当前项目后重新选择操作，未自动重试。','Latest project settings loaded. Review the project and choose an action; nothing was retried.'));
+  }catch(error){notice(error.message);}
+  finally{synchronizing=false;buttons();document.dispatchEvent(new Event('configuration-ready'));}
 }
 async function load() {
+  clearIdentity();
   const result = await transport.call('config-read');
-  state = result; draft = structuredClone(result.configuration); dirty = false;
+  state = result; draft = structuredClone(result.configuration); dirty = false;configurationStale=false;
   setupStatus.textContent='';setupDetails.hidden=true;render(); $('inspection').textContent = ''; notice(say('选择一次项目目录，工具会自动保存并按项目规则完成本地准备。','Choose a project folder once. Settings are saved and local preparation follows project rules.'));
+}
+function showPreparation(result){
+  setupStatus.textContent=result.message||say('准备结果待确认，请重新检测。','Preparation unverified. Check again.');
+  setupOutput.textContent=[...(result.completed||[]),...(result.blockers||[]).map(b=>b.message)].join('\n');setupDetails.hidden=!setupOutput.textContent;
+  identityCandidate=result.identity?.state==='available'?result.identity:null;
+  identityBox.hidden=!result.identity;
+  identityFill.hidden=result.identity?.state==='ready';
+  identityInfo.textContent=identityCandidate
+    ?say(`姓名：${identityCandidate.name} · 邮箱：${identityCandidate.email}；来源：${identityCandidate.source}`,`Name: ${identityCandidate.name} · Email: ${identityCandidate.email}. Source: signed-in GitHub.com account; missing fields only, this project only.`)
+    :result.identity?.message||'';
+  identityFill.textContent=identityCandidate?say('一键补齐提交署名','Fill missing Git identity'):say('重新检测账号','Check account again');
+  if(result.identity?.state==='ready')identityInfo.textContent=say('已保存到当前项目：','Saved for this project: ')+result.identity.name+' <'+result.identity.email+'>';
 }
 async function saveAndPrepare() {
   const configuration=normalizeConfiguration({...draft,projects:draft.projects.map(project=>({id:project.id,directory:project.directory,discovery:'auto'}))});
@@ -59,11 +95,10 @@ async function saveAndPrepare() {
   if(!active()){notice(say('项目配置已保存。','Project settings saved.'));setupStatus.textContent='';setupDetails.hidden=true;return false;}
   notice(say('项目已保存，正在自动准备…','Project saved. Preparing local settings…'));
   setupStatus.textContent=say('正在按项目规则准备，请稍候…','Preparing using project rules…');
-  setupDetails.hidden=true;
+  setupDetails.hidden=true;clearIdentity();
   try {
     const result=await transport.call('git-request',{projectId:state.configuration.activeProjectId,revision:state.revision,action:'prepare',confirmProjectSetup:true});
-    setupStatus.textContent=result.message||say('本地准备结果待确认，请重新选择目录检查。','Local preparation is unverified. Choose the folder again to check.');
-    setupOutput.textContent=[...(result.completed||[]),...(result.blockers||[]).map(b=>b.message)].join('\n');setupDetails.hidden=!setupOutput.textContent;
+    showPreparation(result);
     notice(result.state==='ready'?say('项目已保存，已完成本地准备。','Project saved. Local preparation completed.'):say('项目已保存；还有一项准备需要处理，请看上方说明。','Project saved. Preparation needs attention; see above.'));
     return result.state==='ready';
   } catch(error) {
@@ -80,7 +115,14 @@ async function start() {
   choose.textContent=say('选择项目目录，自动准备','Choose project folder and prepare');
   managerTitle.textContent=say('项目管理与详细检查（负责人）','Project management and checks (maintainer)');
   setupTitle.textContent=say('查看自动准备结果','Preparation details');
+  identityFill.onclick=()=>run(async()=>{
+    const candidate=identityCandidate;
+    notice(say('正在检测并保存项目署名…','Checking project identity…'));
+    const result=await transport.call('git-request',{projectId:state.configuration.activeProjectId,revision:state.revision,action:candidate?'identity-fill':'prepare',confirmProjectSetup:true,...(candidate?{confirmIdentity:true,identity:{name:candidate.name,email:candidate.email,login:candidate.login}}:{})});
+    showPreparation(result);notice(result.message);
+  });
   choose.onclick=()=>run(async()=>{
+    notice(say('请选择项目目录；选择窗口会等待你确认或取消。','Choose a project folder; the dialog waits for confirmation or cancellation.'));
     const picked=await transport.call('config-pick-directory');
     let project=draft.projects.find(p=>p.directory&&directoryKey(p.directory)===directoryKey(picked.path));
     if(!project){if(draft.projects.length>=8)throw new Error(say('已有8个项目，请负责人先移除不再使用的项目。','Eight projects already exist. Ask the maintainer to remove an unused project.'));project={...newProject(),directory:picked.path,discovery:'auto'};draft.projects.push(project);}
@@ -115,7 +157,9 @@ async function start() {
     $('inspection').textContent = lines.join('\n'); notice(say('只读检查完成，没有运行项目脚本。','Read-only inspection completed; no project scripts were executed.'));
   }));
   await load(); busy=false; buttons();
-  mountGit({transport, english, context:()=>({projectId:state?.configuration.activeProjectId,revision:state?.revision,ready:!dirty && !busy && !!active()}), notice});
+  mountGit({transport, english, context:()=>({projectId:state?.configuration.activeProjectId,revision:state?.revision,ready:!dirty && !busy && !configurationStale && !!active()}), notice,
+    onConflict:async()=>{invalidateConfiguration();await synchronizeConfiguration();}});
+  transport.onConfigurationChanged?.(()=>{invalidateConfiguration();void synchronizeConfiguration();});
 }
 void start().catch(error => { busy = true; notice(error.message); buttons(); });
 addEventListener('pagehide', () => transport.close());

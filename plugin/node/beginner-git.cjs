@@ -37,10 +37,17 @@ function friendlyFailure(error,step,completed) {
   if(step==='merge') return '团队版本和你的本地版本暂时不能安全更新。工具没有覆盖你的修改，请联系项目负责人处理。';
   return '操作没有全部完成，你的文件已保留。请联系项目负责人核对后再继续。';
 }
+// Only settled update failures before any local mutation may start a NEW attempt.
+// Running, killed, stash/merge/restore and external submission results stay locked.
+function retryableFailure(record) {
+  return !!record && record.action==='beginner-update' && record.state==='blocked'
+    && ['fetch','preflight'].includes(record.step) && !record.stash && !record.previousStash
+    && Array.isArray(record.completed) && record.completed.every(s=>s==='fetch');
+}
 async function runBeginner(ctx,state,params,env) {
   const prior=await readReceipt(ctx);
   if(prior?.id===params.operationId) return prior;
-  if(prior && ['running','needs-verification','blocked'].includes(prior.state)) fail('PREVIOUS_OPERATION_PENDING','上一次操作还需要核对。请把操作详情交给项目负责人，暂时不要再次提交。');
+  if(prior && !retryableFailure(prior) && ['running','needs-verification','blocked'].includes(prior.state)) fail('PREVIOUS_OPERATION_PENDING','上一次操作还需要核对。请把操作详情交给项目负责人，暂时不要再次提交。');
   if(typeof params.operationId!=='string'||!/^[a-zA-Z0-9-]{16,60}$/.test(params.operationId)) fail('INVALID_REQUEST','操作编号无效，请重新检查项目。');
   if(state.changes.some(c=>/U/.test(c.status)||['AA','DD'].includes(c.status))) fail('PROJECT_CONFLICT','项目里有尚未处理的文件冲突。请联系项目负责人处理，工具不会替你覆盖文件。');
   for(const name of ['MERGE_HEAD','CHERRY_PICK_HEAD','REVERT_HEAD','rebase-merge','rebase-apply']) {
@@ -65,7 +72,7 @@ async function runBeginner(ctx,state,params,env) {
     // Verify the review component before creating branches or touching the index.
     try {await execute('gh',['auth','status',...(issue?['--hostname','github.com']:[])],{cwd:ctx.root,env,timeout:20000,maxBuffer:256*1024,windowsHide:true});}
     catch {fail('REVIEW_ACCOUNT_REQUIRED','这台电脑还没有连接团队审核账号。请联系项目负责人完成连接；本次没有提交或上传。');}
-  } else if(state.changes.length) fail('DIRTY_WORKTREE','你还有未提交的修改。请先提交，或者请负责人协助保留修改后再更新；工具不会覆盖它们。');
+  }
   const record={id:params.operationId,action:params.action,state:'running',completed:[],step:'prepare',base,...(issue?{issue}:{}),createdAt:new Date().toISOString()};
   async function step(name,work) {
     record.step=name;process.stderr.write('beginner-step: '+name+'\n');await writeReceipt(ctx,record);
@@ -76,8 +83,21 @@ async function runBeginner(ctx,state,params,env) {
   try {
     if(!submit) {
       await step('fetch',()=>ctx.run(['fetch','origin']));
-      await step('merge',()=>ctx.run(['merge','--ff-only','refs/remotes/origin/'+base]));
-      record.message='项目已更新，可以继续工作。';record.state='updated';
+      const target=(await ctx.run(['rev-parse','refs/remotes/origin/'+base])).trim();
+      record.target=target;
+      if(target===state.head) {record.state='updated';record.step='finished';record.message='项目已是团队最新版本，本地修改及暂存区保持原样。';await writeReceipt(ctx,record);return record;}
+      await step('preflight',()=>require('./safe-update.cjs').preflight(ctx,state,target,env));
+      if(state.changes.length) {
+        record.previousStash=await require('./safe-update.cjs').stashHead(ctx);
+        await step('stash',()=>ctx.run(['stash','push','--include-untracked','-m','jixin-update-'+record.id]));
+        record.stash=await require('./safe-update.cjs').stashHead(ctx);
+        if(!record.stash || record.stash===record.previousStash)fail('STASH_UNCONFIRMED','未能确认修改备份，已停止更新，请核对操作详情。');
+        await writeReceipt(ctx,record);
+      }
+      await step('merge',()=>ctx.run(['merge','--ff-only',target]));
+      if(record.stash) await step('restore',()=>ctx.run(['stash','apply','--index',record.stash]));
+      // Retain the precise backup; never drop a concurrently created stash by position.
+      record.message=record.stash?'项目已更新，本地修改及原暂存状态已取回；安全备份已保留。':'项目已更新，可以继续工作。';record.state='updated';
     } else {
       const branch='work/change-'+Date.now().toString(36)+'-'+randomUUID().slice(0,8);record.branch=branch;
       await step('branch',()=>ctx.run(['switch','-c',branch]));
@@ -94,11 +114,13 @@ async function runBeginner(ctx,state,params,env) {
     }
     record.step='finished';await writeReceipt(ctx,record);return record;
   } catch(error) {
-    record.state=error.killed||['push','review','merge','stage'].includes(record.step)?'needs-verification':'blocked';
-    record.message=friendlyFailure(error,record.step,record.completed);
+    record.state=error.killed||['push','review','merge','stage','stash','restore'].includes(record.step)?'needs-verification':'blocked';
+    record.message=record.step==='preflight' ? '更新预检未通过，本地修改和暂存状态保持原样。'+error.message : record.step==='restore' ? '团队版本已更新，但本地修改取回未完成。安全备份已保留，请联系负责人核对，勿重复更新。' : friendlyFailure(error,record.step,record.completed);
+    if(retryableFailure(record))record.message+=' 尚未暂存或修改本地文件；处理上述原因后，点“重新检查”即可重新发起更新。';
+    if(record.stash)record.message+=' 备份编号：'+record.stash;
     record.detail=(error.stderr||error.message||'').replace(/(https?:\/\/)[^/\s@]+@/gi,'$1[redacted]@').replace(/(token|password|secret)=([^\s&]+)/gi,'$1=[redacted]').slice(0,3000);
     await writeReceipt(ctx,record);return record;
   }
 }
 async function acknowledge(ctx,prior) {await writeReceipt(ctx,{...prior,state:'acknowledged',previousState:prior.state,acknowledgedAt:new Date().toISOString()});}
-module.exports={readReceipt,runBeginner,acknowledge};
+module.exports={readReceipt,runBeginner,acknowledge,retryableFailure};

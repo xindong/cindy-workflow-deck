@@ -46,3 +46,12 @@ Daily work supports existing projects: Update project, View my changes, and Subm
 文件清单提供全选、全不选与已选数量，单次最多200个。提交页点“加载我的事项”，从当前项目中“分配给我的 / 我创建的”开放GitHub Issue选择一项；显示当前仓库和实际gh登录账号，最多100项。关联会写入提交记录和PR描述，不自动关闭Issue。提交前重新核对事项状态和归属，失败不会开始本地提交。origin须指向GitHub.com；缺账号、网络或权限时提示负责人处理，不自动重试。
 
 Select all / Select none affect only the file checkboxes. Load my issues reads up to 100 open issues assigned to or created by the current gh account in the origin GitHub.com repository. The selected issue is revalidated before local changes and referenced in the commit and PR body; it is not automatically closed.
+
+
+## 自动补齐提交署名 / Git identity
+
+选择目录后自动检查项目的有效 Git 姓名和邮箱；已有署名不覆盖。缺少时只对 origin 指向 GitHub.com 的项目读取本机 GitHub CLI 当前登录账号（须已有 gh 登录及网络连接），显示姓名、邮箱和来源，点击“一键补齐提交署名”只补缺失项并写入当前项目，不更改全局设置。姓名优先账号显示名，未公开显示名时使用登录名；邮箱使用 GitHub 的 ID+登录名免公开地址，不公开私人邮箱。写入前重新验证账号，账号变化需重新检测。无法读取时提示连接账号后重新检测，无需手填署名；不会自行安装 CLI、发起登录或借用项目历史作者。该功能两端共用，同样保留项目检查及提交规则。
+
+After choosing a folder, missing Git identity can be filled in one click from the locally signed-in GitHub.com CLI account. Existing fields are preserved. Missing email uses the account's GitHub noreply address; writes are project-local only. The account is checked again before saving. If unavailable, connect GitHub CLI and check again; identity is never inferred from project authors.
+
+更新会先在临时副本预检冲突，通过后保留本地修改（含原暂存状态与新增文件）、快进拉取并取回。冲突预检失败不改变原文件；取回异常保留安全备份并阻止重复执行。目录选择等待用户确认或取消，不再套用30秒请求超时。

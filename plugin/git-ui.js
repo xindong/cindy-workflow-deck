@@ -1,7 +1,7 @@
 import { mountBeginner } from './beginner-ui.js';
-export function mountGit({transport,context,notice,english=false}) {
+export function mountGit({transport,context,notice,onConflict,english=false}) {
   const $=id=>document.getElementById(id);
-  let state, busy=false, inspectedContext='',beginner;
+  let state, busy=false, inspectedContext='',beginner,pendingRefresh=false;
   const ready=()=>context().ready && !!state && inspectedContext===contextKey();
   const contextKey=()=>JSON.stringify([context().projectId,context().revision]);
   if(english) {
@@ -24,7 +24,9 @@ export function mountGit({transport,context,notice,english=false}) {
     return transport.call('git-request',{...ctx,action,...extra});
   }
   async function refresh() {
-    state=await call('status'); inspectedContext=contextKey(); $('git-confirm').checked=false;
+    const requested=contextKey(),snapshot=await call('status');
+    if(requested!==contextKey()||!context().ready){state=undefined;return;}
+    state=snapshot; inspectedContext=requested; $('git-confirm').checked=false;
     $('git-state').textContent=state.root+' · '+(state.branch || 'detached HEAD')+' · '+state.changes.length+(english?' changes':' 个改动');
     const protectedBranch=state.protectedBranches.includes(state.branch);
     $('git-gate').textContent=english ? ((protectedBranch?'Primary branch: commit, push and PR creation are blocked. Create a work branch → stage → commit → push → PR.':'Work branch: native project hooks remain enabled. Push, then merge through a PR. No force push or hook bypass.')+(!state.hooksReady?' Hooks are not ready; writes are disabled.':'')+(state.incomplete?' Rule discovery is incomplete; writes are disabled.':'')) : (protectedBranch?'当前为主分支：提交、推送、创建 PR 已禁用。下一步：新建工作分支 → 暂存 → 提交 → 推送 → PR。':'当前为工作分支。提交保留项目 hooks，推送后通过 PR 合入；不提供强推、重置或跳过 hooks。') + (!state.hooksReady?' 项目 hooks 未启用或不可执行，写操作已禁用。':'')+(state.incomplete?' 规则读取未完成，写操作已禁用。':'');
@@ -35,13 +37,24 @@ export function mountGit({transport,context,notice,english=false}) {
     for(const item of state.changes) {const label=document.createElement('label'),check=document.createElement('input'),text=document.createElement('span');label.className='check';check.type='checkbox';check.value=item.path;text.textContent=item.status+' '+item.path;label.append(check,text);$('git-files').append(label);}
     $('git-base').replaceChildren(...state.protectedBranches.map(b=>new Option(b,b)));
     $('git-branches').replaceChildren(...state.branches.map(b=>new Option(b,b)));
+    $('git-output').textContent='';
     beginner?.render();
     const templates=state.sources.filter(s=>/pull_request_template/i.test(s.path));if(templates.length===1 && !$('git-body').value)$('git-body').value=templates[0].content;
   }
+  async function reviewedCall(action,extra={}) {
+    const previous=state, requested=contextKey();
+    // Obtain a live one-shot ticket even after an on-demand worker has restarted.
+    // Do not replay writes, and never silently accept changed rules or files.
+    await refresh();
+    if(!previous || !ready() || requested!==contextKey() || previous.fingerprint!==state.fingerprint) {
+      throw Object.assign(new Error('文件或项目规则已经变化，请重新核对后确认。'),{code:'STALE_REVIEW'});
+    }
+    return call(action,{...extra,token:state.token});
+  }
   async function run(work) {
     if(busy)return;busy=true;buttons();
-    try {await work();}catch(e){state=undefined;$('git-confirm').checked=false;beginner?.error(e);say((e.code?e.code+' · ':'')+e.message+'\n请刷新核对实际状态；未自动重试。');}
-    finally {busy=false;buttons();if(state)beginner?.render();}
+    try {await work();}catch(e){state=undefined;$('git-confirm').checked=false;beginner?.error(e);if(e.code==='CONFIG_CONFLICT')await onConflict?.();say((e.code?e.code+' · ':'')+e.message+'\n请刷新核对实际状态；未自动重试。');}
+    finally {busy=false;buttons();if(state)beginner?.render();if(pendingRefresh&&context().ready){pendingRefresh=false;void run(refresh);}}
   }
   $('git-refresh').onclick=()=>run(refresh);
   $('git-confirm').onchange=buttons;
@@ -55,7 +68,8 @@ export function mountGit({transport,context,notice,english=false}) {
   // Keep configuration reachable on first use; configured projects open the basic Git view.
   tab(!!context().projectId);
   document.getElementById('configuration-form').addEventListener('input',()=>{state=undefined;buttons();});
-  beginner=mountBeginner({state:()=>state,ready,isBusy:()=>busy,call,refresh,perform:run,english});
-  document.addEventListener('configuration-ready',()=>{buttons();if(context().ready)void run(refresh);});
+  beginner=mountBeginner({state:()=>state,ready,isBusy:()=>busy,call,refresh,perform:run,reviewedCall,english});
+  document.addEventListener('configuration-invalidated',()=>{state=undefined;$('git-confirm').checked=false;beginner?.invalidate();buttons();});
+  document.addEventListener('configuration-ready',()=>{buttons();if(context().ready){if(busy)pendingRefresh=true;else void run(refresh);}});
   addEventListener('focus',buttons);buttons();if(context().ready)void run(refresh);
 }

@@ -75,3 +75,19 @@ test('PR uses exact title/body arguments through gh without shell or a real exte
  try { const body='Checklist completed\nLiteral $(do-not-run) and backticks';const result=await f.act('pr',{title:'feat: fixture PR',body,base:'main'});assert.ok(result.output.includes(body));assert.match(result.output,/--base\nmain\n--head\nfeature\/pr/); }
  finally {process.env.PATH=old;}
 });
+
+test('complete 500KB rule graph stays usable; aggregate and file-count limits still block writes',async t=>{
+ for(const [count,bytes,incomplete] of [[9,60000,false],[19,60000,true],[78,20,false],[81,20,true]]) {
+  const f=await fixture(t);
+  const links=[];
+  for(let i=0;i<count;i++) {
+   const name='rule-'+i+'.md'; links.push('[rule]('+name+')');
+   await writeFile(join(f.root,name),'x'.repeat(bytes));
+  }
+  // Repeated links do not exhaust the unique-file budget.
+  await writeFile(join(f.root,'AGENTS.md'),links.concat(links).join('\n'));
+  const state=await f.status(); assert.equal(state.incomplete,incomplete);
+  if(incomplete) await assert.rejects(f.act('branch-create',{branch:'feature/blocked-rules'}),{code:'RULE_DISCOVERY_INCOMPLETE'});
+  else {assert.equal(state.sources.length,count+2); await f.act('branch-create',{branch:'feature/complete-rules'});}
+ }
+});

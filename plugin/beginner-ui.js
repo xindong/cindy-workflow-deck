@@ -5,7 +5,7 @@ export function changeLabel(status,english=false) {
   if(/[RC]/.test(status)) return english?'Renamed':'改名';
   return english?'Modified':'修改';
 }
-export function mountBeginner({state,ready,isBusy,call,refresh,perform,english=false}) {
+export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedCall=call,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
   let mode='view',rendered='',renderedRoot='',selected=new Set(),issueRows=[],issueLoading=false,issueGeneration=0;
   if(english) {
@@ -18,7 +18,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,english=f
   function update() {
     const current=state(),can=ready()&&!isBusy()&&!!current;
     for(const id of ['beginner-update','beginner-view','beginner-submit'])$(id).disabled=!can;
-    const blocked=current && (!current.hooksReady || current.incomplete || current.beginnerReceipt && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
+    const blocked=current && (!current.hooksReady || current.incomplete || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
     $('beginner-confirm').disabled=!can || blocked || issueLoading || (mode==='submit' && (!chosen().length || chosen().length>200 || !$('beginner-summary').value.trim() || (current.sources.length>0 && !$('beginner-manual').checked)));
     const total=current?.changes.length||0,count=chosen().length;
     $('beginner-all').disabled=!can||!total||count===total;
@@ -33,6 +33,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,english=f
     $('beginner-manual').disabled=isBusy();
     for(const box of document.querySelectorAll('#beginner-files input'))box.disabled=isBusy();
     if(isBusy())$('beginner-state').textContent=say('正在处理，请不要重复点击…','Working, please do not click again…');
+    else if(!current)$('beginner-state').textContent=say('状态待检查，请点“重新检查”。','Status needs checking. Click Check again.');
   }
   function render() {
     const current=state();if(!current){update();return;}
@@ -54,7 +55,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,english=f
       const detail=document.createElement('details'),title=document.createElement('summary'),body=document.createElement('pre');
       title.textContent=source.path;body.textContent=source.content;detail.append(title,body);$('beginner-rules').append(detail);
     }
-    const receipt=current.beginnerReceipt;
+    const receipt=current.beginnerReceipt?.state==='acknowledged' ? null : current.beginnerReceipt;
     let message='';
     if(!current.hooksReady)message=say('这个项目的提交检查还没有配置好。请联系项目负责人，你的文件没有被改动。','Project checks are not configured yet. Contact the project owner; your files are unchanged.');
     else if(current.incomplete)message=say('还不能完整确认团队规则，请让项目负责人核对后再操作。','Team rules could not be fully checked. Contact the project owner before continuing.');
@@ -62,7 +63,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,english=f
     else message=say('更新不会覆盖未提交的修改；提交只包含你勾选的文件。','Updates preserve your unsubmitted work. Only selected files are submitted.');
     $('beginner-message').textContent=message;
     $('beginner-message').dataset.quiet=String(current.hooksReady && !current.incomplete && (!receipt || receipt.state==='acknowledged'));
-    $('beginner-detail').textContent=receipt ? [receipt.message||'',receipt.completed?.join(' → ')||'',receipt.reviewUrl||'',receipt.issue?say('关联事项：','Related issue: ')+receipt.issue.url:'',receipt.templateNotice||'',receipt.detail||''].filter(Boolean).join('\n') : '';
+    $('beginner-detail').textContent=receipt ? [receipt.message||'',receipt.completed?.join(' → ')||'',receipt.reviewUrl||'',receipt.issue?say('关联事项：','Related issue: ')+receipt.issue.url:'',receipt.templateNotice||'',receipt.stash?say('安全备份：','Safety backup: ')+receipt.stash:'',receipt.detail||''].filter(Boolean).join('\n') : '';
     $('beginner-result-details').hidden=!receipt;
     $('beginner-acknowledge').disabled=!receipt || !['running','blocked','needs-verification'].includes(receipt.state);
     update();
@@ -71,7 +72,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,english=f
     if(next!=='submit'&&issueLoading)clearIssues();
     mode=next;$('beginner-manual').checked=false;$('beginner-sheet').hidden=false;$('beginner-confirmation').hidden=false;$('beginner-confirm').hidden=next==='view';$('beginner-plan').hidden=next==='view';
     $('beginner-sheet-title').textContent=next==='update'?say('更新到团队最新内容','Get team updates'):say('这次改了什么？','What changed?');
-    $('beginner-sheet-help').textContent=next==='update'?say('电脑里有未提交修改时会暂停，不会自动覆盖或丢弃。','Updates stop if you have unsubmitted changes; nothing is overwritten or discarded.'):say('只勾选这次要交给团队的文件，不要勾选别人的修改。','Select only the files you want to share. Do not include someone else’s work.');
+    $('beginner-sheet-help').textContent=next==='update'?say('先预检冲突；通过后暂存本地修改、拉取团队版本，再取回修改及原暂存状态。','Check conflicts first, then back up local changes, update and restore changes and staging.'):say('只勾选这次要交给团队的文件，不要勾选别人的修改。','Select only the files you want to share. Do not include someone else’s work.');
     $('beginner-selection').hidden=next==='update';$('beginner-issue-section').hidden=next!=='submit';
     $('beginner-team-rules').hidden=next!=='submit'||!state()?.sources.length;$('beginner-files').hidden=next==='update';$('beginner-summary-label').hidden=next!=='submit';
     $('beginner-manual-label').hidden=next!=='submit'||!state()?.sources.length;
@@ -108,14 +109,14 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,english=f
   $('beginner-cancel').onclick=()=>{$('beginner-sheet').hidden=true;};
   $('beginner-confirm').onclick=()=>perform(async()=>{
     const current=state(),action=mode==='update'?'beginner-update':'beginner-submit';
-    const result=await call(action,{token:current.token,operationId:crypto.randomUUID(),paths:chosen(),summary:$('beginner-summary').value.trim(),issue:mode==='submit'?(issueRows.find(row=>String(row.number)===$('beginner-issue').value)||null):null,rulesConfirmed:mode==='update'||!current.sources.length||$('beginner-manual').checked});
+    const result=await reviewedCall(action,{token:current.token,operationId:crypto.randomUUID(),paths:chosen(),summary:$('beginner-summary').value.trim(),issue:mode==='submit'?(issueRows.find(row=>String(row.number)===$('beginner-issue').value)||null):null,rulesConfirmed:mode==='update'||!current.sources.length||$('beginner-manual').checked});
     $('beginner-sheet').hidden=true;$('beginner-manual').checked=false;
     await refresh();$('beginner-message').textContent=result.message||say('操作结果需要核对。','Please verify the operation result.');
     if(result.state==='awaiting-review'||result.state==='review-draft'){$('beginner-summary').value='';clearIssues();}
   });
   $('beginner-acknowledge').onclick=()=>perform(async()=>{
     if(!$('git-confirm').checked)throw new Error('请先核对实际项目状态，再勾选上方确认项。');
-    await call('beginner-acknowledge',{token:state().token,recordId:state().beginnerReceipt.id,rulesConfirmed:true});await refresh();
+    await reviewedCall('beginner-acknowledge',{token:state().token,recordId:state().beginnerReceipt.id,rulesConfirmed:true});await refresh();
   });
   function error(problem) {
     $('beginner-message').dataset.quiet='false';
@@ -123,5 +124,10 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,english=f
     $('beginner-message').textContent=messages[problem.code]||problem.message||'操作未完成，请联系项目负责人。';
     $('beginner-detail').textContent=(problem.code||'')+'\n'+problem.message;$('beginner-result-details').hidden=false;
   }
-  update();return {render,update,error};
+  function invalidate(){
+    rendered='';renderedRoot='';selected.clear();clearIssues();
+    $('beginner-files').replaceChildren();$('beginner-summary').value='';
+    $('beginner-manual').checked=false;$('beginner-sheet').hidden=true;update();
+  }
+  update();return {render,update,error,invalidate};
 }

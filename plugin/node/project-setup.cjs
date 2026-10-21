@@ -4,7 +4,7 @@ const hookNames=['pre-commit','prepare-commit-msg','commit-msg','pre-push','post
 const problem=(code,message)=>Object.assign(new Error(message),{code});
 // Only declarative local Git settings are supported. Never execute instructions,
 // installers, hooks, login flows or package-manager commands during preparation.
-async function prepareProject(ctx,state,{confirmed=false}={}) {
+async function prepareProject(ctx,state,{confirmed=false,env=process.env}={}) {
   if(!confirmed)throw problem('SETUP_NOT_CONFIRMED','请先选择项目目录，确认自动准备该项目。');
   const {root,run}=ctx,completed=[],blockers=[];
   try {
@@ -48,10 +48,9 @@ async function prepareProject(ctx,state,{confirmed=false}={}) {
       completed.push('已按 '+declaration.path+' 启用项目原有提交检查');
     } else completed.push('项目提交检查已就绪');
   }catch(error){blockers.push({code:error.code||'SETUP_FAILED',message:error.code?.startsWith('SETUP_')||error.code==='RULE_DISCOVERY_INCOMPLETE'?error.message:'本地项目准备未完成，请重新检查或联系负责人。'});}
-  let identity=true;
-  for(const key of ['user.name','user.email'])try{if(!(await run(['config','--get',key])).trim())identity=false;}catch{identity=false;}
-  if(!identity)blockers.push({code:'GIT_IDENTITY_REQUIRED',message:'这台电脑还没有提交署名，请负责人协助设置真实姓名和邮箱一次。'});
-  else completed.push('已沿用这台电脑现有的Git署名');
-  return {state:blockers.length?'needs-attention':'ready',completed,blockers,message:blockers.length?'项目已保存；'+blockers.map(b=>b.message).join(' '):'项目本地准备已完成。更新与提交时会继续核对账号和本次修改的团队要求。'};
+  const identity=await require('./git-identity.cjs').inspectIdentity(ctx,env);
+  if(identity.state!=='ready')blockers.push({code:'GIT_IDENTITY_REQUIRED',message:identity.state==='available'?'已检测到当前 GitHub 账号，点击“一键补齐提交署名”即可。':identity.message});
+  else completed.push('已沿用当前项目有效的Git署名');
+  return {identity,state:blockers.length?'needs-attention':'ready',completed,blockers,message:blockers.length?'项目已保存；'+blockers.map(b=>b.message).join(' '):'项目本地准备已完成。更新与提交时会继续核对账号和本次修改的团队要求。'};
 }
 module.exports={prepareProject};
