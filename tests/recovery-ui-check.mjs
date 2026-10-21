@@ -19,11 +19,13 @@ function start(){worker=spawn(process.execPath,[join(plugin,'node/inspect-projec
 function request(args){return new Promise(yes=>{const n=++id;pending.set(n,yes);worker.stdin.write(JSON.stringify({jsonrpc:'2.0',id:n,...args})+'\n');});}
 start();
 const host={request:async args=>{const r=await request(args);assert.equal(r.error,undefined);return {ok:true,result:r.result};}};
-const server=createServer(async(req,res)=>{try{let file=join(plugin,new URL(req.url,'http://local').pathname);let bytes=await readFile(file);if(file.endsWith('settings.html'))bytes=Buffer.from(bytes.toString().replace(/<script[\s\S]*?<\/script>/g,''));res.setHeader('Content-Type',({'.js':'text/javascript','.html':'text/html','.css':'text/css'})[extname(file)]||'application/octet-stream');res.end(bytes);}catch{res.statusCode=404;res.end();}});
+const server=createServer(async(req,res)=>{try{let file=join(plugin,new URL(req.url,'http://local').pathname);const bytes=await readFile(file);res.setHeader('Content-Type',({'.js':'text/javascript','.html':'text/html','.css':'text/css'})[extname(file)]||'application/octet-stream');res.end(bytes);}catch{res.statusCode=404;res.end();}});
 await new Promise(yes=>server.listen(0,'127.0.0.1',yes));let browser;
 try{
  browser=await chromium.launch({headless:true});const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));
  await page.exposeFunction('gitTransport',async(method,p)=>{calls.push(p.action);if(failNext&&p.action==='beginner-update'){failNext=false;throw new Error('Simulated response uncertainty');}return gitWithHost(host,project,p);});
+ // Load the real HTML unchanged; block only its automatic settings bootstrap.
+ await page.route('**/settings.js',route=>route.fulfill({contentType:'text/javascript',body:''}));
  await page.goto('http://127.0.0.1:'+server.address().port+'/settings.html');
  await page.evaluate(async()=>{const {mountGit}=await import('/git-ui.js');mountGit({transport:{call:window.gitTransport},context:()=>({projectId:'test',revision:1,ready:true}),notice:()=>{}});});
  const ready=()=>page.locator('#git-refresh:not(:disabled)').waitFor();await page.locator('#beginner-update:not(:disabled)').waitFor();
