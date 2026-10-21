@@ -65,3 +65,13 @@ test('an untracked hook cannot be activated by automatic preparation',async t=>{
  const f=await fixture(t);await writeFile(join(f.root,'.githooks/pre-push'),'#!/bin/sh\nexit 0\n');await chmod(join(f.root,'.githooks/pre-push'),0o755);
  assert.equal((await f.prepare()).blockers[0].code,'SETUP_UNTRACKED_HOOK');assert.throws(()=>f.git(['config','core.hooksPath']));
 });
+
+test('less common default Git hooks are never disabled by automatic preparation',async t=>{
+ for(const name of ['post-index-change','reference-transaction','pre-rebase','post-rewrite']){
+  const f=await fixture(t);const file=join(f.root,'.git/hooks',name);
+  await writeFile(file,'#!/bin/sh\nexit 0\n');await chmod(file,0o755);
+  const before=f.git(['rev-parse','HEAD']);const result=await f.prepare();
+  assert.equal(result.blockers[0].code,'SETUP_EXISTING_HOOKS');
+  assert.throws(()=>f.git(['config','--local','--get','core.hooksPath']));assert.equal(f.git(['rev-parse','HEAD']),before);
+ }
+});

@@ -57,3 +57,13 @@ test('expired jobs keep verification visible; checking does not resend an expire
   assert.equal(f.sidebar.view().verificationNeeded,true);assert.equal(f.sidebar.view().busy,true);
   await f.sidebar.acknowledge();assert.equal(f.sidebar.view().busy,false);assert.equal(f.calls.length,1);
 });
+
+test('thrown job queries persist verification and explicit acknowledgement permits only new launches',async()=>{
+ const f=fixture();await f.sidebar.refresh();await f.sidebar.launch('project-request-00001','feature','p');
+ f.agent.queryErrand=async()=>{throw new Error('connection lost');};
+ for(let i=0;i<2;i++){await f.sidebar.refresh();assert.equal(f.sidebar.view().busy,true);assert.equal(f.sidebar.view().verificationNeeded,true);}
+ assert.equal(f.data.sidebarReceipts['project-request-00001'].queryError,'UNVERIFIED_RECEIPT');
+ await f.sidebar.acknowledge();assert.equal(f.sidebar.view().busy,false);assert.equal(f.sidebar.view().verificationNeeded,false);
+ await f.sidebar.launch('project-request-00001','feature','p');assert.equal(f.calls.length,1);
+ f.tick();await f.sidebar.launch('project-request-00002','feature','p');assert.equal(f.calls.length,2);
+});

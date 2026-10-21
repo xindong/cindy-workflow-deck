@@ -56,7 +56,7 @@ async function runBeginner(ctx,state,params,env) {
   }
   const base=await baseBranch(ctx,state);
   const submit=params.action==='beginner-submit';
-  let selected,message,issue;
+  let selected,message,issue,reviewRepository,reviewOptions;
   if(submit) {
     if(Array.isArray(params.paths)&&params.paths.length>200)fail('SELECT_FILES','一次最多提交200个文件，请分批选择。');
     if(!Array.isArray(params.paths)||!params.paths.length||params.paths.length>200||params.paths.some(p=>typeof p!=='string'||!state.changes.some(c=>c.path===p))) fail('SELECT_FILES','请先勾选这次要提交的文件。');
@@ -69,8 +69,10 @@ async function runBeginner(ctx,state,params,env) {
     if(/^Claude-Session:/mi.test(message)) fail('WRITE_SUMMARY','请只填写修改内容，不要填写会话链接。');
     if(state.sources.filter(s=>/pull_request_template/i.test(s.path)).length>1) fail('REVIEW_TEMPLATE_AMBIGUOUS','团队有多种送审模板，需要负责人确认本次使用哪一种。文件未提交或上传。');
     if(params.issue!=null)issue=await require('./github-issues.cjs').validateIssue(ctx,params.issue,env);
+    const github=require('./github-issues.cjs');
+    reviewRepository=await github.repository(ctx);reviewOptions=github.options(ctx,env);
     // Verify the review component before creating branches or touching the index.
-    try {await execute('gh',['auth','status',...(issue?['--hostname','github.com']:[])],{cwd:ctx.root,env,timeout:20000,maxBuffer:256*1024,windowsHide:true});}
+    try {await execute('gh',['auth','status','--hostname','github.com'],reviewOptions);}
     catch {fail('REVIEW_ACCOUNT_REQUIRED','这台电脑还没有连接团队审核账号。请联系项目负责人完成连接；本次没有提交或上传。');}
   }
   const record={id:params.operationId,action:params.action,state:'running',completed:[],step:'prepare',base,...(issue?{issue}:{}),createdAt:new Date().toISOString()};
@@ -109,7 +111,7 @@ async function runBeginner(ctx,state,params,env) {
       // Templates with team-specific checklists cannot be truthfully completed by a generic Git service.
       const body=params.summary.trim()+(issue?'\n\n关联事项：'+issue.url:'')+'\n\n本次提交的文件：\n'+selected.map(p=>'- '+p).join('\n')+(templates.length===1?'\n\n'+templates[0].content:'');
       if(templates.length) record.templateNotice='项目有审核模板，请审核人在送审详情中核对其要求。';
-      const result=await step('review',()=>execute('gh',['pr','create',...(issue?['--repo','github.com/'+issue.repository]:[]),...(templates.length?['--draft']:[]),'--base',base,'--head',branch,'--title',message,'--body',body],{cwd:ctx.root,env,timeout:60000,maxBuffer:256*1024,windowsHide:true}));
+      const result=await step('review',()=>execute('gh',['pr','create','--repo','github.com/'+reviewRepository,...(templates.length?['--draft']:[]),'--base',base,'--head',branch,'--title',message,'--body',body],{...reviewOptions,timeout:60000,maxBuffer:256*1024}));
       record.reviewUrl=result.stdout.trim();record.message=templates.length?'修改已上传，送审草稿需要负责人按模板完善。':'修改已提交，等待团队审核。';record.state=templates.length?'review-draft':'awaiting-review';
     }
     record.step='finished';await writeReceipt(ctx,record);return record;

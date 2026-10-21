@@ -42,3 +42,13 @@ test('network/account error never submits and does not expose raw credential err
 test('origin URL change and unsupported non-GitHub origin are rejected instead of trusting selection URLs',async t=>{
  const f=await fixture(t);f.git(['remote','set-url','origin','https://github.com/other/repository.git']);await writeFile(join(f.root,'hero.png'),'art');await assert.rejects(f.submit({issue:f.issue}),{code:'ISSUE_INVALID'});f.git(['remote','set-url','origin','https://gitlab.com/team/art.git']);await assert.rejects(gitRequest(f.root,{action:'issues-list'}),{code:'ISSUE_REPOSITORY_REQUIRED'});
 });
+
+test('both PR entry points ignore unrelated GH_REPO and GH_HOST even without an issue',async t=>{
+ const f=await fixture(t);await writeFile(join(f.root,'hero.png'),'art');
+ assert.equal((await f.submit({})).state,'awaiting-review');
+ let rows=JSON.parse(await readFile(f.log,'utf8'));assert.ok(rows.every(r=>!r.repo&&!r.host));
+ let pr=rows.find(r=>r.args[0]==='pr');assert.equal(pr.args[pr.args.indexOf('--repo')+1],'github.com/team/art');
+ const state=await f.status();await gitRequest(f.root,{action:'pr',token:state.token,rulesConfirmed:true,title:'chore: review',body:'Verified',base:'main'});
+ rows=JSON.parse(await readFile(f.log,'utf8'));assert.ok(rows.every(r=>!r.repo&&!r.host));
+ pr=rows.at(-1);assert.equal(pr.args[pr.args.indexOf('--repo')+1],'github.com/team/art');
+});
