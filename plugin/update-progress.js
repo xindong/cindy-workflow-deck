@@ -1,3 +1,4 @@
+import { errorHelp } from './error-help.js';
 // Stage progress comes only from the operation journal. No timed percentages,
 // automatic write retries, or coupling between observation and write completion.
 export function createUpdateProgress({call,english=false}) {
@@ -54,7 +55,7 @@ export function createUpdateProgress({call,english=false}) {
     fail(error) {
       stop();box.dataset.state='attention';bar.value=0;
       title.textContent=say('更新未确认完成','Update completion unconfirmed');
-      steps.textContent=error?.message||say('请重新检查实际项目状态，勿重复操作。','Check the actual project state; do not retry the operation.');
+      steps.textContent=errorHelp(error,english).message;
     },
     clear(){stop();box.hidden=true;},
   };

@@ -1,3 +1,4 @@
+import { requestNode } from './node-request.js';
 const unsupported = new Set(['UNSUPPORTED_HOST', 'UNSUPPORTED_OPERATION', 'METHOD_NOT_FOUND']);
 export const isUnsupported = code => unsupported.has(code);
 export function requireHostMethod(owner, method) {
@@ -5,10 +6,10 @@ export function requireHostMethod(owner, method) {
 }
 export async function inspectWithHost(node, dir, project) {
   requireHostMethod(node, 'request');
-  const reply = await node.request({ method: 'project/inspect', params: { dir, ...(project ? { project } : {}) } });
-  if (!reply?.ok) {
-    const code = reply?.errorCode || reply?.code || 'PROJECT_CHECK_FAILED';
-    throw Object.assign(new Error('Project inspection unavailable'), { code: isUnsupported(code) ? 'UNSUPPORTED_HOST' : code });
+  const reply = await requestNode(node,{ method: 'project/inspect', params: { dir, ...(project ? { project } : {}) } });
+  if (!reply?.ok || reply.error) {
+    const code = reply?.error?.data?.code || reply?.errorCode || reply?.code || 'PROJECT_CHECK_FAILED';
+    throw Object.assign(new Error(reply?.error?.message || reply?.message || 'Project inspection unavailable'), { code: isUnsupported(code) ? 'UNSUPPORTED_HOST' : code });
   }
   return reply.result;
 }

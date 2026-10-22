@@ -133,21 +133,25 @@ async function inspectProject(dir, home = os.homedir(), project) {
   return { workflows, checkedAt: new Date().toISOString() };
 }
 function startStdio() {
+  const transfer=require('./result-transfer.cjs').createResultTransfer();
+  const reply=(id,result)=>process.stdout.write(JSON.stringify({jsonrpc:'2.0',id,result:transfer.wrap(result)})+'\n');
   require('node:readline').createInterface({ input: process.stdin }).on('line', async line => {
     let request;
     try {
       request = JSON.parse(line);
+      if(request.method==='result/read') {reply(request.id,transfer.read(request.params));return;}
+      if(request.method==='result/release') {reply(request.id,transfer.release(request.params));return;}
       if (request.method === 'project/git') {
         let result;
         try { result={kind:'jixin-git-result-v1',ok:true,value:await require('./git-service.cjs').gitRequest(request.params?.dir, request.params)}; }
         catch(error) { result={kind:'jixin-git-result-v1',ok:false,error:{code:error.code || 'GIT_OPERATION_FAILED',message:error.message || 'Git 操作未完成，请重新检查'}}; }
-        process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:request.id,result}) + '\n'); return;
+        reply(request.id,result); return;
       }
       if (request.method !== 'project/inspect') return process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Unknown method' } }) + '\n');
       const result = await inspectProject(request.params?.dir, undefined, request.params?.project);
-      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) + '\n');
+      reply(request.id,result);
     } catch (error) {
-      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request?.id ?? null, error: { code: -32000, message: error.message || 'PROJECT_CHECK_FAILED', data: {code:error.code || 'PROJECT_CHECK_FAILED'} } }) + '\n');
+      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request?.id ?? null, error: { code: -32000, message: String(error.message || 'PROJECT_CHECK_FAILED').slice(0,32000), data: {code:error.code || 'PROJECT_CHECK_FAILED'} } }) + '\n');
     }
   });
 }
