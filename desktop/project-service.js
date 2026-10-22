@@ -41,13 +41,16 @@ export function createProjectService({ file, pickDirectory, pickFile }) {
         const external = relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative);
         return { path: external ? selected : relative.split(path.sep).join('/'), external };
       }
-      case 'git-request': return serial(async () => {
-        const current = await read();
-        if(current.revision !== params.revision) throw Object.assign(new Error('项目配置已变化，请重新加载'),{code:'CONFIG_CONFLICT'});
-        const project = current.configuration.projects.find(p => p.id === current.configuration.activeProjectId && p.id === params.projectId);
-        if(!project) throw new Error('请先保存当前项目');
-        return gitRequest(project.directory,params);
-      });
+      case 'git-request': {
+        const work=async () => {
+          const current = await read();
+          if(current.revision !== params.revision) throw Object.assign(new Error('项目配置已变化，请重新加载'),{code:'CONFIG_CONFLICT'});
+          const project = current.configuration.projects.find(p => p.id === current.configuration.activeProjectId && p.id === params.projectId);
+          if(!project) throw new Error('请先保存当前项目');
+          return gitRequest(project.directory,params);
+        };
+        return params.action==='operation-progress' ? work() : serial(work);
+      }
       case 'config-inspect': {
         const current = await read();
         const project = current.configuration.projects.find(p => p.id === params.projectId);
