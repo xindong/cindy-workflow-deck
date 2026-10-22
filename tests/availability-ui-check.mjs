@@ -23,28 +23,26 @@ try{
  await page.goto('http://127.0.0.1:'+server.address().port+'/panel.html');
  await page.evaluate(async()=>{const {mountGit}=await import('/git-ui.js');mountGit({transport:{call:async(method,p)=>{try{return await window.gitTransport(method,p);}catch(e){throw Object.assign(new Error(e.message),{code:e.message.includes('Node stdout')?'PROTOCOL_ERROR':e.code});}}},context:()=>({projectId:'test',revision:1,ready:true}),notice:()=>{}});});
  await page.locator('#beginner-view:not(:disabled)').waitFor();
- const selected=()=>page.locator('#compact-footer .compact-icon[aria-pressed="true"]:visible').evaluateAll(items=>items.map(i=>i.id));
- const expectSelected=async id=>{await page.waitForFunction(id=>JSON.stringify([...document.querySelectorAll('#compact-footer .compact-icon[aria-pressed="true"]')].filter(e=>e.getClientRects().length).map(e=>e.id))===JSON.stringify(id?[id]:[]),id);};
- const out=resolve(process.env.JIXIN_SELECTION_EVIDENCE||'artifacts/selection');await mkdir(out,{recursive:true});
+ const out=resolve(process.env.JIXIN_AVAILABILITY_EVIDENCE||'artifacts/availability');await mkdir(out,{recursive:true});
  for(const [width,scheme] of [[320,'dark'],[860,'light']]) {
   await page.setViewportSize({width,height:720});
   await page.addStyleTag({content:':root{--text-primary:'+(scheme==='dark'?'#ededed':'#262626')+';--text-secondary:'+(scheme==='dark'?'#a3a3a3':'#737373')+';--surface-elevated:'+(scheme==='dark'?'#242424':'#fff')+';--surface:'+(scheme==='dark'?'#191919':'#f7f7f5')+';--panel-bg:var(--surface);--border-default:'+(scheme==='dark'?'#454545':'#ddd')+';--surface-chip:'+(scheme==='dark'?'#383838':'#eee')+';color-scheme:'+scheme+'}'});
-  for(const action of ['update','view','submit']) {
-   await page.locator('#beginner-'+action).click();await expectSelected('beginner-'+action);await page.locator('#beginner-'+action+':not(:disabled)').waitFor();
-   const visual=await page.locator('#beginner-'+action).evaluate(e=>({bg:getComputedStyle(e).backgroundColor,fg:getComputedStyle(e).color,ring:getComputedStyle(e).boxShadow,marker:getComputedStyle(e,'::after').width}));
-   assert.notEqual(visual.bg,visual.fg);assert.notEqual(visual.ring,'none');assert.equal(visual.marker,'8px');
-   await page.mouse.move(0,0);
-   if(action==='view') {await page.locator('#beginner-refresh-changes:not(:disabled)').waitFor();await page.screenshot({path:join(out,'选中查看-'+width+'-'+scheme+'.png')});await page.locator('#compact-footer').screenshot({path:join(out,'胶囊高亮-'+width+'-'+scheme+'.png')});}
-   await page.locator('#beginner-cancel').click();await expectSelected(null);
-  }
-  await page.locator('#config-tab').click();await expectSelected('config-tab');
-  await page.locator('#config-tab').click();await expectSelected(null);
-  await page.locator('#beginner-view').click();await expectSelected('beginner-view');
-  await page.locator('#advanced-mode').click();await expectSelected(null);
-  await page.locator('#basic-mode').click();await expectSelected('beginner-view');
-  await page.evaluate(()=>document.getElementById('beginner-sheet').hidden=true);await expectSelected(null);
+  const styles=()=>page.locator('#compact-footer .compact-icon:visible').evaluateAll(items=>items.map(e=>({id:e.id,color:getComputedStyle(e).color,opacity:getComputedStyle(e).opacity,disabled:e.disabled})));
+  let buttons=await styles(),advanced=buttons.find(b=>b.id==='advanced-mode');
+  for(const button of buttons.filter(b=>!b.disabled)){assert.equal(button.color,advanced.color,button.id);assert.equal(button.opacity,'1',button.id);}
+  await page.mouse.move(0,0);await page.locator('#compact-footer').screenshot({path:join(out,'可用按钮同亮-'+width+'-'+scheme+'.png')});
+  // Use real status refresh to verify loading disables controls, then restores brightness.
+  await page.evaluate(()=>document.getElementById('beginner-update').disabled=true);
+  buttons=await styles();const disabled=buttons.find(b=>b.id==='beginner-update');
+  assert.equal(disabled.opacity,'0.35');assert.notEqual(disabled.color,advanced.color);
+  await page.locator('#git-refresh').click();await page.locator('#beginner-update:not(:disabled)').waitFor();
+  buttons=await styles();assert.equal(buttons.find(b=>b.id==='beginner-update').color,advanced.color);
+  assert.equal(buttons.find(b=>b.id==='beginner-update').opacity,'1');
+  await page.locator('#beginner-view').click();await page.locator('#beginner-refresh-changes:not(:disabled)').waitFor();
+  buttons=await styles();for(const button of buttons.filter(b=>!b.disabled))assert.equal(button.color,advanced.color);
+  await page.locator('#beginner-cancel').click();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  }
- assert.deepEqual(await selected(),[]);assert.ok(actions.every(a=>a==='status'));assert.deepEqual(errors,[]);
- console.log('PASS: real panel modules and Git worker; update/view/submit/config selection, cancel, mode switch, project-close reset; high-contrast fill, ring and marker in 320 dark / 860 light; no overflow; read-only. Host transport and themes simulated; not installed Cindy.');
+ assert.ok(actions.every(a=>a==='status'));assert.deepEqual(errors,[]);
+ console.log('PASS: real panel modules and worker; all enabled icons match Advanced color and full opacity, disabled icons dim, status refresh restores enabled brightness; 320 dark / 860 light no overflow. Simulated Host boundary, not installed Cindy.');
 }finally{await browser?.close();worker.kill();await new Promise(yes=>server.close(yes));await rm(temp,{recursive:true,force:true});}

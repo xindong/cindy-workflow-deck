@@ -81,7 +81,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   }
   function open(next) {
     if(next!=='submit'&&issueLoading)clearIssues();
-    mode=next;$('beginner-sheet').dataset.action=next;$('beginner-manual').checked=false;$('beginner-sheet').hidden=false;$('beginner-confirmation').hidden=false;$('beginner-confirm').hidden=next==='view';$('beginner-plan').hidden=next==='view';
+    mode=next;$('beginner-manual').checked=false;$('beginner-sheet').hidden=false;$('beginner-confirmation').hidden=false;$('beginner-confirm').hidden=next==='view';$('beginner-plan').hidden=next==='view';
     $('beginner-sheet-title').textContent=next==='update'?say('更新到团队最新内容','Get team updates'):say('这次改了什么？','What changed?');
     $('beginner-sheet-help').textContent=next==='update'?say('先预检冲突；通过后暂存本地修改、拉取团队版本，再取回修改及原暂存状态。','Check conflicts first, then back up local changes, update and restore changes and staging.'):say('只勾选这次要交给团队的文件，不要勾选别人的修改。','Select only the files you want to share. Do not include someone else’s work.');
     $('beginner-selection').hidden=next==='update';$('beginner-changes-status').hidden=next==='update';$('beginner-issue-section').hidden=next!=='submit';
