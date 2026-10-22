@@ -1,3 +1,4 @@
+import { errorHelp } from './error-help.js';
 import { mountGit } from './git-ui.js';
 import { FLOW_IDS, newProject, normalizeConfiguration, directoryKey } from './core/project-config.mjs';
 import { createSettingsTransport } from './settings-transport.js';
@@ -48,7 +49,7 @@ async function run(work) {
   if (busy) return;
   busy = true; buttons();
   try { await work(); } catch (error) {
-    if (error.code !== 'CANCELLED') notice((error.code ? error.code + ' · ' : '') + error.message);
+    if (error.code !== 'CANCELLED') {const help=errorHelp(error,english);notice(help.message);setupStatus.textContent=help.message;setupOutput.textContent=help.detail;setupDetails.hidden=false;}
     else notice(say('已取消选择，配置未改变。','Selection cancelled; configuration unchanged.'));
   } finally { busy = false; buttons();if(configurationStale)await synchronizeConfiguration();document.dispatchEvent(new Event('configuration-ready')); }
 }
@@ -67,7 +68,7 @@ async function synchronizeConfiguration(){
     state=latest;draft=structuredClone(latest.configuration);configurationStale=false;
     clearIdentity();setupStatus.textContent='';setupDetails.hidden=true;render();
     notice(say('已同步最新项目配置；请核对当前项目后重新选择操作，未自动重试。','Latest project settings loaded. Review the project and choose an action; nothing was retried.'));
-  }catch(error){notice(error.message);}
+  }catch(error){notice(errorHelp(error,english).message);}
   finally{synchronizing=false;buttons();document.dispatchEvent(new Event('configuration-ready'));}
 }
 async function load() {
@@ -161,6 +162,6 @@ async function start() {
     onConflict:async()=>{invalidateConfiguration();await synchronizeConfiguration();}});
   transport.onConfigurationChanged?.(()=>{invalidateConfiguration();void synchronizeConfiguration();});
 }
-void start().catch(error => { busy = true; notice(error.message); buttons(); });
+void start().catch(error => { busy = true; notice(errorHelp(error,english).message); buttons(); });
 addEventListener('pagehide', () => transport.close());
 addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });

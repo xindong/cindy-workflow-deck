@@ -1,3 +1,4 @@
+import { errorHelp } from './error-help.js';
 import { mountBeginner } from './beginner-ui.js';
 export function mountGit({transport,context,notice,onConflict,english=false}) {
   const $=id=>document.getElementById(id);
@@ -53,7 +54,7 @@ export function mountGit({transport,context,notice,onConflict,english=false}) {
   }
   async function run(work) {
     if(busy)return;busy=true;buttons();
-    try {await work();}catch(e){state=undefined;$('git-confirm').checked=false;beginner?.error(e);if(e.code==='CONFIG_CONFLICT')await onConflict?.();say((e.code?e.code+' · ':'')+e.message+'\n请刷新核对实际状态；未自动重试。');}
+    try {await work();}catch(e){state=undefined;$('git-confirm').checked=false;beginner?.error(e);if(e.code==='CONFIG_CONFLICT')await onConflict?.();const help=errorHelp(e,english);say(help.message+'\n\n'+(english?'Technical details:':'技术详情：')+'\n'+help.detail);}
     finally {busy=false;buttons();if(state)beginner?.render();if(pendingRefresh&&context().ready){pendingRefresh=false;void run(refresh);}}
   }
   $('git-refresh').onclick=()=>run(refresh);

@@ -65,3 +65,10 @@ After choosing a folder, missing Git identity can be filled in one click from th
 On both changes and submit pages, double-click a filename or choose Compare online to fetch origin and inspect a read-only diff in the Cindy sidebar. Tracking origin branch takes precedence; otherwise the remote default is explicitly labeled. Standalone desktop displays the diff in-app. The token-protected loopback preview expires after 15 minutes. Restore requires file confirmation, backs up the index and working content, and restores the local HEAD, not the online version. Added files are removed. Conflicts, renames, submodules, links and files larger than 1MB require professional tools. An uncertain restore stops further writes for manual verification and is never replayed automatically.
 
 还原结果不确定时，可刷新并在页面点击“核对上次还原结果”；核对实际文件、暂存区与备份后显式确认，仅解锁后续新操作，不会重放旧操作。
+
+
+## 项目信息较多或检查失败
+
+项目规则原文未超读取上限，也可能因 JSON 转义超过宿主单行 1 MiB 限制。插件对较大的结果分块传输、完整还原，不截断规则或跳过检查；临时结果有容量与有效期限制。分块读取失败只报告未确认，不自动重新执行更新或提交。
+
+界面优先说明原因与处理办法，例如无权限、项目目录选择错误、SSH 身份失效、缺少 Git LFS、网络中断、规则未完整读取及侧栏缺少普通任务对话。原始错误码和后台信息保留在展开的操作详情中。未知或写入结果不确定时，先重新检查实际状态，不直接重复提交。

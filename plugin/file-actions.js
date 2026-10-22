@@ -1,3 +1,4 @@
+import { errorHelp } from './error-help.js';
 export function createFileActions({state,ready,isBusy,call,perform,reviewedCall,refresh,english=false}) {
   const say=(zh,en)=>english?en:zh;
   const dialog=document.createElement('dialog');dialog.className='file-dialog';
@@ -17,7 +18,7 @@ export function createFileActions({state,ready,isBusy,call,perform,reviewedCall,
       let result;
       try {result=await call('file-open',{path:item.path,english});}
       catch(error) {
-        status.textContent=say('线上差异未打开，可点击“对比线上”重试：','Online comparison did not open. Click Compare online to retry: ')+(error.code?error.code+' · ':'')+error.message;
+        status.textContent=say('线上差异未打开，可点击“对比线上”重试：','Online comparison did not open. Click Compare online to retry: ')+errorHelp(error,english).message;
         if(error.code==='CONFIG_CONFLICT')throw error;
         return;
       }

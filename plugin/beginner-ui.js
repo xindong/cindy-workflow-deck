@@ -1,3 +1,4 @@
+import { errorHelp } from './error-help.js';
 import { createUpdateProgress } from './update-progress.js';
 import { createFileActions } from './file-actions.js';
 export function changeLabel(status,english=false) {
@@ -162,9 +163,9 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   });
   function error(problem) {
     $('beginner-message').dataset.quiet='false';
-    const messages={STALE_REVIEW:'文件或项目规则已经变化。请点“重新检查”，再选择要提交的内容。',HOOKS_NOT_READY:'项目的提交检查还没配置好，请联系项目负责人。文件没有被提交或上传。',NOT_PROJECT_ROOT:'请选择已有项目的最外层文件夹。',RULE_DISCOVERY_INCOMPLETE:'还不能完整确认团队规则，请联系项目负责人。',CONFIG_CONFLICT:'选择的项目发生了变化，请重新打开项目后再试。',RESPONSE_UNCONFIRMED:'操作结果还没确认。请点“重新检查”核对，不要再次提交。'};
-    $('beginner-message').textContent=messages[problem.code]||problem.message||'操作未完成，请联系项目负责人。';
-    $('beginner-detail').textContent=(problem.code||'')+'\n'+problem.message;$('beginner-result-details').hidden=false;
+    const help=errorHelp(problem,english);
+    $('beginner-message').textContent=help.message;
+    $('beginner-detail').textContent=help.detail;$('beginner-result-details').hidden=false;
   }
   function invalidate(){
     fileActions.invalidate();
