@@ -37,16 +37,6 @@ textarea { width:100%; max-width:100%; padding:8px; font:inherit; color:inherit;
 .beginner-sheet p { color:var(--text-secondary,#737373); font-size:12px; }
 .beginner-file { padding:10px 0; border-bottom:1px solid var(--border-default,#d7d7d4); }
 .beginner-file span { overflow-wrap:anywhere; } .beginner-file strong { display:block; font-size:11px; color:var(--text-secondary,#737373); margin-bottom:4px; }
-.beginner-file { display:flex; flex-wrap:wrap; gap:8px; align-items:start; }
-.beginner-file>input { width:auto; flex:none; margin-top:5px; }
-.file-name { flex:1 1 120px; overflow-wrap:anywhere; }
-.file-name span { cursor:pointer; }
-.file-name span:focus-visible { outline:2px solid var(--text-secondary,#737373); outline-offset:2px; }
-.file-actions { display:flex; flex-wrap:wrap; gap:6px; }
-.file-actions button { font-size:12px; padding:6px 8px; }
-.file-dialog { width:min(560px,calc(100% - 24px)); max-height:85vh; overflow:auto; color:var(--text-primary,#262626); background:var(--surface,#fff); border:1px solid var(--border-default,#d7d7d4); border-radius:12px; padding:18px; }
-.file-dialog p { white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.7; }
-@media(prefers-color-scheme:dark) { .file-dialog { color:var(--text-primary,#e5e5e5); background:var(--surface,#262626); } }
 #beginner-result-details,#git-expert { margin:16px 0; font-size:12px; }
 @media(max-width:560px) { .beginner-actions { grid-template-columns:1fr; } .beginner-actions button { padding:14px; } }
 
