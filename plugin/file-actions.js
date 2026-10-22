@@ -5,6 +5,8 @@ export function createFileActions({state,ready,isBusy,call,perform,reviewedCall,
   const title=document.createElement('h3'),help=document.createElement('p'),body=document.createElement('pre'),rule=document.createElement('label'),check=document.createElement('input'),ruleText=document.createElement('span'),actions=document.createElement('div'),confirm=document.createElement('button'),cancel=document.createElement('button');
   check.type='checkbox';rule.className='check';ruleText.textContent=say('我已核对项目规则，完成还原所需的人工前提。','I reviewed project rules and completed any required prerequisites for restoring this file.');rule.append(check,ruleText);
   const status=document.createElement('p');status.setAttribute('role','status');document.getElementById('beginner-files').after(status);
+  const errorDetails=document.createElement('details'),errorTitle=document.createElement('summary'),errorOutput=document.createElement('pre');
+  errorDetails.id='file-action-details';errorDetails.hidden=true;errorTitle.textContent=say('操作详情（可交给项目负责人）','Details for the project owner');errorDetails.append(errorTitle,errorOutput);status.after(errorDetails);
   const recovery=document.createElement('div'),recoveryText=document.createElement('p'),ack=document.createElement('button');recovery.hidden=true;recovery.id='file-revert-recovery';ack.type='button';ack.textContent=say('核对上次还原结果','Verify the previous restore');recovery.append(recoveryText,ack);status.after(recovery);
   actions.className='row';confirm.type=cancel.type='button';cancel.textContent=say('取消','Cancel');actions.append(confirm,cancel);dialog.append(title,help,body,rule,actions);document.body.append(dialog);
   let pending;
@@ -14,11 +16,14 @@ export function createFileActions({state,ready,isBusy,call,perform,reviewedCall,
   function compare(item) {
     return perform(async()=>{
       const root=state()?.root;
+      errorDetails.hidden=true;errorDetails.open=false;errorOutput.textContent='';
       status.textContent=say('正在读取线上版本并比对，请稍候…','Fetching the online version and comparing…');
       let result;
       try {result=await call('file-open',{path:item.path,english});}
       catch(error) {
-        status.textContent=say('线上差异未打开，可点击“对比线上”重试：','Online comparison did not open. Click Compare online to retry: ')+errorHelp(error,english).message;
+        const diagnostic=errorHelp(error,english);
+        status.textContent=say('线上差异未打开，可点击“对比线上”重试：','Online comparison did not open. Click Compare online to retry: ')+diagnostic.message;
+        errorOutput.textContent=diagnostic.detail;errorDetails.hidden=!diagnostic.detail;
         if(error.code==='CONFIG_CONFLICT')throw error;
         return;
       }
@@ -68,5 +73,5 @@ export function createFileActions({state,ready,isBusy,call,perform,reviewedCall,
     recovery.hidden=!blocked;recoveryText.textContent=blocked?say('上次还原结果待核对。备份：','Previous restore needs verification. Backup: ')+receipt.backup:'';ack.disabled=isBusy()||!ready();
     for(const button of document.querySelectorAll('.file-actions button'))button.disabled=isBusy()||!ready()||button.dataset.unsupported==='true'||!!blocked&&button.dataset.restore==='true';
   }
-  return {append,update,invalidate:()=>{close();status.textContent='';}};
+  return {append,update,invalidate:()=>{close();status.textContent='';errorDetails.hidden=true;errorDetails.open=false;errorOutput.textContent='';}};
 }
