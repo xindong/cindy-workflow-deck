@@ -221,3 +221,18 @@ test('progress reads stay responsive during a real merge, scoped to operation an
  assert.equal((await gitRequest(f.root,{action:'operation-progress',operationId})).state,'updated');
  await assert.rejects(gitRequest(f.root,{action:'operation-progress',operationId:'bad'}),{code:'INVALID_REQUEST'});
 });
+
+test('update follows the current art upstream instead of main and restores dirty files',async t=>{
+ const f=await fixture(t);f.git(['switch','-c','art/character']);await writeFile(join(f.root,'art.txt'),'branch\n');f.git(['add','art.txt']);f.git(['commit','-qm','chore: art base']);f.git(['push','-qu','origin','art/character']);
+ const team=join(f.root,'.git/art-team');execFileSync('git',['clone','-q','--branch','art/character',f.remote,team]);const tg=args=>execFileSync('git',['-C',team,...args],{encoding:'utf8'}).trim();tg(['config','user.name','Team']);tg(['config','user.email','team@example.test']);await writeFile(join(team,'new-team.txt'),'team\n');tg(['add','.']);tg(['commit','-qm','chore: art update']);tg(['push','-q']);
+ await writeFile(join(f.root,'art.txt'),'local art\n');const r=await f.act('beginner-update');assert.equal(r.state,'updated');assert.equal(r.base,'art/character');assert.equal(f.git(['branch','--show-current']),'art/character');assert.equal(f.git(['rev-parse','HEAD']),tg(['rev-parse','HEAD']));assert.equal(f.git(['rev-parse','main']),f.main);assert.equal(await readFile(join(f.root,'art.txt'),'utf8'),'local art\n');
+});
+test('local commits ahead of the selected upstream are not treated as divergence or reset',async t=>{
+ const f=await fixture(t);f.git(['switch','-c','art/local']);f.git(['push','-qu','origin','art/local']);await writeFile(join(f.root,'saved.txt'),'saved');f.git(['add','.']);f.git(['commit','-qm','chore: local']);const head=f.git(['rev-parse','HEAD']);await writeFile(join(f.root,'dirty.txt'),'keep');
+ const r=await f.act('beginner-update');assert.equal(r.state,'updated');assert.equal(r.base,'art/local');assert.match(r.message,/尚未进入线上分支/);assert.equal(f.git(['rev-parse','HEAD']),head);assert.equal(await readFile(join(f.root,'dirty.txt'),'utf8'),'keep');assert.equal(r.stash,undefined);
+});
+test('a genuinely diverged art upstream still stops without stashing or overwriting',async t=>{
+ const f=await fixture(t);f.git(['switch','-c','art/diverged']);f.git(['push','-qu','origin','art/diverged']);
+ const team=join(f.root,'.git/diverged-team');execFileSync('git',['clone','-q','--branch','art/diverged',f.remote,team]);const tg=args=>execFileSync('git',['-C',team,...args],{encoding:'utf8'}).trim();tg(['config','user.name','Team']);tg(['config','user.email','team@example.test']);await writeFile(join(team,'remote.txt'),'remote');tg(['add','.']);tg(['commit','-qm','chore: remote']);tg(['push','-q']);
+ await writeFile(join(f.root,'local.txt'),'local');f.git(['add','.']);f.git(['commit','-qm','chore: local']);const head=f.git(['rev-parse','HEAD']);const r=await f.act('beginner-update');assert.equal(r.base,'art/diverged');assert.equal(r.state,'blocked');assert.equal(r.retryable,undefined);assert.match(r.message,/分叉/);assert.equal(r.stash,undefined);assert.equal(f.git(['rev-parse','HEAD']),head);
+});

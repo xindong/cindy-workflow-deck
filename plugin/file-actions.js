@@ -41,6 +41,13 @@ export function createFileActions({state,ready,isBusy,call,perform,reviewedCall,
     help.textContent=item.path+'\n'+say('将丢弃此文件在工作区和暂存区的修改，恢复到本机最近提交（HEAD）。新增文件会被移除。不会改成线上版本，也不会处理其他文件。先保存该文件的备份，再执行还原。','Discard this file’s working-tree and staged changes and restore the latest local commit (HEAD). Added files will be removed. This does not restore the online version or touch other files. A backup is saved first.');
     body.hidden=true;rule.hidden=!pending.requiresRules;check.checked=false;confirm.hidden=false;confirm.disabled=pending.requiresRules;confirm.textContent=say('确认还原此文件','Restore this file');cancel.textContent=say('取消','Cancel');dialog.showModal();
   }
+  function askRestoreMany(items) {
+    const current=state();if(!ready()||isBusy()||!current||!items.length||items.length>200)return;
+    pending={paths:items.map(item=>item.path),root:current.root,fingerprint:current.fingerprint,requiresRules:current.sources.length>0};
+    title.textContent=say('还原这 '+items.length+' 个文件？','Restore these '+items.length+' files?');
+    help.textContent=say('仅还原下列筛选结果到本机最近提交（HEAD），丢弃它们的工作区及暂存修改；新增文件会被移除。执行前逐个备份，其他文件不变。中途失败会停止并保留备份，不自动重试。','Restore only the listed filtered files to local HEAD, discarding their working and staged changes; added files are removed. Every file is backed up first. Other files stay unchanged. Failure stops the batch with backups retained; no automatic retry.');
+    body.textContent=pending.paths.join('\n');body.hidden=false;rule.hidden=!pending.requiresRules;check.checked=false;confirm.hidden=false;confirm.disabled=pending.requiresRules;confirm.textContent=say('确认还原这 '+items.length+' 个文件','Restore these '+items.length+' files');cancel.textContent=say('取消','Cancel');dialog.showModal();
+  }
   ack.onclick=()=>{
     const current=state(),receipt=current?.fileRevertReceipt;if(!ready()||isBusy()||!receipt)return;
     pending={root:current.root,fingerprint:current.fingerprint,requiresRules:true,recordId:receipt.backup};
@@ -51,14 +58,14 @@ export function createFileActions({state,ready,isBusy,call,perform,reviewedCall,
     const choice=pending;if(!choice||choice.requiresRules&&!check.checked)return;close();
     return perform(async()=>{
       if(!ready()||state()?.root!==choice.root||state()?.fingerprint!==choice.fingerprint)throw Object.assign(new Error(say('文件或项目已变化，请刷新后重新确认。','The project or files changed. Refresh and confirm again.')),{code:'STALE_REVIEW'});
-      const result=await reviewedCall(choice.recordId?'file-revert-acknowledge':'file-revert',{path:choice.path,confirmPath:choice.path,recordId:choice.recordId,rulesConfirmed:true});
+      const result=await reviewedCall(choice.recordId?'file-revert-acknowledge':'file-revert',{...(choice.paths?{paths:choice.paths,confirmPaths:choice.paths}:{path:choice.path,confirmPath:choice.path}),recordId:choice.recordId,rulesConfirmed:true});
       await refresh();
       status.textContent=result.message;
     });
   };
   function append(container,item,checkbox) {
     const row=document.createElement('div'),info=document.createElement('div'),tag=document.createElement('strong'),name=document.createElement('span'),buttons=document.createElement('div'),diff=document.createElement('button'),restore=document.createElement('button');
-    row.className='beginner-file';info.className='file-name';buttons.className='file-actions';
+    row.className='beginner-file';row.dataset.path=item.path;info.className='file-name';buttons.className='file-actions';
     name.textContent=item.path;name.tabIndex=0;name.setAttribute('role','button');name.title=say('双击在侧边栏对比线上差异','Double-click to compare with the online version in the sidebar');
     name.ondblclick=()=>compare(item);name.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();void compare(item);}};
     diff.type=restore.type='button';diff.textContent=say('对比线上','Compare online');restore.textContent=say('还原','Restore');
@@ -73,5 +80,5 @@ export function createFileActions({state,ready,isBusy,call,perform,reviewedCall,
     recovery.hidden=!blocked;recoveryText.textContent=blocked?say('上次还原结果待核对。备份：','Previous restore needs verification. Backup: ')+receipt.backup:'';ack.disabled=isBusy()||!ready();
     for(const button of document.querySelectorAll('.file-actions button'))button.disabled=isBusy()||!ready()||button.dataset.unsupported==='true'||!!blocked&&button.dataset.restore==='true';
   }
-  return {append,update,invalidate:()=>{close();status.textContent='';errorDetails.hidden=true;errorDetails.open=false;errorOutput.textContent='';}};
+  return {append,update,askRestoreMany,invalidate:()=>{close();status.textContent='';errorDetails.hidden=true;errorDetails.open=false;errorOutput.textContent='';}};
 }

@@ -37,6 +37,16 @@ function friendlyFailure(error,step,completed) {
   if(step==='merge') return '团队版本和你的本地版本暂时不能安全更新。工具没有覆盖你的修改，请联系项目负责人处理。';
   return '操作没有全部完成，你的文件已保留。请联系项目负责人核对后再继续。';
 }
+async function updateBranch(ctx,state) {
+  const upstream=(await ctx.run(['for-each-ref','--format=%(upstream:remotename)%00%(upstream:remoteref)','refs/heads/'+state.branch])).trim().split('\0');
+  if(upstream[0]) {
+    if(upstream[0]!=='origin'||!upstream[1]?.startsWith('refs/heads/'))fail('REMOTE_NOT_SUPPORTED','当前分支跟踪的不是 origin，请让负责人确认更新目标；未修改本地文件。');
+    const branch=upstream[1].slice(11);await ctx.run(['check-ref-format','refs/heads/'+branch]);return branch;
+  }
+  try {await ctx.run(['rev-parse','--verify','refs/remotes/origin/'+state.branch]);return state.branch;}
+  catch(error){if(typeof error.code!=='number')throw error;}
+  return baseBranch(ctx,state);
+}
 // Only settled update failures before any local mutation may start a NEW attempt.
 // Running, killed, stash/merge/restore and external submission results stay locked.
 function retryableFailure(record) {
@@ -54,8 +64,8 @@ async function runBeginner(ctx,state,params,env) {
     const file=path.resolve(ctx.root,(await ctx.run(['rev-parse','--git-path',name])).trim());
     try {await fs.lstat(file);fail('PROJECT_CONFLICT','项目有一项尚未完成的版本操作，请联系负责人先处理。');}catch(e){if(e.code!=='ENOENT')throw e;}
   }
-  const base=await baseBranch(ctx,state);
   const submit=params.action==='beginner-submit';
+  const base=await (submit?baseBranch(ctx,state):updateBranch(ctx,state));
   let selected,message,issue,reviewRepository,reviewOptions;
   if(submit) {
     if(Array.isArray(params.paths)&&params.paths.length>200)fail('SELECT_FILES','一次最多提交200个文件，请分批选择。');
@@ -88,6 +98,9 @@ async function runBeginner(ctx,state,params,env) {
       const target=(await ctx.run(['rev-parse','refs/remotes/origin/'+base])).trim();
       record.target=target;
       if(target===state.head) {record.state='updated';record.step='finished';record.message='项目已是团队最新版本，本地修改及暂存区保持原样。';await writeReceipt(ctx,record);return record;}
+      let containsRemote=false;
+      try {await ctx.run(['merge-base','--is-ancestor',target,state.head]);containsRemote=true;}catch(error){if(error.code!==1)throw error;}
+      if(containsRemote) {record.state='updated';record.step='finished';record.message='当前分支已包含 origin/'+base+' 的全部内容；本地还有尚未进入线上分支的提交，未回退或改动文件。';await writeReceipt(ctx,record);return record;}
       await step('preflight',()=>require('./safe-update.cjs').preflight(ctx,state,target,env));
       if(state.changes.length) {
         record.previousStash=await require('./safe-update.cjs').stashHead(ctx);

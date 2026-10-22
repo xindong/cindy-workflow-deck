@@ -1,5 +1,6 @@
 import { errorHelp } from './error-help.js';
 import { createUpdateProgress } from './update-progress.js';
+import { createFileFilter } from './file-filter.js';
 import { createFileActions } from './file-actions.js';
 export function changeLabel(status,english=false) {
   if(/U/.test(status)||['AA','DD'].includes(status)) return english?'Needs help':'需要协助';
@@ -12,6 +13,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
   const progress=createUpdateProgress({call,english});
   const fileActions=createFileActions({state,ready,isBusy,call,perform,reviewedCall,refresh,english});
+  const filter=createFileFilter({state,english,onChange:()=>{$('beginner-manual').checked=false;update();},onRestore:items=>fileActions.askRestoreMany(items)});
   let mode='view',rendered='',renderedRoot='',selected=new Set(),issueRows=[],issueLoading=false,issueGeneration=0,checkingChanges=false,changesGeneration=0;
   if(english) {
     const labels={'全选':'Select all','全不选':'Select none','关联 GitHub 事项（Issue）':'Link a GitHub issue','事项范围':'Issue filter','分配给我的':'Assigned to me','我创建的':'Created by me','加载我的事项':'Load my issues','对应事项':'Related issue','暂不关联':'No issue selected','只读取当前项目、当前 GitHub 账号的未关闭事项；关联不会自动关闭事项。':'Only open issues in this project for the current GitHub account. Linking does not close issues.','日常工作':'Daily work','基础':'Basic','我的项目':'My project','更新项目':'Update project','拿到团队最新内容':'Get the latest team version','查看我的改动':'View my changes','看这次改了哪些文件':'See changed files','提交我的修改':'Submit my changes','选文件，写一句说明':'Choose files and describe the change','重新检查':'Check again','这次改了什么？':'What changed?','用一句话说明':'Describe your change','如果团队要求这次修改先做验收或审批，我已经完成。':'I completed any tests or approvals required by the team for this change.','确认提交':'Confirm submission','先不操作':'Not now','操作详情（可交给项目负责人）':'Details for the project owner','本项目的提交要求（不确定请联系负责人）':'Project requirements (ask the owner if unsure)','更多工具（项目负责人）':'More tools (project owner)','我已核对上次操作，允许后续新操作':'I verified the previous operation; allow new operations'};
@@ -28,9 +30,10 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     const total=current?.changes.length||0,count=chosen().length;
     $('beginner-refresh-changes').disabled=isBusy()||!canRefresh();
     $('beginner-refresh-changes').textContent=checkingChanges?say('正在比对…','Checking…'):say('刷新改动','Refresh changes');
-    $('beginner-all').disabled=!can||!total||count===total;
+    const visible=filter.visible().length;filter.update(can,blocked);
+    $('beginner-all').disabled=!can||!visible||count===visible;
     $('beginner-none').disabled=!can||!count;
-    $('beginner-selected').textContent=say('已选 '+count+' / '+total+' 个文件',count+' / '+total+' files selected')+(count>200?say('（一次最多提交200个，请分批选择）',' (up to 200 files per submission)'):'');
+    $('beginner-selected').textContent=say('已选 '+count+' / '+total+' 个文件',count+' / '+total+' files selected')+say(' · 显示 '+visible+' 个',' · '+visible+' shown')+(count>200?say('（一次最多提交200个，请分批选择）',' (up to 200 files per submission)'):'');
     $('beginner-issue-load').disabled=!can||issueLoading;
     $('beginner-issue-scope').disabled=!can||issueLoading;
     $('beginner-issue').disabled=!can||issueLoading;
@@ -51,7 +54,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     const current=state();if(!current){update();return;}
     $('beginner-project').textContent=current.root.split(/[\\/]/).filter(Boolean).pop()||say('我的项目','My project');
     $('beginner-state').textContent=current.changes.length?say('有 '+current.changes.length+' 个文件尚未提交','You have '+current.changes.length+' unsubmitted files'):say('电脑里的修改已保存，没有待提交文件','No unsubmitted files on this computer');
-    if(renderedRoot!==current.root) {selected.clear();clearIssues();rendered='';$('beginner-summary').value='';$('beginner-manual').checked=false;$('beginner-sheet').hidden=true;for(const box of document.querySelectorAll('#beginner-files input'))box.checked=false;}
+    if(renderedRoot!==current.root) {filter.reset();selected.clear();clearIssues();rendered='';$('beginner-summary').value='';$('beginner-manual').checked=false;$('beginner-sheet').hidden=true;for(const box of document.querySelectorAll('#beginner-files input'))box.checked=false;}
     if(rendered!==current.fingerprint) {
       $('beginner-manual').checked=false;
       selected=new Set(chosen());$('beginner-files').replaceChildren();
@@ -59,7 +62,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
         const check=document.createElement('input');check.type='checkbox';check.value=item.path;check.checked=selected.has(item.path);check.setAttribute('aria-label',item.path);
         fileActions.append($('beginner-files'),item,check).textContent=changeLabel(item.status,english);check.onchange=()=>{$('beginner-manual').checked=false;update();};
       }
-      rendered=current.fingerprint;renderedRoot=current.root;
+      filter.render();rendered=current.fingerprint;renderedRoot=current.root;
     }
     $('beginner-rules').replaceChildren();
     for(const source of current.sources) {
@@ -85,7 +88,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-sheet-title').textContent=next==='update'?say('更新到团队最新内容','Get team updates'):say('这次改了什么？','What changed?');
     $('beginner-sheet-help').textContent=next==='update'?say('先预检冲突；通过后暂存本地修改、拉取团队版本，再取回修改及原暂存状态。','Check conflicts first, then back up local changes, update and restore changes and staging.'):say('只勾选这次要交给团队的文件，不要勾选别人的修改。','Select only the files you want to share. Do not include someone else’s work.');
     $('beginner-selection').hidden=next==='update';$('beginner-changes-status').hidden=next==='update';$('beginner-issue-section').hidden=next!=='submit';
-    $('beginner-team-rules').hidden=next!=='submit'||!state()?.sources.length;$('beginner-files').hidden=next==='update';$('beginner-summary-label').hidden=next!=='submit';
+    $('beginner-team-rules').hidden=next!=='submit'||!state()?.sources.length;$('beginner-files').hidden=next==='update';filter.setHidden(next==='update');$('beginner-summary-label').hidden=next!=='submit';
     $('beginner-manual-label').hidden=next!=='submit'||!state()?.sources.length;
     $('beginner-plan').textContent=next==='update'?say('工具会安全获取团队版本；无法自动处理时会停止并说明。','The tool gets the team version safely and stops if assistance is required.'):say('正式版本不能直接修改。工具会先建立独立工作分支，运行项目检查，再上传送审；通过团队审核后才能合入。下方是本项目要求，拿不准请先联系负责人。','The tool creates a separate work branch, runs project checks and uploads for team review. It never commits directly to the primary branch or merges automatically. Check the project requirements below; ask the project owner if unsure.');
     $('beginner-confirm').textContent=next==='update'?say('确认更新','Confirm update'):say('确认提交','Confirm submission');
@@ -121,7 +124,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-issue').replaceChildren(new Option(say('暂不关联','No issue selected'),''));
     $('beginner-issue-status').textContent=say('只读取当前项目、当前 GitHub 账号的未关闭事项；关联不会自动关闭事项。','Only open issues in this project for the current GitHub account. Linking does not close issues.');
   }
-  $('beginner-all').onclick=()=>{for(const box of document.querySelectorAll('#beginner-files input'))box.checked=true;$('beginner-manual').checked=false;update();};
+  $('beginner-all').onclick=()=>{for(const box of document.querySelectorAll('#beginner-files .beginner-file:not([hidden]) input'))box.checked=true;$('beginner-manual').checked=false;update();};
   $('beginner-none').onclick=()=>{for(const box of document.querySelectorAll('#beginner-files input'))box.checked=false;$('beginner-manual').checked=false;update();};
   $('beginner-issue-scope').onchange=()=>{clearIssues();$('beginner-manual').checked=false;update();};
   $('beginner-issue').onchange=()=>{$('beginner-manual').checked=false;update();};
@@ -168,7 +171,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-detail').textContent=help.detail;$('beginner-result-details').hidden=false;
   }
   function invalidate(){
-    fileActions.invalidate();
+    fileActions.invalidate();filter.reset();
     progress.clear();changesGeneration++;checkingChanges=false;
     $('beginner-changes-status').textContent='';$('beginner-changes-status').hidden=true;
     rendered='';renderedRoot='';selected.clear();clearIssues();
