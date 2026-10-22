@@ -199,3 +199,25 @@ test('changed initialized submodule stays at its original revision and update re
  assert.equal(execFileSync('git',['-C',join(f.root,'vendor'),'rev-parse','HEAD'],{encoding:'utf8'}).trim(),old);
  assert.equal(await readFile(join(f.root,'vendor/asset'),'utf8'),'old');
 });
+
+test('progress reads stay responsive during a real merge, scoped to operation and without write side effects',async t=>{
+ const f=await fixture(t);const target=await teamChange(f,{'team.txt':'new'});
+ const hook=join(f.root,'.git/hooks/post-merge');await writeFile(hook,'#!/bin/sh\nsleep 2\n');await chmod(hook,0o755);
+ const operationId=randomUUID();let settled=false;
+ const updating=f.act('beginner-update',{operationId}).then(r=>{settled=true;return r;});
+ let progress;
+ for(let i=0;i<40;i++) {
+  await new Promise(r=>setTimeout(r,50));
+  progress=await gitRequest(f.root,{action:'operation-progress',operationId});
+  if(progress?.step==='merge')break;
+ }
+ assert.equal(progress?.step,'merge');assert.equal(settled,false,'read must not wait behind the update queue');
+ assert.deepEqual(progress.completed,['fetch','preflight']);
+ const journal=await readFile(join(f.root,'.git/jixin-beginner.json'),'utf8');
+ assert.equal(await gitRequest(f.root,{action:'operation-progress',operationId:randomUUID()}),null);
+ assert.equal(await readFile(join(f.root,'.git/jixin-beginner.json'),'utf8'),journal);
+ assert.equal(progress.token,undefined);assert.equal(progress.detail,undefined);
+ const result=await updating;assert.equal(result.state,'updated');assert.equal(f.git(['rev-parse','HEAD']),target);
+ assert.equal((await gitRequest(f.root,{action:'operation-progress',operationId})).state,'updated');
+ await assert.rejects(gitRequest(f.root,{action:'operation-progress',operationId:'bad'}),{code:'INVALID_REQUEST'});
+});

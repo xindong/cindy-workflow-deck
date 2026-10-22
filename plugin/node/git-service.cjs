@@ -86,6 +86,14 @@ async function snapshot({root,run}) {
 async function gitRequest(directory,params={}) {
   const {action='status'}=params;
   const root=await fs.realpath(directory);
+  // Progress must not wait behind the write it is observing. Never issue a ticket
+  // or expose journal details; scope reads to the current operation identifier.
+  if(action==='operation-progress') {
+    if(typeof params.operationId!=='string'||!/^[a-zA-Z0-9-]{16,60}$/.test(params.operationId)) fail('INVALID_REQUEST','操作编号无效');
+    const ctx=await context(directory,true),record=await require('./beginner-git.cjs').readReceipt(ctx);
+    if(!record||record.id!==params.operationId||record.action!=='beginner-update')return null;
+    return {id:record.id,state:record.state,step:record.step,completed:record.completed||[]};
+  }
   const previous=queues.get(root)||Promise.resolve();
   const job=previous.then(async()=>{
     const ctx=await context(directory,action==='ssh-identity-set',action==='status'),run=ctx.run;

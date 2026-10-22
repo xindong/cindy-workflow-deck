@@ -1,3 +1,4 @@
+import { createUpdateProgress } from './update-progress.js';
 export function changeLabel(status,english=false) {
   if(/U/.test(status)||['AA','DD'].includes(status)) return english?'Needs help':'需要协助';
   if(status==='??'||status.includes('A')) return english?'Added':'新增';
@@ -7,6 +8,7 @@ export function changeLabel(status,english=false) {
 }
 export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedCall=call,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
+  const progress=createUpdateProgress({call,english});
   let mode='view',rendered='',renderedRoot='',selected=new Set(),issueRows=[],issueLoading=false,issueGeneration=0;
   if(english) {
     const labels={'全选':'Select all','全不选':'Select none','关联 GitHub 事项（Issue）':'Link a GitHub issue','事项范围':'Issue filter','分配给我的':'Assigned to me','我创建的':'Created by me','加载我的事项':'Load my issues','对应事项':'Related issue','暂不关联':'No issue selected','只读取当前项目、当前 GitHub 账号的未关闭事项；关联不会自动关闭事项。':'Only open issues in this project for the current GitHub account. Linking does not close issues.','日常工作':'Daily work','基础':'Basic','我的项目':'My project','更新项目':'Update project','拿到团队最新内容':'Get the latest team version','查看我的改动':'View my changes','看这次改了哪些文件':'See changed files','提交我的修改':'Submit my changes','选文件，写一句说明':'Choose files and describe the change','重新检查':'Check again','这次改了什么？':'What changed?','用一句话说明':'Describe your change','如果团队要求这次修改先做验收或审批，我已经完成。':'I completed any tests or approvals required by the team for this change.','确认提交':'Confirm submission','先不操作':'Not now','操作详情（可交给项目负责人）':'Details for the project owner','本项目的提交要求（不确定请联系负责人）':'Project requirements (ask the owner if unsure)','更多工具（项目负责人）':'More tools (project owner)','我已核对上次操作，允许后续新操作':'I verified the previous operation; allow new operations'};
@@ -32,6 +34,10 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-summary').disabled=isBusy();
     $('beginner-manual').disabled=isBusy();
     for(const box of document.querySelectorAll('#beginner-files input'))box.disabled=isBusy();
+    if(progress.isRunning()) {
+      $('beginner-message').textContent='';$('beginner-message').dataset.quiet='true';
+      $('beginner-result-details').hidden=true;
+    }
     if(isBusy())$('beginner-state').textContent=say('正在处理，请不要重复点击…','Working, please do not click again…');
     else if(!current)$('beginner-state').textContent=say('状态待检查，请点“重新检查”。','Status needs checking. Click Check again.');
   }
@@ -109,7 +115,13 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   $('beginner-cancel').onclick=()=>{$('beginner-sheet').hidden=true;};
   $('beginner-confirm').onclick=()=>perform(async()=>{
     const current=state(),action=mode==='update'?'beginner-update':'beginner-submit';
-    const result=await reviewedCall(action,{token:current.token,operationId:crypto.randomUUID(),paths:chosen(),summary:$('beginner-summary').value.trim(),issue:mode==='submit'?(issueRows.find(row=>String(row.number)===$('beginner-issue').value)||null):null,rulesConfirmed:mode==='update'||!current.sources.length||$('beginner-manual').checked});
+    const operationId=crypto.randomUUID();
+    if(mode==='update')progress.start(operationId);
+    let result;
+    try {
+      result=await reviewedCall(action,{token:current.token,operationId,paths:chosen(),summary:$('beginner-summary').value.trim(),issue:mode==='submit'?(issueRows.find(row=>String(row.number)===$('beginner-issue').value)||null):null,rulesConfirmed:mode==='update'||!current.sources.length||$('beginner-manual').checked});
+      if(mode==='update')progress.finish(result);
+    } catch(error) {if(mode==='update')progress.fail(error);throw error;}
     $('beginner-sheet').hidden=true;$('beginner-manual').checked=false;
     await refresh();$('beginner-message').textContent=result.message||say('操作结果需要核对。','Please verify the operation result.');
     if(result.state==='awaiting-review'||result.state==='review-draft'){$('beginner-summary').value='';clearIssues();}
@@ -125,6 +137,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-detail').textContent=(problem.code||'')+'\n'+problem.message;$('beginner-result-details').hidden=false;
   }
   function invalidate(){
+    progress.clear();
     rendered='';renderedRoot='';selected.clear();clearIssues();
     $('beginner-files').replaceChildren();$('beginner-summary').value='';
     $('beginner-manual').checked=false;$('beginner-sheet').hidden=true;update();
