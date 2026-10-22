@@ -6,10 +6,10 @@ export function changeLabel(status,english=false) {
   if(/[RC]/.test(status)) return english?'Renamed':'改名';
   return english?'Modified':'修改';
 }
-export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedCall=call,english=false}) {
+export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedCall=call,canRefresh=ready,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
   const progress=createUpdateProgress({call,english});
-  let mode='view',rendered='',renderedRoot='',selected=new Set(),issueRows=[],issueLoading=false,issueGeneration=0;
+  let mode='view',rendered='',renderedRoot='',selected=new Set(),issueRows=[],issueLoading=false,issueGeneration=0,checkingChanges=false,changesGeneration=0;
   if(english) {
     const labels={'全选':'Select all','全不选':'Select none','关联 GitHub 事项（Issue）':'Link a GitHub issue','事项范围':'Issue filter','分配给我的':'Assigned to me','我创建的':'Created by me','加载我的事项':'Load my issues','对应事项':'Related issue','暂不关联':'No issue selected','只读取当前项目、当前 GitHub 账号的未关闭事项；关联不会自动关闭事项。':'Only open issues in this project for the current GitHub account. Linking does not close issues.','日常工作':'Daily work','基础':'Basic','我的项目':'My project','更新项目':'Update project','拿到团队最新内容':'Get the latest team version','查看我的改动':'View my changes','看这次改了哪些文件':'See changed files','提交我的修改':'Submit my changes','选文件，写一句说明':'Choose files and describe the change','重新检查':'Check again','这次改了什么？':'What changed?','用一句话说明':'Describe your change','如果团队要求这次修改先做验收或审批，我已经完成。':'I completed any tests or approvals required by the team for this change.','确认提交':'Confirm submission','先不操作':'Not now','操作详情（可交给项目负责人）':'Details for the project owner','本项目的提交要求（不确定请联系负责人）':'Project requirements (ask the owner if unsure)','更多工具（项目负责人）':'More tools (project owner)','我已核对上次操作，允许后续新操作':'I verified the previous operation; allow new operations'};
     const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;
@@ -23,6 +23,8 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     const blocked=current && (!current.hooksReady || current.incomplete || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
     $('beginner-confirm').disabled=!can || blocked || issueLoading || (mode==='submit' && (!chosen().length || chosen().length>200 || !$('beginner-summary').value.trim() || (current.sources.length>0 && !$('beginner-manual').checked)));
     const total=current?.changes.length||0,count=chosen().length;
+    $('beginner-refresh-changes').disabled=isBusy()||!canRefresh();
+    $('beginner-refresh-changes').textContent=checkingChanges?say('正在比对…','Checking…'):say('刷新改动','Refresh changes');
     $('beginner-all').disabled=!can||!total||count===total;
     $('beginner-none').disabled=!can||!count;
     $('beginner-selected').textContent=say('已选 '+count+' / '+total+' 个文件',count+' / '+total+' files selected')+(count>200?say('（一次最多提交200个，请分批选择）',' (up to 200 files per submission)'):'');
@@ -79,12 +81,37 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     mode=next;$('beginner-manual').checked=false;$('beginner-sheet').hidden=false;$('beginner-confirmation').hidden=false;$('beginner-confirm').hidden=next==='view';$('beginner-plan').hidden=next==='view';
     $('beginner-sheet-title').textContent=next==='update'?say('更新到团队最新内容','Get team updates'):say('这次改了什么？','What changed?');
     $('beginner-sheet-help').textContent=next==='update'?say('先预检冲突；通过后暂存本地修改、拉取团队版本，再取回修改及原暂存状态。','Check conflicts first, then back up local changes, update and restore changes and staging.'):say('只勾选这次要交给团队的文件，不要勾选别人的修改。','Select only the files you want to share. Do not include someone else’s work.');
-    $('beginner-selection').hidden=next==='update';$('beginner-issue-section').hidden=next!=='submit';
+    $('beginner-selection').hidden=next==='update';$('beginner-changes-status').hidden=next==='update';$('beginner-issue-section').hidden=next!=='submit';
     $('beginner-team-rules').hidden=next!=='submit'||!state()?.sources.length;$('beginner-files').hidden=next==='update';$('beginner-summary-label').hidden=next!=='submit';
     $('beginner-manual-label').hidden=next!=='submit'||!state()?.sources.length;
     $('beginner-plan').textContent=next==='update'?say('工具会安全获取团队版本；无法自动处理时会停止并说明。','The tool gets the team version safely and stops if assistance is required.'):say('正式版本不能直接修改。工具会先建立独立工作分支，运行项目检查，再上传送审；通过团队审核后才能合入。下方是本项目要求，拿不准请先联系负责人。','The tool creates a separate work branch, runs project checks and uploads for team review. It never commits directly to the primary branch or merges automatically. Check the project requirements below; ask the project owner if unsure.');
     $('beginner-confirm').textContent=next==='update'?say('确认更新','Confirm update'):say('确认提交','Confirm submission');
     update();
+  }
+  function refreshChanges() {
+    return perform(async()=>{
+      const generation=++changesGeneration;
+      checkingChanges=true;$('beginner-manual').checked=false;
+      $('beginner-changes-status').hidden=false;
+      $('beginner-changes-status').textContent=say('正在比对本地文件，请稍候…','Checking local files…');
+      $('beginner-files').hidden=true;update();
+      try {
+        await refresh();
+        if(generation!==changesGeneration)return;
+        if(!ready()||!state())throw new Error(say('项目状态已变化，请重新检查。','Project state changed. Check again.'));
+        const count=state().changes.length;
+        const time=new Date().toLocaleTimeString(english?'en-GB':'zh-CN',{hour12:false});
+        $('beginner-changes-status').textContent=say('已检查 ','Checked ')+time+' · '+(count?say('发现 '+count+' 个待提交文件','Found '+count+' changed files'):say('没有待提交文件','No changed files'));
+      } catch(error) {
+        if(generation===changesGeneration) {
+          $('beginner-files').replaceChildren();rendered='';selected.clear();
+          $('beginner-changes-status').textContent=say('比对失败，请点“刷新改动”重试；未显示旧清单。','Check failed. Refresh changes to retry; the old list is hidden.');
+        }
+        throw error;
+      } finally {
+        if(generation===changesGeneration){checkingChanges=false;$('beginner-files').hidden=mode==='update';update();}
+      }
+    });
   }
   function clearIssues() {
     issueGeneration++;issueLoading=false;issueRows=[];$('beginner-manual').checked=false;
@@ -110,7 +137,8 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
       if(generation===issueGeneration)$('beginner-issue-status').textContent=problem.message||say('事项暂时无法读取，请检查账号和网络后重新加载。','Issues are unavailable. Check your account and connection, then reload.');
     } finally {if(generation===issueGeneration){issueLoading=false;update();}}
   };
-  $('beginner-view').onclick=()=>open('view');$('beginner-submit').onclick=()=>open('submit');$('beginner-update').onclick=()=>open('update');
+  $('beginner-refresh-changes').onclick=refreshChanges;
+  $('beginner-view').onclick=()=>{open('view');return refreshChanges();};$('beginner-submit').onclick=()=>{open('submit');return refreshChanges();};$('beginner-update').onclick=()=>open('update');
   $('beginner-summary').oninput=update;$('beginner-manual').onchange=update;
   $('beginner-cancel').onclick=()=>{$('beginner-sheet').hidden=true;};
   $('beginner-confirm').onclick=()=>perform(async()=>{
@@ -137,7 +165,8 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-detail').textContent=(problem.code||'')+'\n'+problem.message;$('beginner-result-details').hidden=false;
   }
   function invalidate(){
-    progress.clear();
+    progress.clear();changesGeneration++;checkingChanges=false;
+    $('beginner-changes-status').textContent='';$('beginner-changes-status').hidden=true;
     rendered='';renderedRoot='';selected.clear();clearIssues();
     $('beginner-files').replaceChildren();$('beginner-summary').value='';
     $('beginner-manual').checked=false;$('beginner-sheet').hidden=true;update();

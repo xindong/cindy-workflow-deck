@@ -68,7 +68,7 @@ export function mountGit({transport,context,notice,onConflict,english=false}) {
   // Keep configuration reachable on first use; configured projects open the basic Git view.
   tab(!!context().projectId);
   document.getElementById('configuration-form').addEventListener('input',()=>{state=undefined;buttons();});
-  beginner=mountBeginner({state:()=>state,ready,isBusy:()=>busy,call,refresh,perform:run,reviewedCall,english});
+  beginner=mountBeginner({state:()=>state,ready,isBusy:()=>busy,call,refresh,perform:run,reviewedCall,canRefresh:()=>context().ready,english});
   document.addEventListener('configuration-invalidated',()=>{state=undefined;$('git-confirm').checked=false;beginner?.invalidate();buttons();});
   document.addEventListener('configuration-ready',()=>{buttons();if(context().ready){if(busy)pendingRefresh=true;else void run(refresh);}});
   addEventListener('focus',buttons);buttons();if(context().ready)void run(refresh);
