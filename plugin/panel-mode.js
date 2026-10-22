@@ -35,3 +35,16 @@ $('config-tab').addEventListener('click',event=>{
 },true);
 for(const id of ['beginner-update','beginner-view','beginner-submit'])$(id).addEventListener('click',()=>{$('git-tab').click();},true);
 mode(false);
+
+// Follow the visible page on close, project reset and mode changes.
+// Refresh and mode-switch buttons remain actions, not selected pages.
+function syncSelection() {
+  const basic=!$('basic-view').hidden, git=basic&&!$('git-view').hidden;
+  const sheet=$('beginner-sheet');
+  for(const action of ['update','view','submit'])
+    $('beginner-'+action).setAttribute('aria-pressed',String(git&&!sheet.hidden&&sheet.dataset.action===action));
+  $('config-tab').setAttribute('aria-pressed',String(basic&&!$('config-view').hidden));
+}
+for(const id of ['basic-view','git-view','config-view','beginner-sheet'])
+  new MutationObserver(syncSelection).observe($(id),{attributes:true,attributeFilter:['hidden','data-action']});
+syncSelection();

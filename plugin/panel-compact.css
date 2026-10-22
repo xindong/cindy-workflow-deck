@@ -25,6 +25,19 @@
 #compact-footer .controls { gap:0; padding-left:3px; }
 #compact-footer .common-controls { border-left:0; padding-left:0; }
 #compact-footer .view-tabs .compact-icon { border:0; padding:0; background:transparent; border-radius:50%; }
+/* Shape and contrast distinguish the selected page from hover and focus. */
+#compact-footer .compact-icon[aria-pressed="true"] {
+ position:relative; opacity:1;
+ background:var(--text-primary,#262626);
+ color:var(--surface-elevated,#fff);
+ box-shadow:0 0 0 2px var(--surface-elevated,#fff),0 0 0 3px var(--text-primary,#262626);
+}
+#compact-footer .compact-icon[aria-pressed="true"]::after {
+ content:""; position:absolute; bottom:3px; left:calc(50% - 4px);
+ width:8px; height:2px; border-radius:2px; background:currentColor;
+}
+#compact-footer .compact-icon[aria-pressed="true"] svg { stroke-width:2.2; }
+#compact-footer .compact-icon:focus-visible { outline:2px solid var(--focus-ring,#417cdd); outline-offset:4px; }
 #advanced-view { padding-bottom:0; }
 #compact-tooltip { z-index:30; }
 @media(max-width:340px) {
