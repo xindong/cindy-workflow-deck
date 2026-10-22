@@ -141,6 +141,33 @@ class VersionTests(unittest.TestCase):
         self.run_python('scripts/bump_version.py', '--push-base', self.base)
         self.assert_version(f'{major}.{minor + 1}.0')
 
+    def test_exact_alignment_then_patch_and_cloud_replay(self):
+        target = self.plus(13)
+        self.change('align installed and source versions')
+        self.run_python('scripts/bump_version.py', '--align-version', target)
+        self.assert_version(target)
+        self.run_git('commit', '-qm', 'explicit version alignment')
+        self.assert_version(target)
+        self.change('normal change')
+        self.run_git('commit', '-qm', 'normal patch')
+        self.assert_version(self.plus(14))
+        self.run_python('scripts/bump_version.py', '--push-base', self.base)
+        self.assert_version(self.plus(14))
+        self.assertEqual(self.run_git('status', '--porcelain').stdout, '')
+
+    def test_invalid_alignment_is_rejected(self):
+        for intent in [
+            {'base': self.initial, 'level': 'align', 'version': self.initial},
+            {'base': self.initial, 'level': 'align', 'version': '0.0.0'},
+            {'base': '999.0.0', 'level': 'align', 'version': self.plus(13)},
+            {'base': self.initial, 'level': 'align', 'version': 'not-semver'},
+        ]:
+            (self.root / 'VERSION_BUMP.json').write_text(json.dumps(intent))
+            self.run_git('add', 'VERSION_BUMP.json')
+            result = self.run_git('commit', '-qm', 'invalid alignment', check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assert_version(self.initial)
+
     def test_stale_minor_intent_is_rejected(self):
         intent = {'base': '999.0.0', 'level': 'minor'}
         (self.root / 'VERSION_BUMP.json').write_text(json.dumps(intent))
