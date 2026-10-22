@@ -32,13 +32,19 @@ def increment(version, level='patch'):
     return f'{major}.{minor}.{patch + 1}'
 
 
-def bump_level(files, intent_ref, base_version):
+def next_version(files, intent_ref, base_version):
     if INTENT_FILE not in files:
-        return 'patch'
+        return increment(base_version)
     intent = json.loads(git('show', f'{intent_ref}:{INTENT_FILE}'))
-    if intent != {'base': base_version, 'level': 'minor'}:
-        raise ValueError('Minor intent must specify the parent version and level=minor')
-    return 'minor'
+    if intent == {'base': base_version, 'level': 'minor'}:
+        return increment(base_version, 'minor')
+    if (set(intent) == {'base', 'level', 'version'} and intent['base'] == base_version
+            and intent['level'] == 'align'):
+        target = intent['version']
+        if version_tuple(target) <= version_tuple(base_version):
+            raise ValueError('Explicit alignment must advance the parent version')
+        return target
+    raise ValueError('Version intent must match the parent and specify minor or explicit alignment')
 
 
 def version_at(ref):
@@ -76,7 +82,7 @@ def prepare_index():
         raise ValueError('Stage or stash unstaged changes to version/README files first')
     base = version_at('HEAD')
     staged = git('diff', '--cached', '--name-only').decode().splitlines()
-    expected = increment(base, bump_level(staged, '', base))
+    expected = next_version(staged, '', base)
     with tempfile.TemporaryDirectory(prefix='jixin-version-') as temp:
         snapshot = Path(temp)
         git('checkout-index', '--all', '--prefix=' + str(snapshot) + '/')
@@ -107,7 +113,8 @@ def expected_push_version(before):
                 and files.issubset(MANAGED)):
             expected = max(expected, version_at(commit), key=version_tuple)
         else:
-            expected = increment(expected, bump_level(files, commit, version_at(parent)))
+            requested = next_version(files, commit, version_at(parent))
+            expected = max(increment(expected), requested, key=version_tuple)
     return expected
 
 
@@ -117,12 +124,16 @@ if __name__ == '__main__':
     modes.add_argument('--staged', action='store_true')
     modes.add_argument('--set-version')
     modes.add_argument('--push-base')
+    modes.add_argument('--align-version', help='Stage a user-requested exact version alignment')
     modes.add_argument('--minor', action='store_true', help='Stage an explicit +0.1.0 upgrade')
     args = parser.parse_args()
     if args.staged:
         prepare_index()
-    elif args.minor:
+    elif args.minor or args.align_version:
         intent = {'base': version_at('HEAD'), 'level': 'minor'}
+        if args.align_version:
+            version_tuple(args.align_version)
+            intent = {'base': version_at('HEAD'), 'level': 'align', 'version': args.align_version}
         (ROOT / INTENT_FILE).write_text(json.dumps(intent, indent=2) + chr(10), encoding='utf-8')
         subprocess.run(['git', 'add', '--', INTENT_FILE], cwd=ROOT, check=True)
         prepare_index()
