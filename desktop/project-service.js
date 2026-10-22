@@ -47,7 +47,7 @@ export function createProjectService({ file, pickDirectory, pickFile }) {
           if(current.revision !== params.revision) throw Object.assign(new Error('项目配置已变化，请重新加载'),{code:'CONFIG_CONFLICT'});
           const project = current.configuration.projects.find(p => p.id === current.configuration.activeProjectId && p.id === params.projectId);
           if(!project) throw new Error('请先保存当前项目');
-          return gitRequest(project.directory,params);
+          return gitRequest(project.directory,params.action==='file-open'?{...params,action:'file-diff',preview:false}:params);
         };
         return params.action==='operation-progress' ? work() : serial(work);
       }

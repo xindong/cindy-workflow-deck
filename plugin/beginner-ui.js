@@ -1,4 +1,5 @@
 import { createUpdateProgress } from './update-progress.js';
+import { createFileActions } from './file-actions.js';
 export function changeLabel(status,english=false) {
   if(/U/.test(status)||['AA','DD'].includes(status)) return english?'Needs help':'需要协助';
   if(status==='??'||status.includes('A')) return english?'Added':'新增';
@@ -9,6 +10,7 @@ export function changeLabel(status,english=false) {
 export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedCall=call,canRefresh=ready,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
   const progress=createUpdateProgress({call,english});
+  const fileActions=createFileActions({state,ready,isBusy,call,perform,reviewedCall,refresh,english});
   let mode='view',rendered='',renderedRoot='',selected=new Set(),issueRows=[],issueLoading=false,issueGeneration=0,checkingChanges=false,changesGeneration=0;
   if(english) {
     const labels={'全选':'Select all','全不选':'Select none','关联 GitHub 事项（Issue）':'Link a GitHub issue','事项范围':'Issue filter','分配给我的':'Assigned to me','我创建的':'Created by me','加载我的事项':'Load my issues','对应事项':'Related issue','暂不关联':'No issue selected','只读取当前项目、当前 GitHub 账号的未关闭事项；关联不会自动关闭事项。':'Only open issues in this project for the current GitHub account. Linking does not close issues.','日常工作':'Daily work','基础':'Basic','我的项目':'My project','更新项目':'Update project','拿到团队最新内容':'Get the latest team version','查看我的改动':'View my changes','看这次改了哪些文件':'See changed files','提交我的修改':'Submit my changes','选文件，写一句说明':'Choose files and describe the change','重新检查':'Check again','这次改了什么？':'What changed?','用一句话说明':'Describe your change','如果团队要求这次修改先做验收或审批，我已经完成。':'I completed any tests or approvals required by the team for this change.','确认提交':'Confirm submission','先不操作':'Not now','操作详情（可交给项目负责人）':'Details for the project owner','本项目的提交要求（不确定请联系负责人）':'Project requirements (ask the owner if unsure)','更多工具（项目负责人）':'More tools (project owner)','我已核对上次操作，允许后续新操作':'I verified the previous operation; allow new operations'};
@@ -20,7 +22,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   function update() {
     const current=state(),can=ready()&&!isBusy()&&!!current;
     for(const id of ['beginner-update','beginner-view','beginner-submit'])$(id).disabled=!can;
-    const blocked=current && (!current.hooksReady || current.incomplete || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
+    const blocked=current && (!current.hooksReady || current.incomplete || current.fileRevertReceipt&&!['restored','acknowledged'].includes(current.fileRevertReceipt.state) || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
     $('beginner-confirm').disabled=!can || blocked || issueLoading || (mode==='submit' && (!chosen().length || chosen().length>200 || !$('beginner-summary').value.trim() || (current.sources.length>0 && !$('beginner-manual').checked)));
     const total=current?.changes.length||0,count=chosen().length;
     $('beginner-refresh-changes').disabled=isBusy()||!canRefresh();
@@ -36,6 +38,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-summary').disabled=isBusy();
     $('beginner-manual').disabled=isBusy();
     for(const box of document.querySelectorAll('#beginner-files input'))box.disabled=isBusy();
+    fileActions.update();
     if(progress.isRunning()) {
       $('beginner-message').textContent='';$('beginner-message').dataset.quiet='true';
       $('beginner-result-details').hidden=true;
@@ -52,9 +55,8 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
       $('beginner-manual').checked=false;
       selected=new Set(chosen());$('beginner-files').replaceChildren();
       for(const item of current.changes) {
-        const label=document.createElement('label'),check=document.createElement('input'),info=document.createElement('span'),tag=document.createElement('strong'),filename=document.createElement('span');
-        label.className='check beginner-file';check.type='checkbox';check.value=item.path;check.checked=selected.has(item.path);check.setAttribute('aria-label',item.path);
-        tag.textContent=changeLabel(item.status,english);filename.textContent=item.path;info.append(tag,filename);label.append(check,info);check.onchange=()=>{$('beginner-manual').checked=false;update();};$('beginner-files').append(label);
+        const check=document.createElement('input');check.type='checkbox';check.value=item.path;check.checked=selected.has(item.path);check.setAttribute('aria-label',item.path);
+        fileActions.append($('beginner-files'),item,check).textContent=changeLabel(item.status,english);check.onchange=()=>{$('beginner-manual').checked=false;update();};
       }
       rendered=current.fingerprint;renderedRoot=current.root;
     }
@@ -165,6 +167,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-detail').textContent=(problem.code||'')+'\n'+problem.message;$('beginner-result-details').hidden=false;
   }
   function invalidate(){
+    fileActions.invalidate();
     progress.clear();changesGeneration++;checkingChanges=false;
     $('beginner-changes-status').textContent='';$('beginner-changes-status').hidden=true;
     rendered='';renderedRoot='';selected.clear();clearIssues();

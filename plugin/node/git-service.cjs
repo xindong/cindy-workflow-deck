@@ -15,7 +15,7 @@ async function context(directory, skipSshBinding = false, allowInvalidIdentity =
   const root = await fs.realpath(directory);
   const binary = 'git'; // Use the installed Git, never a project-adjacent executable.
   const env = environment();
-  const run = async (args, options = {}) => (await execute(binary, ['--no-optional-locks','-c','core.fsmonitor=false','-C',root,...args], {env,timeout:90000,maxBuffer:options.filenameList ? 16*1024*1024 : 2*1024*1024,windowsHide:true})).stdout;
+  const run = async (args, options = {}) => (await execute(binary, ['--no-optional-locks','-c','core.fsmonitor=false','-C',root,...args], {env,encoding:options.raw?'buffer':'utf8',timeout:90000,maxBuffer:options.filenameList ? 16*1024*1024 : 2*1024*1024,windowsHide:true})).stdout;
   let toplevel;
   try {toplevel=await fs.realpath((await run(['rev-parse','--show-toplevel'])).trim());}
   catch(error) {if(error.code==='ENOENT')fail('GIT_REQUIRED','这台电脑尚未配置版本管理组件，请联系项目负责人。');fail('NOT_GIT_PROJECT','这个文件夹不是已准备好的团队项目。请选择已有项目的最外层文件夹，或联系项目负责人。');}
@@ -96,7 +96,7 @@ async function gitRequest(directory,params={}) {
   }
   const previous=queues.get(root)||Promise.resolve();
   const job=previous.then(async()=>{
-    const ctx=await context(directory,action==='ssh-identity-set',action==='status'),run=ctx.run;
+    const ctx=await context(directory,['ssh-identity-set','file-revert','file-revert-acknowledge'].includes(action),action==='status'),run=ctx.run;
     let lock;
     if(!['status','diff','history','issues-list'].includes(action)) {
       lock=path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim());
@@ -105,24 +105,28 @@ async function gitRequest(directory,params={}) {
     }
     try {
     const state=await snapshot(ctx);
+    if(lock&&!['file-diff','file-revert-acknowledge'].includes(action))await require('./file-changes.cjs').assertSettled(ctx);
     if(action==='identity-fill') {await require('./git-identity.cjs').fillIdentity(ctx,ctx.env,params);return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:true,env:ctx.env});}
     if(action==='prepare') return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:params.confirmProjectSetup===true,env:ctx.env});
     if(action==='status') {
       const token=randomUUID();tickets.set(token,{root,fingerprint:state.fingerprint,expires:Date.now()+10*60*1000});
       for(const [key,t] of tickets) if(t.expires<Date.now()) tickets.delete(key);
       const service=require('./beginner-git.cjs'),receipt=await service.readReceipt(ctx);
-      return {...state,token,sshIdentity:ctx.sshIdentity,beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
+      return {...state,token,sshIdentity:ctx.sshIdentity,fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
     }
     if(action==='issues-list') return require('./github-issues.cjs').listIssues(ctx,params,ctx.env);
+    if(action==='file-diff') return await require('./file-changes.cjs').compare(ctx,state,params);
     if(action==='diff') return {output:await run(['diff',...(params.staged?['--cached']:[]),'--no-ext-diff','--no-textconv','--stat','--patch'])};
     if(action==='history') return {output:await run(['log','-20','--format=%h %s (%an)','--no-show-signature'])};
-    if(!['ssh-identity-set','branch-create','branch-switch','stage','unstage','commit','fetch','pull','push','pr','beginner-submit','beginner-update','beginner-acknowledge'].includes(action)) fail('UNKNOWN_ACTION','不支持此 Git 操作');
+    if(!['file-revert','file-revert-acknowledge','ssh-identity-set','branch-create','branch-switch','stage','unstage','commit','fetch','pull','push','pr','beginner-submit','beginner-update','beginner-acknowledge'].includes(action)) fail('UNKNOWN_ACTION','不支持此 Git 操作');
     if(action.startsWith('beginner-')) {const prior=await require('./beginner-git.cjs').readReceipt(ctx);if(prior?.id===params.operationId)return prior;}
     const ticket=tickets.get(params.token);tickets.delete(params.token);
     if(!ticket || ticket.root!==root || ticket.expires<Date.now() || ticket.fingerprint!==state.fingerprint) fail('STALE_REVIEW','仓库或规则已变化，请刷新并重新核对');
     if(params.rulesConfirmed!==true) fail('RULE_REVIEW_REQUIRED','请先阅读项目规则，并确认此次操作满足其中的人工要求；未确认不执行');
+    if(action==='file-revert-acknowledge') return await require('./file-changes.cjs').acknowledge(ctx,params);
     if(state.incomplete) fail('RULE_DISCOVERY_INCOMPLETE','规则路由超过读取上限，请使用高级工作流核对');
     if(!state.hooksReady) fail('HOOKS_NOT_READY','项目 hooks 未正确启用或不可执行，请按贡献指南配置后重试');
+    if(action==='file-revert') return await require('./file-changes.cjs').revert(ctx,state,params,()=>snapshot(ctx));
     if(action==='ssh-identity-set') return await require('./project-ssh.cjs').bind(ctx,params);
     if(!state.branch) fail('DETACHED_HEAD','当前为 detached HEAD，请先在外部恢复命名分支');
     if(action==='beginner-acknowledge') {

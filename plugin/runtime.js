@@ -46,6 +46,7 @@ async function refreshSidebar() {
 }
 const executionLog = createExecutionLog({ store, changed: result => channel.postMessage({ from: 'main', type: 'execution-log', result }) });
 const configure = createConfigurationController({ store,
+  openPreview: url => cindy.preview({url}),
   git: (dir, params) => gitWithHost(cindy.node, dir, params),
   pick: () => { if (typeof cindy.pick !== 'function') throw Object.assign(new Error('请升级 Cindy 以选择目录'), { code: 'UNSUPPORTED_HOST' }); return cindy.pick({ mode: 'directory', title: '配置项目与流程文件' }); },
   inspect: (dir, project) => inspectWithHost(cindy.node, dir, project),

@@ -55,3 +55,13 @@ Select all / Select none affect only the file checkboxes. Load my issues reads u
 After choosing a folder, missing Git identity can be filled in one click from the locally signed-in GitHub.com CLI account. Existing fields are preserved. Missing email uses the account's GitHub noreply address; writes are project-local only. The account is checked again before saving. If unavailable, connect GitHub CLI and check again; identity is never inferred from project authors.
 
 更新会先在临时副本预检冲突，通过后保留本地修改（含原暂存状态与新增文件）、快进拉取并取回。冲突预检失败不改变原文件；取回异常保留安全备份并阻止重复执行。目录选择等待用户确认或取消，不再套用30秒请求超时。
+
+## 单文件对比与还原 / File comparison and restore
+
+查看改动与发布页：双击文件名或点“对比线上”，先获取 origin 最新版本，再在 Cindy 侧边栏显示只读差异。优先跟踪分支，无跟踪时使用并标明 origin 默认分支；独立桌面应用内显示。预览仅访问127.0.0.1本机随机令牌页面，15分钟到期。
+
+“还原”需确认具体文件，恢复本机最近提交HEAD，包含该文件暂存修改；新增文件移除。执行前保存Git元数据内 jixin-file-backups 备份。冲突、改名、子模块、链接和超过1MB文件请用专业工具。未确认还原结果时停止新写入，负责人核对后处理，不能重复点击。
+
+On both changes and submit pages, double-click a filename or choose Compare online to fetch origin and inspect a read-only diff in the Cindy sidebar. Tracking origin branch takes precedence; otherwise the remote default is explicitly labeled. Standalone desktop displays the diff in-app. The token-protected loopback preview expires after 15 minutes. Restore requires file confirmation, backs up the index and working content, and restores the local HEAD, not the online version. Added files are removed. Conflicts, renames, submodules, links and files larger than 1MB require professional tools. An uncertain restore stops further writes for manual verification and is never replayed automatically.
+
+还原结果不确定时，可刷新并在页面点击“核对上次还原结果”；核对实际文件、暂存区与备份后显式确认，仅解锁后续新操作，不会重放旧操作。
