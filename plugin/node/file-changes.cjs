@@ -84,7 +84,7 @@ async function revert(ctx,state,params,verify) {
   const items=[];
   for(const name of names){const item=await selected(ctx,state,name);if(!state.head||/[URC]/.test(item.status)||['AA','DD'].includes(item.status))fail('UNSUPPORTED_FILE','清单含冲突、改名或未初始化项目，整批未还原，请交由负责人处理');items.push(item);}
   const service=require('./beginner-git.cjs'),prior=await service.readReceipt(ctx);
-  if(prior&&!prior.retryable&&['running','blocked','needs-verification'].includes(prior.state))fail('OPERATION_LOCKED','上次操作还需负责人核对，暂不能还原文件');
+  if(prior&&!service.retryableFailure(prior)&&['running','blocked','needs-verification'].includes(prior.state))fail('OPERATION_LOCKED','上次操作还需负责人核对，暂不能还原文件');
   const base=path.resolve(ctx.root,(await ctx.run(['rev-parse','--git-path','jixin-file-backups'])).trim());
   await fs.mkdir(base,{recursive:true,mode:0o700});
   if((await fs.lstat(base)).isSymbolicLink())fail('UNSAFE_BACKUP','备份目录不能是符号链接');

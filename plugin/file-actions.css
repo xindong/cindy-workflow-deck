@@ -5,6 +5,7 @@
 .file-name span:focus-visible { outline:2px solid var(--text-secondary,#737373); outline-offset:2px; }
 .file-actions { display:flex; flex-wrap:wrap; gap:6px; }
 .file-actions button { font-size:12px; padding:6px 8px; }
+#file-action-status:not(:empty) { padding:12px; border:1px solid var(--border-default,#aaa); border-radius:8px; font-weight:600; white-space:pre-wrap; overflow-wrap:anywhere; }
 .file-dialog { width:min(560px,calc(100% - 24px)); max-height:85vh; overflow:auto; color:var(--text-primary,#262626); background:var(--surface,#fff); border:1px solid var(--border-default,#d7d7d4); border-radius:12px; padding:18px; }
 .file-dialog p { white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.7; }
 @media(prefers-color-scheme:dark) { .file-dialog { color:var(--text-primary,#e5e5e5); background:var(--surface,#262626); } }

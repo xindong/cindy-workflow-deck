@@ -14,7 +14,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
   const progress=createUpdateProgress({call,getRoot:()=>state()?.root||'',english});
   const recovery=createUpdateRecovery({state,ready,isBusy,isUpdating:()=>progress.isRunning(),canRefresh,perform,refresh,reviewedCall,openUpdate:()=>open('update'),english});
-  const fileActions=createFileActions({state,ready,isBusy,call,perform,reviewedCall,refresh,english});
+  const fileActions=createFileActions({state,ready,isBusy,call,perform,reviewedCall,refresh,canRefresh,english});
   const filter=createFileFilter({state,english,onChange:()=>{$('beginner-manual').checked=false;update();},onRestore:items=>fileActions.askRestoreMany(items)});
   let mode='view',rendered='',renderedRoot='',selected=new Set(),issueRows=[],issueLoading=false,issueGeneration=0,checkingChanges=false,changesGeneration=0;
   if(english) {
