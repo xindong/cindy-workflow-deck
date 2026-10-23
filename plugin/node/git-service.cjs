@@ -96,7 +96,7 @@ async function gitRequest(directory,params={}) {
   }
   const previous=queues.get(root)||Promise.resolve();
   const job=previous.then(async()=>{
-    const ctx=await context(directory,['ssh-identity-set','file-revert','file-revert-acknowledge'].includes(action),action==='status'),run=ctx.run;
+    const ctx=await context(directory,['ssh-identity-set','file-revert','file-revert-acknowledge','beginner-acknowledge'].includes(action),action==='status'),run=ctx.run;
     let lock;
     if(!['status','diff','history','issues-list'].includes(action)) {
       lock=path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim());
@@ -112,7 +112,9 @@ async function gitRequest(directory,params={}) {
       const token=randomUUID();tickets.set(token,{root,fingerprint:state.fingerprint,expires:Date.now()+10*60*1000});
       for(const [key,t] of tickets) if(t.expires<Date.now()) tickets.delete(key);
       const service=require('./beginner-git.cjs'),receipt=await service.readReceipt(ctx);
-      return {...state,token,sshIdentity:ctx.sshIdentity,fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
+      let operationLocked=false;
+      try {await fs.lstat(path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim()));operationLocked=true;}catch(error){if(error.code!=='ENOENT')throw error;}
+      return {...state,token,operationLocked,sshIdentity:ctx.sshIdentity,fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
     }
     if(action==='issues-list') return require('./github-issues.cjs').listIssues(ctx,params,ctx.env);
     if(action==='file-diff') return await require('./file-changes.cjs').compare(ctx,state,params);
@@ -132,7 +134,7 @@ async function gitRequest(directory,params={}) {
     if(action==='beginner-acknowledge') {
       const service=require('./beginner-git.cjs'),prior=await service.readReceipt(ctx);
       if(!prior || prior.id!==params.recordId) fail('STALE_REVIEW','需要重新检查上次操作记录。');
-      await service.acknowledge(ctx,prior);return {message:'已记录核对，不会重放原操作。'};
+      await service.acknowledge(ctx,prior,state);return {message:'已记录核对，不会重放原操作。'};
     }
     if(action.startsWith('beginner-')) return await require('./beginner-git.cjs').runBeginner(ctx,state,params,ctx.env);
     if(state.protectedBranches.includes(state.branch) && ['commit','push','pr'].includes(action)) fail('PROTECTED_BRANCH','当前为主分支 '+state.branch+'：禁止直接提交或推送。请新建工作分支，提交后通过 PR 合入。');

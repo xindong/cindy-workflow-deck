@@ -34,6 +34,10 @@ try {
  assert.equal(await native.locator('#beginner-confirm').isDisabled(),true);
  await native.screenshot({path:join(out,'独立桌面-更新进行中.png'),fullPage:true});
  await native.locator('#update-progress[data-state=done]').waitFor();assert.equal(await native.locator('#update-progress-bar').getAttribute('value'),'1');
+ git(['config','remote.origin.uploadpack','/missing-upload-pack']);await native.locator('#beginner-update:not(:disabled)').waitFor();await native.locator('#beginner-update').click();await native.locator('#beginner-confirm').click();
+ await native.locator('#update-recovery-retry:not(:disabled)').waitFor();await native.locator('#update-recovery-check').click();await native.locator('#update-recovery-retry:not(:disabled)').waitFor();
+ git(['config','remote.origin.uploadpack',slow]);await native.locator('#update-recovery-retry').click();await native.locator('#beginner-confirm:not(:disabled)').waitFor();await native.locator('#beginner-confirm').click();
+ await native.locator('#update-progress[data-state=done]').waitFor();assert.equal(await native.locator('#update-recovery').isVisible(),false);
  await app.close();app=null;
  // Official plugin worker protocol with the real compact panel and live journal.
  worker=spawn(process.execPath,[join(plugin,'node/inspect-project.cjs')],{stdio:['pipe','pipe','pipe']});worker.stderr.resume();

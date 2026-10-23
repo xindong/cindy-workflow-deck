@@ -29,7 +29,7 @@ export function createUpdateProgress({call,getRoot=()=>'',english=false}) {
       if(state==='running')row.setAttribute('aria-current','step');else row.removeAttribute('aria-current');
     }
   }
-  let generation=0,timer,poller,started=0,active=false,lastStep='prepare',unavailable=false,lastCompleted=[];
+  let generation=0,timer,poller,started=0,active=false,lastStep='prepare',unavailable=false,lastCompleted=[],observedId='';
   function clock(){const seconds=Math.floor((Date.now()-started)/1000);meta.textContent=say('已用时 ','Elapsed ')+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')+(active?(unavailable?say(' · 进度暂不可用；更新结果仍在等待，请勿重复操作。',' · Progress unavailable; still awaiting the update result. Do not retry.'):say(' · 当前阶段耗时取决于网络和项目大小',' · Stage duration depends on network and project size')):'');}
   function show(record) {
     lastStep=record?.step||lastStep;
@@ -45,6 +45,7 @@ export function createUpdateProgress({call,getRoot=()=>'',english=false}) {
     start(operationId) {
       generation++;clearInterval(timer);clearTimeout(poller);const current=generation;
       active=true;started=Date.now();lastStep='prepare';unavailable=false;lastCompleted=[];
+      observedId=operationId;
       target.textContent=getRoot();target.hidden=!target.textContent;
       box.hidden=false;box.dataset.state='running';bar.removeAttribute('value');show(null);
       box.scrollIntoView({block:'nearest',behavior:'instant'});
@@ -79,6 +80,12 @@ export function createUpdateProgress({call,getRoot=()=>'',english=false}) {
       title.textContent=say('更新未确认完成','Update completion unconfirmed');
       steps.textContent=errorHelp(error,english).message;
     },
-    clear(){stop();box.hidden=true;},
+    sync(record) {
+      if(!active&&record?.id===observedId&&record.state==='updated'&&box.dataset.state!=='done') {
+        box.dataset.state='done';bar.value=1;renderLog(record.completed,record.step,true);
+        title.textContent=say('更新完成（已核对）','Update complete (verified)');steps.textContent=record.message;
+      }
+    },
+    clear(){stop();observedId='';box.hidden=true;},
   };
 }

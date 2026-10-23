@@ -236,3 +236,24 @@ test('a genuinely diverged art upstream still stops without stashing or overwrit
  const team=join(f.root,'.git/diverged-team');execFileSync('git',['clone','-q','--branch','art/diverged',f.remote,team]);const tg=args=>execFileSync('git',['-C',team,...args],{encoding:'utf8'}).trim();tg(['config','user.name','Team']);tg(['config','user.email','team@example.test']);await writeFile(join(team,'remote.txt'),'remote');tg(['add','.']);tg(['commit','-qm','chore: remote']);tg(['push','-q']);
  await writeFile(join(f.root,'local.txt'),'local');f.git(['add','.']);f.git(['commit','-qm','chore: local']);const head=f.git(['rev-parse','HEAD']);const r=await f.act('beginner-update');assert.equal(r.base,'art/diverged');assert.equal(r.state,'blocked');assert.equal(r.retryable,undefined);assert.match(r.message,/分叉/);assert.equal(r.stash,undefined);assert.equal(f.git(['rev-parse','HEAD']),head);
 });
+
+test('recovery acknowledgement refuses unfinished Git operations and preserves the receipt and lock',async t=>{
+ const f=await fixture(t);const receipt={id:randomUUID(),action:'beginner-update',state:'needs-verification',step:'restore',completed:['fetch','stash','merge'],stash:'fixture-backup'};
+ const file=join(f.root,'.git/jixin-beginner.json');await writeFile(file,JSON.stringify(receipt));
+ await writeFile(join(f.root,'.git/MERGE_HEAD'),f.main);
+ await assert.rejects(f.act('beginner-acknowledge',{recordId:receipt.id}),{code:'PROJECT_CONFLICT'});
+ assert.equal(JSON.parse(await readFile(file,'utf8')).state,'needs-verification');
+ await rm(join(f.root,'.git/MERGE_HEAD'));await mkdir(join(f.root,'.git/jixin-write.lock'));
+ assert.equal((await f.status()).operationLocked,true);
+ await assert.rejects(f.act('beginner-acknowledge',{recordId:receipt.id}),{code:'OPERATION_LOCKED'});
+ assert.equal((await f.status()).operationLocked,true);
+ await rm(join(f.root,'.git/jixin-write.lock'),{recursive:true});
+ // Local acknowledgement remains possible when a stale SSH binding caused the failure.
+ await writeFile(join(f.root,'.git/jixin-ssh-identity.json'),JSON.stringify({version:1,root:f.root,remote:'git@invalid:old/project.git'}),{mode:0o600});
+ assert.equal((await f.status()).sshIdentity.invalid,true);
+ const before=f.git(['status','--porcelain']),head=f.git(['rev-parse','HEAD']);
+ await f.act('beginner-acknowledge',{recordId:receipt.id});
+ assert.equal((await f.status()).beginnerReceipt.state,'acknowledged');
+ assert.equal(f.git(['status','--porcelain']),before);assert.equal(f.git(['rev-parse','HEAD']),head);
+ await assert.rejects(f.act('beginner-update'),{code:'SSH_IDENTITY_INVALID'});
+});

@@ -1,5 +1,6 @@
 import { errorHelp } from './error-help.js';
 import { createUpdateProgress } from './update-progress.js';
+import { createUpdateRecovery } from './update-recovery.js';
 import { createFileFilter } from './file-filter.js';
 import { createFileActions } from './file-actions.js';
 export function changeLabel(status,english=false) {
@@ -12,6 +13,7 @@ export function changeLabel(status,english=false) {
 export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedCall=call,canRefresh=ready,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
   const progress=createUpdateProgress({call,getRoot:()=>state()?.root||'',english});
+  const recovery=createUpdateRecovery({state,ready,isBusy,isUpdating:()=>progress.isRunning(),canRefresh,perform,refresh,reviewedCall,openUpdate:()=>open('update'),english});
   const fileActions=createFileActions({state,ready,isBusy,call,perform,reviewedCall,refresh,english});
   const filter=createFileFilter({state,english,onChange:()=>{$('beginner-manual').checked=false;update();},onRestore:items=>fileActions.askRestoreMany(items)});
   let mode='view',rendered='',renderedRoot='',selected=new Set(),issueRows=[],issueLoading=false,issueGeneration=0,checkingChanges=false,changesGeneration=0;
@@ -25,7 +27,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   function update() {
     const current=state(),can=ready()&&!isBusy()&&!!current;
     for(const id of ['beginner-update','beginner-view','beginner-submit'])$(id).disabled=!can;
-    const blocked=current && (!current.hooksReady || current.incomplete || current.fileRevertReceipt&&!['restored','acknowledged'].includes(current.fileRevertReceipt.state) || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
+    const blocked=current && (current.operationLocked || !current.hooksReady || current.incomplete || current.fileRevertReceipt&&!['restored','acknowledged'].includes(current.fileRevertReceipt.state) || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
     $('beginner-confirm').disabled=!can || blocked || issueLoading || (mode==='submit' && (!chosen().length || chosen().length>200 || !$('beginner-summary').value.trim() || (current.sources.length>0 && !$('beginner-manual').checked)));
     const total=current?.changes.length||0,count=chosen().length;
     $('beginner-refresh-changes').disabled=isBusy()||!canRefresh();
@@ -43,6 +45,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-manual').disabled=isBusy();
     for(const box of document.querySelectorAll('#beginner-files input'))box.disabled=isBusy();
     fileActions.update();
+    recovery.render();
     if(progress.isRunning()) {
       $('beginner-message').textContent='';$('beginner-message').dataset.quiet='true';
       $('beginner-result-details').hidden=true;
@@ -52,6 +55,8 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   }
   function render() {
     const current=state();if(!current){update();return;}
+    recovery.checked();
+    progress.sync(current.beginnerReceipt);
     $('beginner-project').textContent=current.root.split(/[\\/]/).filter(Boolean).pop()||say('我的项目','My project');
     $('beginner-state').textContent=current.changes.length?say('有 '+current.changes.length+' 个文件尚未提交','You have '+current.changes.length+' unsubmitted files'):say('电脑里的修改已保存，没有待提交文件','No unsubmitted files on this computer');
     if(renderedRoot!==current.root) {filter.reset();selected.clear();clearIssues();rendered='';$('beginner-summary').value='';$('beginner-manual').checked=false;$('beginner-sheet').hidden=true;for(const box of document.querySelectorAll('#beginner-files input'))box.checked=false;}
@@ -165,6 +170,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     await reviewedCall('beginner-acknowledge',{token:state().token,recordId:state().beginnerReceipt.id,rulesConfirmed:true});await refresh();
   });
   function error(problem) {
+    recovery.error();
     $('beginner-message').dataset.quiet='false';
     const help=errorHelp(problem,english);
     $('beginner-message').textContent=help.message;
@@ -172,7 +178,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   }
   function invalidate(){
     fileActions.invalidate();filter.reset();
-    progress.clear();changesGeneration++;checkingChanges=false;
+    progress.clear();recovery.clear();changesGeneration++;checkingChanges=false;
     $('beginner-changes-status').textContent='';$('beginner-changes-status').hidden=true;
     rendered='';renderedRoot='';selected.clear();clearIssues();
     $('beginner-files').replaceChildren();$('beginner-summary').value='';

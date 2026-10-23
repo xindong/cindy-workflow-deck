@@ -20,3 +20,10 @@
 @media(prefers-color-scheme:dark) { .update-progress { color:var(--text-primary,#e5e5e5); border-color:var(--border-default,#525252); } }
 .update-progress progress:indeterminate::-webkit-progress-bar { background:linear-gradient(90deg,transparent,var(--text-secondary,#737373),transparent) no-repeat; background-size:40% 100%; animation:update-progress-sweep 1.8s ease-in-out infinite; }
 @media(prefers-reduced-motion:reduce) { .update-progress progress:indeterminate::-webkit-progress-bar { animation:none; background-position:50% 0; } }
+#update-recovery { padding:16px; margin:12px 0 18px; border:1px solid var(--border-default,#d7d7d4); border-left:4px solid var(--text-primary,#262626); border-radius:10px; color:var(--text-primary,#262626); }
+#update-recovery h3 { margin:0 0 8px; font-size:17px; }
+#update-recovery p,#update-recovery label { font-size:13px; line-height:1.7; overflow-wrap:anywhere; }
+#update-recovery button { font:inherit; font-size:13px; white-space:normal; max-width:100%; }
+#update-recovery .row { display:flex; flex-wrap:wrap; gap:8px; }
+#update-recovery .check { display:flex; align-items:start; gap:8px; margin:14px 0; }
+#update-recovery .check input { width:auto; flex:none; margin-top:5px; }

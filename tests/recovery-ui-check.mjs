@@ -14,7 +14,7 @@ const git=a=>execFileSync('git',['-C',project,...a],{encoding:'utf8'}).trim();
 git(['init','-q','-b','main']);git(['config','user.name','Recovery UI']);git(['config','user.email','test@example.test']);
 await writeFile(join(project,'AGENTS.md'),'Keep hooks enabled.');git(['add','.']);git(['commit','-qm','initial']);
 execFileSync('git',['init','-q','--bare',remote]);git(['remote','add','origin',remote]);git(['push','-qu','origin','main']);
-let worker,id=0;const pending=new Map(),calls=[],errors=[];let failNext=false;
+let worker,id=0;const pending=new Map(),calls=[],errors=[];let failNext=false,loseAfter=false;
 function start(){worker=spawn(process.execPath,[join(plugin,'node/inspect-project.cjs')],{stdio:['pipe','pipe','pipe']});worker.stderr.resume();createInterface({input:worker.stdout}).on('line',line=>{const r=JSON.parse(line);pending.get(r.id)?.(r);pending.delete(r.id);});}
 function request(args){return new Promise(yes=>{const n=++id;pending.set(n,yes);worker.stdin.write(JSON.stringify({jsonrpc:'2.0',id:n,...args})+'\n');});}
 start();
@@ -23,7 +23,7 @@ const server=createServer(async(req,res)=>{try{let file=join(plugin,new URL(req.
 await new Promise(yes=>server.listen(0,'127.0.0.1',yes));let browser;
 try{
  browser=await chromium.launch({headless:true});const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));
- await page.exposeFunction('gitTransport',async(method,p)=>{calls.push(p.action);if(failNext&&p.action==='beginner-update'){failNext=false;throw new Error('Simulated response uncertainty');}return gitWithHost(host,project,p);});
+ await page.exposeFunction('gitTransport',async(method,p)=>{calls.push(p.action);if(failNext&&p.action==='beginner-update'){failNext=false;throw new Error('Simulated response uncertainty');}const result=await gitWithHost(host,project,p);if(loseAfter&&p.action==='beginner-update'){loseAfter=false;throw new Error('Response lost after successful update');}return result;});
  // Load the real HTML unchanged; block only its automatic settings bootstrap.
  await page.route('**/settings.js',route=>route.fulfill({contentType:'text/javascript',body:''}));
  await page.goto('http://127.0.0.1:'+server.address().port+'/settings.html');
@@ -42,9 +42,35 @@ try{
  // A real failed fetch is settled and before mutation: repair it, refresh, start a NEW attempt.
  git(['remote','set-url','origin',join(temp,'missing.git')]);await page.locator('#beginner-update').click();await page.locator('#beginner-confirm').click();
  await page.locator('#beginner-message').filter({hasText:'尚未暂存或修改本地文件'}).waitFor();await ready();assert.equal(JSON.parse(await readFile(join(project,'.git/jixin-beginner.json'),'utf8')).state,'blocked');
- git(['remote','set-url','origin',remote]);await page.locator('#git-refresh').click();await ready();await page.locator('#beginner-update').click();await page.locator('#beginner-confirm:not(:disabled)').waitFor();await page.locator('#beginner-confirm').click();await page.locator('#beginner-message').filter({hasText:'已是团队最新版本'}).waitFor();await ready();
+ const failedId=JSON.parse(await readFile(join(project,'.git/jixin-beginner.json'),'utf8')).id;
+ await page.locator('#update-recovery-retry:not(:disabled)').waitFor();assert.equal(await page.locator('#git-expert').evaluate(e=>e.open),false);
+ before=calls.filter(x=>x==='beginner-update').length;await page.locator('#update-recovery-check').click();await ready();assert.equal(calls.filter(x=>x==='beginner-update').length,before);
+ const evidence=resolve(import.meta.dirname,'../artifacts/update-recovery');await mkdir(evidence,{recursive:true});
+ for(const [width,dark] of [[320,true],[860,false]]) {
+  await page.setViewportSize({width,height:720});await page.emulateMedia({colorScheme:dark?'dark':'light'});
+  await page.evaluate(dark=>{for(const [key,value]of Object.entries(dark?{'--text-primary':'#e5e5e5','--text-secondary':'#a3a3a3','--border-default':'#525252'}:{'--text-primary':'#262626','--text-secondary':'#737373','--border-default':'#d7d7d4'}))document.documentElement.style.setProperty(key,value);},dark);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.locator('#update-recovery').screenshot({path:join(evidence,'失败恢复-'+width+'.png')});
+ }
+ git(['remote','set-url','origin',remote]);await page.locator('#update-recovery-retry').click();await ready();
+ assert.equal(calls.filter(x=>x==='beginner-update').length,before);await page.locator('#beginner-confirm:not(:disabled)').waitFor();await page.locator('#beginner-confirm').click();await page.locator('#beginner-message').filter({hasText:'已是团队最新版本'}).waitFor();await ready();
+ assert.notEqual(JSON.parse(await readFile(join(project,'.git/jixin-beginner.json'),'utf8')).id,failedId);assert.equal(await page.locator('#update-recovery').isVisible(),false);
+ // If the write succeeded but its response was lost, a read confirms completion without repeating it.
+ loseAfter=true;await page.locator('#beginner-update').click();await page.locator('#beginner-confirm').click();await page.locator('#update-recovery-check:not(:disabled)').waitFor();
+ before=calls.filter(x=>x==='beginner-update').length;await page.locator('#update-recovery-check').click();await ready();
+ assert.equal(calls.filter(x=>x==='beginner-update').length,before);await page.locator('#update-progress[data-state=done]').waitFor();assert.equal(await page.locator('#update-recovery').isVisible(),false);
  // Unknown post-mutation outcomes stay blocked after refresh.
  await writeFile(join(project,'.git/jixin-beginner.json'),JSON.stringify({id:randomUUID(),action:'beginner-update',state:'needs-verification',step:'restore',completed:['fetch','stash','merge'],stash:'backup'}));
  await page.locator('#git-refresh').click();await ready();await page.locator('#beginner-update').click();assert.equal(await page.locator('#beginner-confirm').isDisabled(),true);
+ assert.equal(await page.locator('#update-recovery-retry').isVisible(),false);await page.locator('#update-recovery-confirm').waitFor();assert.equal(await page.locator('#update-recovery-acknowledge').isDisabled(),true);
+ // Active or abandoned write locks cannot be removed by checking or confirming recovery.
+ await mkdir(join(project,'.git/jixin-write.lock'));await page.locator('#update-recovery-check').click();await ready();assert.equal(await page.locator('#update-recovery-confirm').isVisible(),false);
+ assert.ok((await readFile(join(project,'.git/jixin-beginner.json'),'utf8')).includes('needs-verification'));
+ await rm(join(project,'.git/jixin-write.lock'),{recursive:true});await page.locator('#update-recovery-check').click();await ready();
+ await writeFile(join(project,'.git/MERGE_HEAD'),git(['rev-parse','HEAD']));await page.locator('#update-recovery-confirm').check();await page.locator('#update-recovery-acknowledge').click();
+ await page.locator('#beginner-detail').filter({hasText:'尚未完成的版本操作'}).waitFor({state:'attached'});await ready();
+ assert.equal(JSON.parse(await readFile(join(project,'.git/jixin-beginner.json'),'utf8')).state,'needs-verification');
+ await rm(join(project,'.git/MERGE_HEAD'));await page.locator('#update-recovery-check').click();await ready();
+ before=calls.filter(x=>x==='beginner-update').length;await page.locator('#update-recovery-confirm').check();await page.locator('#update-recovery-acknowledge').click();await ready();await page.locator('#update-recovery').waitFor({state:'hidden'});
+ assert.equal(calls.filter(x=>x==='beginner-update').length,before);assert.equal(JSON.parse(await readFile(join(project,'.git/jixin-beginner.json'),'utf8')).state,'acknowledged');
  assert.equal(git(['status','--porcelain']),'M AGENTS.md');assert.equal(await readFile(join(project,'AGENTS.md'),'utf8'),'New approval required.');assert.deepEqual(errors,[]);console.log('PASS: worker restart; changed rules block writes; repeated failure/check/recovery; no automatic write replay; real fetch failure repair; uncertain restore remains blocked.');
 }finally{await browser?.close();worker?.kill();await new Promise(yes=>server.close(yes));await rm(temp,{recursive:true,force:true});}
