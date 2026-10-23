@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,mkdir,writeFile,rm,realpath} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {createRequire} from 'node:module';
+import {normalizeConfiguration} from '../plugin/core/project-config.mjs';
+import {createProjectService} from '../desktop/project-service.js';
+import {createConfigurationController} from '../plugin/configuration-controller.js';
+import {createProjectSidebar} from '../plugin/project-sidebar.js';
+const {inspectProject}=createRequire(import.meta.url)('../plugin/node/inspect-project.cjs');
+
+test('workflow directory is optional, validated, and independent of execution project identity',()=>{
+  const project={id:'one',directory:'/execution',discovery:'auto'};
+  const normalize=p=>normalizeConfiguration({projects:[p],activeProjectId:'one'}).projects[0];
+  assert.equal(normalize(project).workflowDirectory,undefined);
+  assert.equal(normalize({...project,workflowDirectory:'/shared/flows'}).directory,'/execution');
+  assert.equal(normalize({...project,workflowDirectory:'/shared/flows'}).workflowDirectory,'/shared/flows');
+  for(const workflowDirectory of ['relative','//server/share','/bad'+String.fromCharCode(10)+'path',123])assert.throws(()=>normalize({...project,workflowDirectory}));
+});
+
+test('both adapters read shared workflows but Git and launched task remain in execution repository',async t=>{
+  const temp=await realpath(await mkdtemp(join(tmpdir(),'jixin-execution-')));t.after(()=>rm(temp,{recursive:true,force:true}));
+  const execution=join(temp,'art-project'),flows=join(temp,'shared-flows');
+  await mkdir(execution);await mkdir(join(flows,'_S'),{recursive:true});
+  await writeFile(join(flows,'_S/feature.md'),'Read this instruction; operate on the execution project.');
+  const git=args=>execFileSync('git',['-C',execution,...args],{encoding:'utf8'}).trim();
+  git(['init','-q','-b','main']);git(['config','user.name','Fixture']);git(['config','user.email','fixture@example.test']);
+  await writeFile(join(execution,'art.txt'),'art');git(['add','.']);git(['commit','-qm','initial']);
+  const project={id:'one',directory:execution,workflowDirectory:flows,discovery:'auto'};
+  const configuration={projects:[project],activeProjectId:'one'};
+  const desktop=createProjectService({file:join(temp,'settings.json')});
+  const saved=await desktop('config-save',{expectedRevision:0,configuration});
+  const inspection=await desktop('config-inspect',{projectId:'one'});
+  assert.equal(inspection.workflows.feature.source,join(flows,'_S/feature.md'));
+  assert.equal(inspection.git.available,true);
+  const status=await desktop('git-request',{projectId:'one',revision:saved.revision,action:'status'});
+  assert.equal(status.root,execution);assert.equal(status.changes.length,0);
+  let data={projectConfiguration:saved};const calls=[];
+  const store={read:async()=>structuredClone(data),update:async fn=>{data={...data,...fn(data)};}};
+  const controller=createConfigurationController({store,inspect:(dir,p)=>inspectProject(dir,undefined,p),git:async(dir,params)=>{calls.push({dir,params});return {};}});
+  assert.equal((await controller('config-inspect',{projectId:'one'})).workflows.feature.source,join(flows,'_S/feature.md'));
+  await controller('git-request',{projectId:'one',revision:1,action:'status'});assert.equal(calls[0].dir,execution);
+  const launches=[],sidebar=createProjectSidebar({store,inspect:(dir,p)=>inspectProject(dir,undefined,p),agent:{errand:async p=>{launches.push(p);return {ok:true,jobId:'one-job'};},queryErrand:async()=>({ok:true,status:'done'})}});
+  await sidebar.refresh();assert.equal((await sidebar.launch('external-flow-request-01','feature','one')).state,'accepted');
+  assert.equal(launches[0].workingDir,execution);assert.ok(launches[0].task.includes(JSON.stringify(join(flows,'_S/feature.md'))));
+  await rm(flows,{recursive:true});assert.equal((await sidebar.refresh()).state,'check_failed');
+  assert.equal(launches.length,1);
+  assert.equal((await desktop('git-request',{projectId:'one',revision:1,action:'status'})).root,execution);
+});

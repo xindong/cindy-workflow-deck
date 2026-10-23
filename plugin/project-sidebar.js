@@ -96,7 +96,7 @@ export function createProjectSidebar({ store, agent, inspect, changed = () => {}
       if (!view().workflows[workflowId].enabled) return { state: 'rejected', code: problem === 'unsupported' ? 'UNSUPPORTED_HOST' : 'FLOW_UNAVAILABLE' };
       const current = configurationState(await store.read());
       if (current.revision !== selectedRevision || current.configuration.activeProjectId !== selected.id) return { state: 'rejected', code: 'SOURCE_CHANGED' };
-      const prompt = '用户选择的项目根目录（JSON路径）：' + JSON.stringify(selected.directory) + '。在任何项目操作之前核对实际工作目录与该目录相同（允许真实路径规范化）。如 Host 的任务目录覆盖配置导致不一致，立即停止并报告，不要在其它项目执行。\n\n' + buildPrompt(workflowId, goal, workflows[workflowId].source);
+      const prompt = '用户选择的项目根目录（JSON路径）：' + JSON.stringify(selected.directory) + '。在任何项目操作之前核对实际工作目录与该目录相同（允许真实路径规范化）。如 Host 的任务目录覆盖配置导致不一致，立即停止并报告，不要在其它项目执行。流程文件仅提供指令；即使位于其它目录，也不要切换到流程目录执行 Git 或修改该目录的项目。\n\n' + buildPrompt(workflowId, goal, workflows[workflowId].source);
       const record = { mode: 'project', state: 'uncertain', workflowId, projectId: selected.id, directory: selected.directory };
       await writeReceipt(key, record);
       const latest = configurationState(await store.read());

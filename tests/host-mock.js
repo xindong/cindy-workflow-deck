@@ -9,7 +9,7 @@ const cards=document.createElement('div');cards.id='test-cards';cards.style.cssT
 function requestBinding(ctx=context){handler({type:'tool-call',tool:'get_workflows',callId:'source-card',args:{session_context:ctx}});}
 globalThis.mockHost={calls,options,context,deliver:msg=>handler(msg),requestBinding,advanceTime:()=>{offset+=11000;}};
 globalThis.cindy={
- async pick(){return {ok:true,path:'/preview/selected-project'};},
+ async pick(){return options.cancelPick?{ok:false,errorCode:'CANCELLED'}:{ok:true,path:options.pickPath||'/preview/selected-project'};},
  onHostMessage(cb){handler=cb;if(!settings.has('direct'))requestBinding();},
  async send(message){
   if(message.type==='tool-result'){calls.results.push(message);cards.dataset.lastResult=message.callId;return{ok:true};}
@@ -27,7 +27,7 @@ globalThis.cindy={
    const configured=req.params?.project?.workflows?.[id];
    const file=configured?configured.path:defaults[id];
    const present=!!file&&(options.files==='all'||options.files==='partial'&&id==='feature');
-   return[id,{ok:present,reason:!file?'not_configured':id==='pr'?'skill_unverified':'missing',source:file?(file.startsWith('/')?file:(req.params?.dir||context.workdir)+'/'+file):''}];
+   return[id,{ok:present,reason:!file?'not_configured':id==='pr'?'skill_unverified':'missing',source:file?(file.startsWith('/')?file:(req.params?.project?.workflowDirectory||req.params?.dir||context.workdir)+'/'+file):''}];
   }))}};
  }},
  agent:{async errand(req){calls.errands.push(req);if(options.lose)throw new Error('Lost receipt');if(options.deny)return{ok:false,errorCode:'PERMISSION_DENIED'};return{ok:true,jobId:'direct-'+calls.errands.length};},

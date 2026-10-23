@@ -18,9 +18,13 @@ export function normalizeConfiguration(value) {
     const key = directoryKey(directory);
     if (roots.has(key)) fail('同一目录只能配置一次');
     roots.add(key);
+    if (project.workflowDirectory !== undefined && typeof project.workflowDirectory !== 'string') fail('流程目录无效');
+    const workflowDirectory = project.workflowDirectory?.trim() || '';
+    if (workflowDirectory) directoryKey(workflowDirectory);
+    const workflowLocation = workflowDirectory ? { workflowDirectory } : {};
     if (project.discovery === 'auto' || !project.workflows) {
       const name = directory.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || directory;
-      return { id: project.id, name: name.slice(0,80), directory, discovery: 'auto' };
+      return { id: project.id, name: name.slice(0,80), directory, ...workflowLocation, discovery: 'auto' };
     }
     if (typeof project.name !== 'string' || !project.name.trim() || project.name.length > 80 || /[\x00-\x1f]/.test(project.name)) fail('项目名称无效');
     const workflows = {};
@@ -34,7 +38,7 @@ export function normalizeConfiguration(value) {
       if (!absolute && (path.split(/[\\/]/).some(p => p === '..') || /^[A-Za-z]:/.test(path))) fail('相对路径不能越出项目：' + id);
       workflows[id] = { path, external: item.external === true };
     }
-    return { id: project.id, name: project.name.trim(), directory, workflows };
+    return { id: project.id, name: project.name.trim(), directory, ...workflowLocation, workflows };
   });
   const activeProjectId = value.activeProjectId || '';
   if (typeof activeProjectId !== 'string' || (activeProjectId && !seen.has(activeProjectId))) fail('当前项目不存在');
