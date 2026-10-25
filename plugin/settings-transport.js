@@ -20,7 +20,7 @@ export function createSettingsTransport() {
     const reqId = crypto.randomUUID();
     return new Promise((resolve, reject) => {
       // A native picker waits for a human decision, rather than an RPC deadline.
-      const timer = method === 'config-pick-directory' ? undefined : setTimeout(() => { clearInterval(pending.get(reqId)?.retry); pending.delete(reqId); reject(Object.assign(new Error('插件逻辑未响应，请确认插件已启用。写入结果不确定时先重新加载，不要重复保存。'), { code: 'RESPONSE_UNCONFIRMED' })); }, method === 'git-request' ? (params.action?.startsWith('beginner-')?915000:125000) : 30000);
+      const timer = method === 'config-pick-directory' ? undefined : setTimeout(() => { clearInterval(pending.get(reqId)?.retry); pending.delete(reqId); reject(Object.assign(new Error('插件逻辑未响应，请确认插件已启用。写入结果不确定时先重新加载，不要重复保存。'), { code: 'RESPONSE_UNCONFIRMED' })); }, method === 'diagnosis-run' ? 75000 : method === 'git-request' ? (params.action?.startsWith('beginner-')?915000:125000) : 30000);
       const item={resolve,reject,timer}; pending.set(reqId,item);
       const send=()=>channel.postMessage({from:'settings',type:method,reqId,params});
       void awake.then(()=>{

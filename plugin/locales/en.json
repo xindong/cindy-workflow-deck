@@ -1,6 +1,6 @@
 {
   "name": "极心许愿",
-  "description": "Project Git operations with native hooks and branch gates; advanced workflows create independent tasks.",
+  "description": "Project Git with native hooks and branch gates; AI issue diagnosis and independent advanced workflow tasks.",
   "whenToUse": "Starting experiments, developing features or tools, submitting pull requests, or cleaning up branches.",
   "tools": {
     "get_workflows": {

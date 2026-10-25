@@ -1,10 +1,10 @@
-# 极心许愿 — 0.2.11
+# 极心许愿 — 0.2.12
 
 极心许愿是 Cindy 工作流快捷面板插件，ID 和命令为 jixin-make-a-wish。本仓库只维护插件，不修改 Cindy Core；不提交组织市场。旧 workflow-deck 的绑定和日志不会自动迁移。
 
 ## 当前功能与后续目标
 
-已提供独立桌面与Cindy插件共用的项目配置、基础Git和规则检查服务。Cindy基础界面提供Git，高级界面保留五工作流。AI诊断和独立端高级工作流尚未实现。详见[基础Git](docs/basic-git.md)和[双形态说明](docs/dual-runtime.md)。
+已提供独立桌面与Cindy插件共用的项目配置、基础Git和规则检查服务。Cindy基础界面提供Git，高级界面保留五工作流。第四个日常入口为“AI 诊断问题”：Cindy版使用无工具的快问快答，在用户核对脱敏预览后分析原因与处理建议，不执行修复。独立端目前只提供本地诊断预览，AI接入和高级工作流尚未实现。详见[基础Git](docs/basic-git.md)和[双形态说明](docs/dual-runtime.md)。
 
 ## 从正式 Release 安装
 

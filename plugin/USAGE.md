@@ -72,3 +72,12 @@ On both changes and submit pages, double-click a filename or choose Compare onli
 项目规则原文未超读取上限，也可能因 JSON 转义超过宿主单行 1 MiB 限制。插件对较大的结果分块传输、完整还原，不截断规则或跳过检查；临时结果有容量与有效期限制。分块读取失败只报告未确认，不自动重新执行更新或提交。
 
 界面优先说明原因与处理办法，例如无权限、项目目录选择错误、SSH 身份失效、缺少 Git LFS、网络中断、规则未完整读取及侧栏缺少普通任务对话。原始错误码和后台信息保留在展开的操作详情中。未知或写入结果不确定时，先重新检查实际状态，不直接重复提交。
+
+
+## AI 诊断问题 / AI issue diagnosis
+
+基础界面第四个图标打开诊断；可输入问题，也可从操作失败旁带入最近错误。先“检查并预览”，核对项目路径、错误、Git状态和有限规则摘要，再“确认发送，仅诊断”。常见密钥和URL账号会脱敏，请仍自行核对。诊断只返回原因、依据、处理建议和验证方法，不修复文件、不提交或重试失败操作。
+
+Cindy版使用公开oneshot_text（新增cindy.text/oneshot能力，安装更新正常确认）。模型由插件详情所选模型或Host快速通道提供，结果显示回执中的实际型号。无可用模型或拒绝权限时明确提示；回执丢失先“检查诊断结果”，不会自动重复调用。独立应用暂未接入AI，仅展示同一份本地诊断信息，Git仍可用。
+
+The fourth daily icon opens AI diagnosis. Describe the issue or bring the latest error, check the local preview, then confirm sending. The Cindy plugin uses a text-only oneshot call with no Agent tools; it returns analysis and suggestions without executing repairs. Review the redacted snapshot before sending. If no model is available, the UI says so. Check an uncertain result without automatically repeating inference. The standalone app currently supports only the local diagnostic preview; its AI adapter is not connected.

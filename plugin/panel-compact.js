@@ -1,6 +1,7 @@
 // Compact controls are presentation only: existing handlers and native disabled
 // states stay on the original buttons. Hover and focus never start operations.
 const paths = {
+  "beginner-diagnose": ["M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14M15 15l6 6M7 10h6M10 7v6"],
   "basic-mode": ["M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"],
   "advanced-mode": ["M9 3h6M10 3v6L4 19v2h16v-2L14 9V3M8 15h8"],
   "git-tab": ["M3 7h7l2 2h9v11H3zM3 7V4h7l2 3"],
@@ -11,6 +12,7 @@ const paths = {
   "git-refresh": ["M20 11a8 8 0 1 0-2 7M20 4v7h-7"]
 };
 const descriptions = {
+  "beginner-diagnose": ["描述问题或带入最近错误，预览后交给 AI 分析；不会执行修复。", "Describe an issue or include the recent error; review before AI analysis. No repairs are executed."],
   "basic-mode": ["日常 Git 操作：更新项目、查看改动、提交修改。", "Daily Git: update, view changes and submit work."],
   "advanced-mode": ["切换到原来的五个工作流图标及执行记录。", "Open the five workflow icons and execution log."],
   "git-tab": ["返回日常操作图标栏。", "Return to daily actions."],

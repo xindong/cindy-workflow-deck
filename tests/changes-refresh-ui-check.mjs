@@ -34,7 +34,7 @@ try {
  worker=spawn(process.execPath,[join(plugin,'node/inspect-project.cjs')],{stdio:['pipe','pipe','pipe']});worker.stderr.resume();
  createInterface({input:worker.stdout}).on('line',line=>{const r=JSON.parse(line);pending.get(r.id)?.(r);pending.delete(r.id);});
  const host={request:args=>new Promise(yes=>{const n=++id;pending.set(n,r=>yes({ok:true,result:r.result}));worker.stdin.write(JSON.stringify({jsonrpc:'2.0',id:n,...args})+'\n');})};
- server=createServer(async(req,res)=>{try{const file=join(plugin,new URL(req.url,'http://local').pathname);res.setHeader('Content-Type',({'.js':'text/javascript','.html':'text/html','.css':'text/css'})[extname(file)]||'application/octet-stream');res.end(await readFile(file));}catch{res.statusCode=404;res.end();}});
+ server=createServer(async(req,res)=>{try{const file=join(plugin,new URL(req.url,'http://local').pathname);res.setHeader('Content-Type',({'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html','.css':'text/css'})[extname(file)]||'application/octet-stream');res.end(await readFile(file));}catch{res.statusCode=404;res.end();}});
  await new Promise(yes=>server.listen(0,'127.0.0.1',yes));browser=await chromium.launch({headless:true});
  const page=await browser.newPage({viewport:{width:320,height:720}});page.on('pageerror',e=>errors.push(e.message));
  await page.exposeFunction('gitTransport',async(method,p)=>{
