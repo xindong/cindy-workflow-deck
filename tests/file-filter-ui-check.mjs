@@ -42,7 +42,7 @@ try {
  await page.locator('#beginner-none').click();await type.selectOption('.md');await directory.selectOption('art');await selectDirectory.click();
  assert.equal(await page.locator('#beginner-files input:checked').count(),150);
  await search.fill('art/asset-00');await page.locator('#beginner-none').click();await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),10);
- await search.fill('no-match');assert.equal(await directory.inputValue(),'');assert.equal(await selectDirectory.isDisabled(),true);
+ await search.fill('no-match');assert.equal(await directory.inputValue(),'');assert.equal(await selectDirectory.isDisabled(),true);assert.equal(await page.locator('#beginner-files-bottom').isDisabled(),true);
  await search.fill('');await type.selectOption('*');
  await writeFile(join(project,'root-file.txt'),'root fixture');await page.locator('#beginner-refresh-changes').click();await ready(page);
  await directory.selectOption('.');await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),1);
@@ -76,9 +76,15 @@ try {
  for(const [width,scheme] of [[320,'dark'],[860,'light']]) {
   await page.setViewportSize({width,height:820});await page.emulateMedia({colorScheme:scheme});
   await page.addStyleTag({content:':root{--text-primary:'+(scheme==='dark'?'#ededed':'#262626')+';--text-secondary:'+(scheme==='dark'?'#a3a3a3':'#737373')+';--surface-elevated:'+(scheme==='dark'?'#242424':'#fff')+';--surface:'+(scheme==='dark'?'#191919':'#f7f7f5')+';--panel-bg:var(--surface);--border-default:'+(scheme==='dark'?'#454545':'#ddd')+';--surface-chip:'+(scheme==='dark'?'#383838':'#eee')+';color-scheme:'+scheme+'}'});
+  await page.locator('#beginner-submit').click();await ready(page);
   const box=await page.locator('#beginner-files').boundingBox();assert.ok(box.height<=280&&box.height>=120);
   assert.ok(await page.locator('#beginner-files').evaluate(e=>e.scrollHeight>e.clientHeight));
-  await page.locator('#beginner-files').evaluate(e=>e.scrollTop=e.scrollHeight);assert.ok(await page.locator('#beginner-files').evaluate(e=>e.scrollTop>0));
+  await page.locator('#beginner-files').evaluate(e=>e.scrollTop=0);
+  const selectedBefore=await page.locator('#beginner-files input:checked').count(),callsBefore=calls.length;
+  await page.locator('#beginner-manual').check();await page.locator('#beginner-files-bottom').click();
+  assert.ok(await page.locator('#beginner-files').evaluate(e=>e.scrollTop>0&&Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop)<2));
+  assert.equal(await page.locator('#beginner-files input:checked').count(),selectedBefore);assert.equal(await page.locator('#beginner-manual').isChecked(),true);assert.equal(calls.length,callsBefore);
+  await page.locator('#beginner-files').evaluate(e=>e.scrollTop=0);await page.locator('#beginner-files-bottom').focus();await page.keyboard.press('Enter');assert.ok(await page.locator('#beginner-files').evaluate(e=>Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop)<2));
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.locator('#beginner-submit').click();await ready(page);await page.locator('#beginner-summary').fill('测试范围');await page.locator('#beginner-summary').scrollIntoViewIfNeeded();
   const summary=await page.locator('#beginner-summary').boundingBox();assert.ok(summary.y>=0&&summary.y+summary.height<=820);

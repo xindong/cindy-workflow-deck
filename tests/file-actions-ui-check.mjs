@@ -27,6 +27,11 @@ try {
  await native.locator('#beginner-file-directory').selectOption('art');await native.locator('#beginner-select-directory').click();
  assert.equal(await native.locator('#beginner-files input:checked').count(),2);assert.equal(await native.locator('[data-path="artwork/c.txt"] input').isChecked(),false);
  await mkdir(join(root,'artifacts/file-filter'),{recursive:true});await native.screenshot({path:join(root,'artifacts/file-filter/按目录全选-独立Mac应用.png'),fullPage:true});
+ for(let i=0;i<12;i++)await writeFile(join(project,'art/sub/extra-'+i+'.txt'),'scroll fixture');
+ await native.locator('#beginner-refresh-changes').click();await ready(native);
+ const beforeScrollSelection=await native.locator('#beginner-files input:checked').count();
+ await native.locator('#beginner-files-bottom').click();assert.ok(await native.locator('#beginner-files').evaluate(e=>e.scrollTop>0&&Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop)<2));
+ assert.equal(await native.locator('#beginner-files input:checked').count(),beforeScrollSelection);
  await rm(join(project,'art'),{recursive:true});await rm(join(project,'artwork'),{recursive:true});
  await writeFile(join(project,'角色.txt'),'local\n');await native.locator('#beginner-view').click();await ready(native);await row(native).getByRole('button',{name:'对比线上',exact:true}).click();await native.locator('dialog[open]').waitFor();assert.match(await native.locator('dialog pre').textContent(),/-online\n\+local/);await native.locator('dialog').getByRole('button',{name:'关闭',exact:true}).click();
  await native.locator('#beginner-submit').click();await ready(native);await native.locator('#beginner-files').focus();await native.keyboard.press('Meta+a');assert.equal(await native.locator('#beginner-files input:checked').count(),1);await native.keyboard.press('Meta+Shift+a');assert.equal(await native.locator('#beginner-files input:checked').count(),0);await row(native).getByRole('button',{name:'还原',exact:true}).click();await native.locator('dialog[open]').waitFor();assert.equal(await native.locator('dialog').getByRole('button',{name:'确认还原此文件',exact:true}).isDisabled(),true);await native.locator('dialog').getByRole('button',{name:'取消',exact:true}).click();assert.equal(await readFile(join(project,'角色.txt'),'utf8'),'local\n');
