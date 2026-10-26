@@ -85,6 +85,12 @@ try {
   assert.ok(await page.locator('#beginner-files').evaluate(e=>e.scrollTop>0&&Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop)<2));
   assert.equal(await page.locator('#beginner-files input:checked').count(),selectedBefore);assert.equal(await page.locator('#beginner-manual').isChecked(),true);assert.equal(calls.length,callsBefore);
   await page.locator('#beginner-files').evaluate(e=>e.scrollTop=0);await page.locator('#beginner-files-bottom').focus();await page.keyboard.press('Enter');assert.ok(await page.locator('#beginner-files').evaluate(e=>Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop)<2));
+  for(const shortcut of ['Control+End','Meta+End','Meta+ArrowDown']) {
+   await page.locator('#beginner-files').focus();await page.locator('#beginner-files').evaluate(e=>e.scrollTop=0);await page.keyboard.press(shortcut);
+   assert.ok(await page.locator('#beginner-files').evaluate(e=>e.scrollTop>0&&Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop)<2),shortcut);
+   assert.equal(await page.locator('#beginner-files input:checked').count(),selectedBefore);assert.equal(await page.locator('#beginner-manual').isChecked(),true);assert.equal(calls.length,callsBefore);
+  }
+  await search.focus();await page.locator('#beginner-files').evaluate(e=>e.scrollTop=0);await page.keyboard.press('Control+End');assert.equal(await page.locator('#beginner-files').evaluate(e=>e.scrollTop),0);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.locator('#beginner-submit').click();await ready(page);await page.locator('#beginner-summary').fill('测试范围');await page.locator('#beginner-summary').scrollIntoViewIfNeeded();
   const summary=await page.locator('#beginner-summary').boundingBox();assert.ok(summary.y>=0&&summary.y+summary.height<=820);
