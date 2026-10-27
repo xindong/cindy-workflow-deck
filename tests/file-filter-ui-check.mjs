@@ -90,6 +90,12 @@ try {
    assert.ok(await page.locator('#beginner-files').evaluate(e=>e.scrollTop>0&&Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop)<2),shortcut);
    assert.equal(await page.locator('#beginner-files input:checked').count(),selectedBefore);assert.equal(await page.locator('#beginner-manual').isChecked(),true);assert.equal(calls.length,callsBefore);
   }
+  for(const shortcut of ['Control+Home','Meta+Home','Meta+ArrowUp']) {
+   await page.locator('#beginner-files').focus();await page.locator('#beginner-files').evaluate(e=>e.scrollTop=e.scrollHeight);await page.keyboard.press(shortcut);
+   assert.equal(await page.locator('#beginner-files').evaluate(e=>e.scrollTop),0,shortcut);
+   assert.equal(await page.locator('#beginner-files input:checked').count(),selectedBefore);assert.equal(await page.locator('#beginner-manual').isChecked(),true);assert.equal(calls.length,callsBefore);
+  }
+  await search.focus();await page.locator('#beginner-files').evaluate(e=>e.scrollTop=e.scrollHeight);const bottomBefore=await page.locator('#beginner-files').evaluate(e=>e.scrollTop);await page.keyboard.press('Control+Home');assert.equal(await page.locator('#beginner-files').evaluate(e=>e.scrollTop),bottomBefore);
   await search.focus();await page.locator('#beginner-files').evaluate(e=>e.scrollTop=0);await page.keyboard.press('Control+End');assert.equal(await page.locator('#beginner-files').evaluate(e=>e.scrollTop),0);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.locator('#beginner-submit').click();await ready(page);await page.locator('#beginner-summary').fill('测试范围');await page.locator('#beginner-summary').scrollIntoViewIfNeeded();

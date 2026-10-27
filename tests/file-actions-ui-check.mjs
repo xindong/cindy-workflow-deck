@@ -37,6 +37,11 @@ try {
   assert.ok(await native.locator('#beginner-files').evaluate(e=>e.scrollTop>0&&Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop)<2),shortcut);
   assert.equal(await native.locator('#beginner-files input:checked').count(),beforeScrollSelection);
  }
+ for(const shortcut of ['Meta+Home','Meta+ArrowUp','Control+Home']) {
+  await native.locator('#beginner-files').focus();await native.locator('#beginner-files').evaluate(e=>e.scrollTop=e.scrollHeight);await native.keyboard.press(shortcut);
+  assert.equal(await native.locator('#beginner-files').evaluate(e=>e.scrollTop),0,shortcut);
+  assert.equal(await native.locator('#beginner-files input:checked').count(),beforeScrollSelection);
+ }
  await rm(join(project,'art'),{recursive:true});await rm(join(project,'artwork'),{recursive:true});
  await writeFile(join(project,'角色.txt'),'local\n');await native.locator('#beginner-view').click();await ready(native);await row(native).getByRole('button',{name:'对比线上',exact:true}).click();await native.locator('dialog[open]').waitFor();assert.match(await native.locator('dialog pre').textContent(),/-online\n\+local/);await native.locator('dialog').getByRole('button',{name:'关闭',exact:true}).click();
  await native.locator('#beginner-submit').click();await ready(native);await native.locator('#beginner-files').focus();await native.keyboard.press('Meta+a');assert.equal(await native.locator('#beginner-files input:checked').count(),1);await native.keyboard.press('Meta+Shift+a');assert.equal(await native.locator('#beginner-files input:checked').count(),0);await row(native).getByRole('button',{name:'还原',exact:true}).click();await native.locator('dialog[open]').waitFor();assert.equal(await native.locator('dialog').getByRole('button',{name:'确认还原此文件',exact:true}).isDisabled(),true);await native.locator('dialog').getByRole('button',{name:'取消',exact:true}).click();assert.equal(await readFile(join(project,'角色.txt'),'utf8'),'local\n');
