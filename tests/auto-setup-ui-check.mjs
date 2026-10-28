@@ -6,6 +6,7 @@ import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFileSync,spawn} from 'node:child_process';
 const root=resolve(import.meta.dirname,'..'),temp=await mkdtemp(join(tmpdir(),'jixin-quick-ui-')),project=await realpath(temp);
+const flows=project+'-flows';await mkdir(join(flows,'_S'),{recursive:true});await writeFile(join(flows,'_S/feature.md'),'Shared workflow instructions.');
 const git=args=>execFileSync('git',['-C',project,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 git(['init','-q','-b','main']);git(['config','user.name','Art Setup']);git(['config','user.email','fixture@example.test']);
 await mkdir(join(project,'.githooks'));await writeFile(join(project,'CONTRIBUTING.md'),'Required local setup:\ngit config core.hooksPath .githooks\nMain requires PR.');await writeFile(join(project,'.githooks/pre-commit'),'#!/bin/sh\necho do-not-run > hook-ran\nexit 1\n');await chmod(join(project,'.githooks/pre-commit'),0o755);git(['add','.']);git(['commit','-qm','chore: init']);await writeFile(join(project,'角色.txt'),'my art');const head=git(['rev-parse','HEAD']),before=git(['status','--porcelain']);
@@ -18,6 +19,14 @@ try {
  await page.locator('#quick-project').click();await page.locator('#beginner-submit:not(:disabled)').waitFor();
  assert.equal(git(['config','--local','--get','core.hooksPath']),'.githooks');assert.equal(git(['rev-parse','HEAD']),head);assert.equal(git(['status','--porcelain']),before);assert.equal(await page.locator('#project-manager').evaluate(e=>e.open),false);
  await page.locator('#config-tab').click();assert.match(await page.locator('#setup-status').textContent(),/本地准备已完成/);await page.screenshot({path:join(root,'artifacts/auto-setup-desktop.png'),fullPage:true});
+ await app.evaluate(({dialog},flows)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[flows]});},flows);
+ await page.locator('#choose-workflow-directory').click();await page.locator('#notice').filter({hasText:'流程目录已保存'}).waitFor();
+ assert.equal(await page.locator('#workflow-root').textContent(),flows);assert.ok((await page.locator('#setup-root').textContent()).includes(project));
+ await page.locator('#project-manager').evaluate(e=>e.open=true);await page.locator('#inspect').click();await page.locator('#inspection').filter({hasText:join(flows,'_S/feature.md')}).waitFor();
+ await page.locator('#project-manager').evaluate(e=>e.open=false);
+ await page.screenshot({path:join(root,'artifacts/execution-workflow-desktop.png'),fullPage:true});
+ await page.reload();await page.locator('#config-tab').click();await page.locator('#workflow-root').filter({hasText:flows}).waitFor();
+ await app.evaluate(({dialog},project)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[project]});},project);
  await page.locator('#quick-project').click();await page.locator('#beginner-submit:not(:disabled)').waitFor();assert.equal(await page.locator('#project option').count(),1);
  await page.reload();await page.locator('#beginner-submit:not(:disabled)').waitFor();await app.close();app=null;
  server=spawn('python3',[join(root,'tests/serve-preview.py')],{stdio:['ignore','pipe','inherit']});const base=await new Promise((yes,no)=>{server.stdout.once('data',b=>yes(b.toString().trim()));server.once('error',no);});browser=await chromium.launch({headless:true});
@@ -27,7 +36,27 @@ try {
  assert.equal(await panel.evaluate(()=>mockHost.calls.errands.length),0);
  await panel.locator('#config-tab').click();await panel.screenshot({path:join(root,'artifacts/auto-setup-cindy-complete.png'),fullPage:true});
  assert.equal(await panel.locator('#project-manager').evaluate(e=>e.open),false);
+ await panel.evaluate(()=>mockHost.options.pickPath='/preview/shared-flows');await panel.locator('#choose-workflow-directory').click();await panel.locator('#notice').filter({hasText:'流程目录已保存'}).waitFor();
+ assert.equal(await panel.locator('#workflow-root').textContent(),'/preview/shared-flows');
+ assert.ok((await panel.locator('#setup-root').textContent()).includes('/preview/selected-project'));
+ assert.equal(await panel.evaluate(()=>mockHost.calls.inspections.filter(r=>r.method==='project/git'&&r.params.action==='prepare').length),1);
+ await panel.evaluate(()=>{mockHost.context.workdir='/another-chat';mockHost.deliver({type:'event',name:'did-session-switched',data:{sessionId:'another',workdir:'/another-chat'}});mockHost.options.cancelPick=true;});
+ await panel.locator('#choose-workflow-directory').click();await panel.locator('#notice').filter({hasText:'已取消选择'}).waitFor();assert.equal(await panel.locator('#workflow-root').textContent(),'/preview/shared-flows');
+ await panel.evaluate(()=>{mockHost.options.cancelPick=false;mockHost.options.pickPath='/preview/selected-project';});
  await panel.locator('#quick-project').click();await panel.locator('#beginner-submit:not(:disabled)').waitFor();assert.equal(await panel.locator('#project option').count(),1);
  for(const width of [120,320,860]) {await panel.setViewportSize({width,height:720});await panel.locator('#config-tab').click();assert.equal(await panel.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await panel.locator('#config-tab').click();const r=await panel.locator('.dock').boundingBox();assert.ok(Math.abs(r.x+r.width/2-width/2)<2);}
- console.log('Passed: one folder choice auto-saves and prepares real native project hooks; no manual form/add/save, no hook execution or HEAD/index/worktree changes; repeated choice deduplicates; reload; simulated Cindy prepare RPC and zero AI, bottom capsule and narrow configuration.');
-}finally{await app?.close();await browser?.close();server?.kill();await rm(temp,{recursive:true,force:true});}
+ await panel.close();
+ const legacyProjects=['one','two'].map(id=>({id,name:'Legacy '+id,directory:'/preview/'+id,workflows:Object.fromEntries(['experiment','feature','tooling','pr','merge'].map(flow=>[flow,{path:'custom/'+flow+'.md',external:false}]))}));
+ const legacy={projectConfiguration:{revision:10,configuration:{schemaVersion:1,activeProjectId:'one',projects:legacyProjects}}};
+ await fetch(base+'/kv',{method:'PUT',body:JSON.stringify(legacy)});
+ const legacyPage=await browser.newPage();await legacyPage.goto(base+'/panel.html?direct=1');await legacyPage.locator('#config-tab').click();
+ await legacyPage.locator('#choose-workflow-directory:not(:disabled)').waitFor();await legacyPage.evaluate(()=>mockHost.options.pickPath='/preview/legacy-flows');
+ await legacyPage.locator('#choose-workflow-directory').click();await legacyPage.locator('#notice').filter({hasText:'流程目录已保存'}).waitFor();
+ let saved=await(await fetch(base+'/kv')).json();
+ assert.deepEqual(saved.projectConfiguration.configuration.projects,[{...legacyProjects[0],workflowDirectory:'/preview/legacy-flows'},legacyProjects[1]]);
+ await legacyPage.locator('#reset-workflow-directory').click();await legacyPage.locator('#notice').filter({hasText:'已改用执行项目内的流程'}).waitFor();
+ saved=await(await fetch(base+'/kv')).json();assert.deepEqual(saved.projectConfiguration.configuration.projects,legacyProjects);
+ assert.equal(await legacyPage.evaluate(()=>mockHost.calls.inspections.filter(r=>r.method==='project/git'&&r.params.action==='prepare').length),0);
+ await legacyPage.close();
+ console.log('Passed: one folder choice auto-saves and prepares real native project hooks; flow location choose/reset preserves both legacy projects and manual workflows with no Git prepare; reload, simulated Cindy RPC and zero AI, narrow layout.');
+}finally{await app?.close();await browser?.close();server?.kill();await rm(temp,{recursive:true,force:true});await rm(flows,{recursive:true,force:true});}

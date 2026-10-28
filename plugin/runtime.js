@@ -1,4 +1,5 @@
 import { gitWithHost } from './git-host.js';
+import { createDiagnosisService } from './diagnosis-service.js';
 import { configurationState, projectForDirectory } from './core/project-config.mjs';
 import { createConfigurationController } from './configuration-controller.js';
 import { createExecutionLog } from './execution-log.js';
@@ -45,7 +46,8 @@ async function refreshSidebar() {
   return activeSidebar() === projectSidebar ? projectSidebar.view() : sidebar.refresh();
 }
 const executionLog = createExecutionLog({ store, changed: result => channel.postMessage({ from: 'main', type: 'execution-log', result }) });
-const configure = createConfigurationController({ store,
+const diagnosis=createDiagnosisService({store,git:(dir,params)=>gitWithHost(cindy.node,dir,params),askText:prompt=>cindy.send({type:'cindy-request',kind:'oneshot_text',prompt,maxTokens:2500})});
+const configure = createConfigurationController({ store, diagnosis,
   openPreview: url => cindy.preview({url}),
   git: (dir, params) => gitWithHost(cindy.node, dir, params),
   pick: () => { if (typeof cindy.pick !== 'function') throw Object.assign(new Error('请升级 Cindy 以选择目录'), { code: 'UNSUPPORTED_HOST' }); return cindy.pick({ mode: 'directory', title: '配置项目与流程文件' }); },

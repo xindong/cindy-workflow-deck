@@ -1,3 +1,4 @@
+import { createDiagnosisService } from '../plugin/diagnosis-service.js';
 import { readFile, writeFile, mkdir, rename, lstat } from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
@@ -15,8 +16,10 @@ export function createProjectService({ file, pickDirectory, pickFile }) {
     try { const text = await readFile(file, 'utf8'); if (Buffer.byteLength(text) > MAX_BYTES) throw new Error('配置文件过大'); return configurationState(JSON.parse(text)); }
     catch (error) { if (error.code === 'ENOENT') return configurationState({}); throw error; }
   }
+  const diagnosis=createDiagnosisService({store:{read:async()=>({projectConfiguration:await read()})},git:gitRequest});
   return async function request(method, params = {}) {
     switch (method) {
+      case 'diagnosis-prepare': case 'diagnosis-read': case 'diagnosis-run': return diagnosis(method,params);
       case 'config-read': return read();
       case 'config-save': return serial(async () => {
         const old = await read();

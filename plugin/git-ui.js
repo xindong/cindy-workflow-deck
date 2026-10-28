@@ -1,8 +1,9 @@
 import { errorHelp } from './error-help.js';
+import { mountDiagnosis } from './diagnosis-ui.js';
 import { mountBeginner } from './beginner-ui.js';
 export function mountGit({transport,context,notice,onConflict,english=false}) {
   const $=id=>document.getElementById(id);
-  let state, busy=false, inspectedContext='',beginner,pendingRefresh=false;
+  let state, busy=false, inspectedContext='',beginner,diagnosis,pendingRefresh=false;
   const ready=()=>context().ready && !!state && inspectedContext===contextKey();
   const contextKey=()=>JSON.stringify([context().projectId,context().revision]);
   if(english) {
@@ -14,7 +15,7 @@ export function mountGit({transport,context,notice,onConflict,english=false}) {
   function buttons() {
     const ready=context().ready && !busy && !!state && inspectedContext===contextKey();
     $('git-refresh').disabled=busy || !context().ready;
-    beginner?.update();
+    beginner?.update();diagnosis?.update();
     for(const button of document.querySelectorAll('[data-git]')) {
       const action=button.dataset.git, read=['diff','diff-staged','history'].includes(action);
       button.disabled=!ready || (!read && (!$('git-confirm').checked || !state.hooksReady || state.incomplete || state.fileRevertReceipt&&!['restored','acknowledged'].includes(state.fileRevertReceipt.state))) || (['commit','push','pr'].includes(action) && state.protectedBranches.includes(state.branch));
@@ -69,6 +70,7 @@ export function mountGit({transport,context,notice,onConflict,english=false}) {
   // Keep configuration reachable on first use; configured projects open the basic Git view.
   tab(!!context().projectId);
   document.getElementById('configuration-form').addEventListener('input',()=>{state=undefined;buttons();});
+  diagnosis=mountDiagnosis({transport,context,isBusy:()=>busy,english});
   beginner=mountBeginner({state:()=>state,ready,isBusy:()=>busy,call,refresh,perform:run,reviewedCall,canRefresh:()=>context().ready,english});
   document.addEventListener('configuration-invalidated',()=>{state=undefined;$('git-confirm').checked=false;beginner?.invalidate();buttons();});
   document.addEventListener('configuration-ready',()=>{buttons();if(context().ready){if(busy)pendingRefresh=true;else void run(refresh);}});

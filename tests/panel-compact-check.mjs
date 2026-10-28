@@ -23,7 +23,7 @@ try {
    assert.ok(dock.y+dock.height>780&&dock.height<180,JSON.stringify(dock));
    assert.ok(Math.abs(dock.x+dock.width/2-width/2)<2,JSON.stringify(dock));
    assert.equal(await page.locator('#basic-view>nav').isVisible(),false);
-   for(const id of ['advanced-mode','config-tab','beginner-update','beginner-view','beginner-submit','git-refresh']) {
+   for(const id of ['advanced-mode','config-tab','beginner-update','beginner-view','beginner-submit','beginner-diagnose','git-refresh']) {
     assert.equal(await page.locator('#'+id+' svg').count(),1);
     const r=await page.locator('#'+id).boundingBox();assert.ok(r.width<=36&&r.height<=36);
     await page.locator('#'+id).hover();await page.locator('#compact-tooltip:not([hidden])').waitFor();

@@ -102,13 +102,19 @@ async function inspectProject(dir, home = os.homedir(), project) {
     const { normalizeConfiguration, directoryKey } = await import('../core/project-config.mjs');
     const normalized = normalizeConfiguration({ projects: [project], activeProjectId: project.id }).projects[0];
     if (directoryKey(normalized.directory) !== directoryKey(dir)) throw new Error('PROJECT_DIRECTORY_MISMATCH');
-    if (normalized.discovery === 'auto') return discover(root);
+    let workflowRoot = root;
+    if (normalized.workflowDirectory) {
+      if (!path.isAbsolute(normalized.workflowDirectory)) throw new Error('INVALID_WORKFLOW_DIRECTORY');
+      workflowRoot = await fs.realpath(normalized.workflowDirectory);
+      if (!(await fs.stat(workflowRoot)).isDirectory()) throw new Error('WORKFLOW_NOT_DIRECTORY');
+    }
+    if (normalized.discovery === 'auto') return { ...await discover(workflowRoot), workflowDirectory: workflowRoot };
     const workflows = {};
     for (const [id, item] of Object.entries(normalized.workflows)) {
       if (!item.path) { workflows[id] = { ok: false, reason: 'not_configured' }; continue; }
       if (process.platform !== 'win32' && /^[A-Za-z]:[\\/]/.test(item.path)) { workflows[id] = { ok: false, reason: 'platform_mismatch' }; continue; }
       const relative = item.path.split(String.fromCharCode(92)).join('/');
-      const target = path.isAbsolute(relative) ? relative : path.resolve(root, relative);
+      const target = path.isAbsolute(relative) ? relative : path.resolve(workflowRoot, relative);
       const base = path.parse(target).root;
       const checked = await probe(base, path.relative(base, target).split(path.sep).join('/'));
       workflows[id] = checked;

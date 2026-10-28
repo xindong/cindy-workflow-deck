@@ -5,6 +5,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {createRequire} from 'node:module';
+import {randomUUID} from 'node:crypto';
 const require=createRequire(import.meta.url),{gitRequest}=require('../plugin/node/git-service.cjs');
 async function fixture(t) {
  const base=await realpath(await mkdtemp(join(tmpdir(),'jixin-file-')));t.after(()=>rm(base,{recursive:true,force:true}));
@@ -68,4 +69,55 @@ test('comparison uses the actual file even after staged deletion and handles bin
  const f=await fixture(t);f.git(['rm','--cached','-q','a.txt']);await writeFile(join(f.root,'a.txt'),'actual working content\n');let d=await gitRequest(f.root,{action:'file-diff',path:'a.txt'});assert.match(d.output,/\+actual working content/);assert.match(d.output,/-base/);
  await writeFile(join(f.root,'binary.bin'),Buffer.from([0,1,2,3]));d=await gitRequest(f.root,{action:'file-diff',path:'binary.bin'});assert.match(d.output,/Binary files differ/);
  await writeFile(join(f.root,'empty.txt'),'');d=await gitRequest(f.root,{action:'file-diff',path:'empty.txt'});assert.match(d.output,/Empty file added/);
+});
+
+test('batch restore backs up all selected files and keeps unrelated work',async t=>{
+ const f=await fixture(t);await writeFile(join(f.root,'a.txt'),'staged');f.git(['add','a.txt']);await writeFile(join(f.root,'a.txt'),'working');await writeFile(join(f.root,'new.txt'),'new');await writeFile(join(f.root,'other.txt'),'keep');
+ const paths=['a.txt','new.txt'];const r=await gitRequest(f.root,{action:'file-revert',token:(await f.status()).token,rulesConfirmed:true,paths,confirmPaths:paths});
+ assert.equal(await readFile(join(f.root,'a.txt'),'utf8'),'base\n');await assert.rejects(readFile(join(f.root,'new.txt')),{code:'ENOENT'});assert.equal(await readFile(join(f.root,'other.txt'),'utf8'),'keep');assert.equal(await readFile(join(r.backup,'0/local-file'),'utf8'),'working');assert.equal(await readFile(join(r.backup,'1/local-file'),'utf8'),'new');const receipt=JSON.parse(await readFile(join(r.backup,'record.json'),'utf8'));assert.equal(receipt.state,'restored');assert.deepEqual(receipt.completed,paths);
+});
+test('batch validates the whole list and exact confirmation before changing any file',async t=>{
+ const f=await fixture(t);await writeFile(join(f.root,'a.txt'),'keep');f.git(['mv','other.txt','renamed.txt']);const paths=['a.txt','renamed.txt'];
+ const request=async(extra={})=>gitRequest(f.root,{action:'file-revert',token:(await f.status()).token,rulesConfirmed:true,paths,confirmPaths:paths,...extra});
+ await assert.rejects(request(),{code:'UNSUPPORTED_FILE'});assert.equal(await readFile(join(f.root,'a.txt'),'utf8'),'keep');await assert.rejects(request({confirmPaths:['a.txt']}),{code:'FILE_CONFIRMATION_REQUIRED'});await assert.rejects(request({paths:['a.txt','a.txt'],confirmPaths:['a.txt','a.txt']}),{code:'INVALID_PATHS'});
+});
+test('batch stops on an uncertain result, retains every backup, and cannot replay',async t=>{
+ const f=await fixture(t);await writeFile(join(f.root,'a.txt'),'first');await writeFile(join(f.root,'other.txt'),'second');const state=await f.status(),paths=['a.txt','other.txt'];
+ const ctx={root:f.root,run:async args=>{const value=execFileSync('git',['-C',f.root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']});if(args[0]==='restore')throw new Error('Lost result');return value;}};
+ await assert.rejects(require('../plugin/node/file-changes.cjs').revert(ctx,state,{paths,confirmPaths:paths},f.status),{code:'REVERT_UNCONFIRMED'});const receipt=JSON.parse(await readFile(join(f.root,'.git/jixin-file-revert.json'),'utf8'));assert.equal(receipt.state,'needs-verification');assert.equal(await readFile(join(receipt.backup,'1/local-file'),'utf8'),'second');assert.equal(await readFile(join(f.root,'other.txt'),'utf8'),'second');await assert.rejects(f.revert('other.txt'),{code:'REVERT_UNCONFIRMED'});
+});
+test('preflight failure from intent-to-add does not lock a precise 75-file restore; every backup and unrelated index entry survives',async t=>{
+ const f=await fixture(t),paths=[],other=[];
+ await mkdir(join(f.root,'Developer/plugin-file-list-test/group-01'),{recursive:true});
+ for(let i=0;i<75;i++)for(const ext of ['json','txt','md','csv']) {
+  const name='Developer/plugin-file-list-test/group-01/sample-'+String(i).padStart(3,'0')+'.'+ext;
+  await writeFile(join(f.root,name),'original '+i+' '+ext+'\n');(ext==='json'?paths:other).push(name);
+ }
+ f.git(['add','--',...paths.slice(0,50)]);
+ for(const name of paths.slice(0,25))await writeFile(join(f.root,name),'working '+name+'\n');
+ f.git(['add','-N','--',other[0]]);
+ await writeFile(join(f.team,'team.txt'),'team update');f.git(['add','.'],f.team);f.git(['commit','-qm','team update'],f.team);f.git(['push','-q'],f.team);
+ const head=f.git(['rev-parse','HEAD']),index=f.git(['diff','--cached','--binary']),working=f.git(['diff','--binary']);
+ const failed=await gitRequest(f.root,{action:'beginner-update',token:(await f.status()).token,rulesConfirmed:true,operationId:randomUUID()});
+ assert.equal(failed.state,'blocked');assert.equal(failed.step,'preflight');assert.match(failed.detail,/not uptodate|Cannot save/);assert.equal((await f.status()).beginnerReceipt.retryable,true);
+ assert.equal(f.git(['diff','--cached','--binary']),index);assert.equal(f.git(['diff','--binary']),working);
+ const otherIndex=f.git(['ls-files','--stage','--',...other]);
+ const result=await gitRequest(f.root,{action:'file-revert',token:(await f.status()).token,rulesConfirmed:true,paths,confirmPaths:paths});
+ for(const [i,name] of paths.entries()) {
+  await assert.rejects(readFile(join(f.root,name)),{code:'ENOENT'});
+  assert.equal(await readFile(join(result.backup,String(i),'local-file'),'utf8'),i<25?'working '+name+'\n':'original '+i+' json\n');
+  assert.equal(!!(await readFile(join(result.backup,String(i),'staged.patch'),'utf8')),i<50);
+ }
+ assert.equal(f.git(['ls-files','--stage','--',...other]),otherIndex);assert.equal(f.git(['rev-parse','HEAD']),head);
+ for(const name of other)assert.match(await readFile(join(f.root,name),'utf8'),/^original /);
+ const state=await f.status();assert.equal(state.changes.length,225);assert.equal(state.fileRevertReceipt.state,'restored');assert.deepEqual(state.fileRevertReceipt.completed,paths);
+});
+test('settled fetch failure permits restore but running, uncertain and mutated update receipts still block it',async t=>{
+ const f=await fixture(t);await writeFile(join(f.root,'a.txt'),'keep');f.git(['remote','set-url','origin',join(f.base,'missing.git')]);
+ const failed=await gitRequest(f.root,{action:'beginner-update',token:(await f.status()).token,rulesConfirmed:true,operationId:randomUUID()});
+ assert.equal(failed.state,'blocked');assert.equal(failed.step,'fetch');await f.revert('a.txt');
+ for(const record of [{...failed,state:'running'},{...failed,state:'needs-verification'},{...failed,step:'restore'},{...failed,completed:['fetch','stash']},{...failed,stash:'backup'},{...failed,action:'beginner-submit',retryable:true}]) {
+  await writeFile(join(f.root,'a.txt'),'keep');await writeFile(join(f.root,'.git/jixin-beginner.json'),JSON.stringify(record));
+  await assert.rejects(f.revert('a.txt'),{code:'OPERATION_LOCKED'});assert.equal(await readFile(join(f.root,'a.txt'),'utf8'),'keep');
+ }
 });

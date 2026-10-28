@@ -27,16 +27,23 @@ try {
  await native.locator('#quick-project').click();await native.locator('#beginner-update:not(:disabled)').waitFor();
  await native.locator('#beginner-update').click();await native.locator('#beginner-confirm').click();
  await native.locator('#update-progress-title').filter({hasText:'正在获取'}).waitFor();
+ assert.ok(await native.locator('#update-progress-title').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=18));
+ assert.equal(await native.locator('#update-progress-target').textContent(),project);
+ await native.locator('#update-progress-log [aria-current=step]').filter({hasText:'获取团队版本'}).waitFor();
  assert.equal(await native.locator('#update-progress-bar').getAttribute('value'),null);
  assert.equal(await native.locator('#beginner-confirm').isDisabled(),true);
  await native.screenshot({path:join(out,'独立桌面-更新进行中.png'),fullPage:true});
  await native.locator('#update-progress[data-state=done]').waitFor();assert.equal(await native.locator('#update-progress-bar').getAttribute('value'),'1');
+ git(['config','remote.origin.uploadpack','/missing-upload-pack']);await native.locator('#beginner-update:not(:disabled)').waitFor();await native.locator('#beginner-update').click();await native.locator('#beginner-confirm').click();
+ await native.locator('#update-recovery-retry:not(:disabled)').waitFor();await native.locator('#update-recovery-check').click();await native.locator('#update-recovery-retry:not(:disabled)').waitFor();
+ git(['config','remote.origin.uploadpack',slow]);await native.locator('#update-recovery-retry').click();await native.locator('#beginner-confirm:not(:disabled)').waitFor();await native.locator('#beginner-confirm').click();
+ await native.locator('#update-progress[data-state=done]').waitFor();assert.equal(await native.locator('#update-recovery').isVisible(),false);
  await app.close();app=null;
  // Official plugin worker protocol with the real compact panel and live journal.
  worker=spawn(process.execPath,[join(plugin,'node/inspect-project.cjs')],{stdio:['pipe','pipe','pipe']});worker.stderr.resume();
  createInterface({input:worker.stdout}).on('line',line=>{const r=JSON.parse(line);pending.get(r.id)?.(r);pending.delete(r.id);});
  const host={request:args=>new Promise(yes=>{const n=++id;pending.set(n,r=>yes({ok:true,result:r.result}));worker.stdin.write(JSON.stringify({jsonrpc:'2.0',id:n,...args})+'\n');})};
- server=createServer(async(req,res)=>{try{const file=join(plugin,new URL(req.url,'http://local').pathname);res.setHeader('Content-Type',({'.js':'text/javascript','.html':'text/html','.css':'text/css'})[extname(file)]||'application/octet-stream');res.end(await readFile(file));}catch{res.statusCode=404;res.end();}});
+ server=createServer(async(req,res)=>{try{const file=join(plugin,new URL(req.url,'http://local').pathname);res.setHeader('Content-Type',({'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html','.css':'text/css'})[extname(file)]||'application/octet-stream');res.end(await readFile(file));}catch{res.statusCode=404;res.end();}});
  await new Promise(yes=>server.listen(0,'127.0.0.1',yes));browser=await chromium.launch({headless:true});
  const page=await browser.newPage({viewport:{width:400,height:720},colorScheme:'dark'});page.on('pageerror',e=>errors.push(e.message));
  await page.exposeFunction('gitTransport',async(method,p)=>{calls.push(p.action);if(p.action==='operation-progress'&&queryFailure)throw new Error('Progress disconnected');return gitWithHost(host,project,p);});
@@ -46,6 +53,7 @@ try {
  await page.evaluate(async()=>{const {mountGit}=await import('/git-ui.js');mountGit({transport:{call:window.gitTransport},context:()=>({projectId:'fixture',revision:1,ready:true}),notice:()=>{}});});
  await page.locator('#beginner-update:not(:disabled)').waitFor();await page.locator('#beginner-update').click();await page.locator('#beginner-confirm').click();
  await page.locator('#update-progress-title').filter({hasText:'正在获取'}).waitFor();
+ await page.locator('#update-progress-log [data-state=running]').filter({hasText:'进行中'}).waitFor();
  for(const width of [320,860]) {
   await page.setViewportSize({width,height:720});await page.emulateMedia({colorScheme:width===320?'dark':'light'});
   await page.evaluate(dark=>{const values=dark?{'--panel-bg':'#1f1f1e','--surface':'#1f1f1e','--surface-elevated':'#2c2c2a','--surface-chip':'#3c3c3a','--border-default':'#3c3c3a','--text-primary':'#d4d4d4','--text-secondary':'#a3a3a3'}:{'--panel-bg':'#f8f8f6','--surface':'#f8f8f6','--surface-elevated':'#fff','--surface-chip':'#e5e5e5','--border-default':'#d7d7d4','--text-primary':'#262626','--text-secondary':'#737373'};for(const [key,value] of Object.entries(values))document.documentElement.style.setProperty(key,value);document.documentElement.style.colorScheme=dark?'dark':'light';},width===320);
@@ -54,6 +62,8 @@ try {
   await page.screenshot({path:join(out,width===320?'插件-320暗色-更新进度.png':'插件-860亮色-更新进度.png'),fullPage:true});
  }
  await page.locator('#update-progress[data-state=done]').waitFor();assert.equal(calls.filter(a=>a==='beginner-update').length,1);
+ assert.equal(await page.locator('#update-progress-log [data-state=running]').count(),0);
+ assert.ok(await page.locator('#update-progress-log [data-state=done]').count()>0);
  // Observation failure must not declare success, unlock controls or repeat writes.
  await page.locator('#beginner-update:not(:disabled)').waitFor();queryFailure=true;
  await page.locator('#beginner-update').click();await page.locator('#beginner-confirm').click();

@@ -50,3 +50,14 @@ Desktop packages工作流在main推送或手动触发时构建Windows x64包，�
 - 浏览器/桌面验收：设置PLAYWRIGHT_MODULE_PATH为已安装Playwright的index.mjs路径，PLAYWRIGHT_BROWSERS_PATH为浏览器缓存后，运行node tests/dual-ui-check.mjs。启动真实Electron并使用临时用户数据/项目，再以模拟Host验证Cindy配置页。安装依赖后也可不设置PLAYWRIGHT_MODULE_PATH，默认使用锁定的playwright-core；仅桌面验收设JIXIN_NATIVE_ONLY=1，并用JIXIN_DESKTOP_EXECUTABLE指向打包后的可执行文件。不会在真实用户项目执行Git写入或AI任务。
 
 基础Git验收：node tests/git-ui-check.mjs，真实Electron临时仓库完成分支/暂存/提交、DCO，模拟Host验证基础/高级切换、Git RPC和320/860px明暗布局。未创建真实远端PR，未执行新版安装。
+
+
+## 第四个日常入口：AI 诊断问题
+
+基础胶囊栏第四个按钮打开诊断页；可填写问题或通过最近操作错误旁的入口带入错误。先通过专用只读状态入口检查所选项目，不读取SSH绑定或操作journal，也不生成Git写操作票据，，展示问题、错误、Git状态和有限规则摘要，确认后才发送。快照排除Git操作票据、SSH身份、备份日志及敏感文件条目；常见URL账号、token、Authorization、密钥赋值和私钥会脱敏，但仍需用户核对预览。不会打包全仓或读取改动文件正文，也不会运行fetch、hooks或项目脚本。
+
+Cindy版新增cindy.text/oneshot能力，更新安装时通过Host正常权限确认。使用公开oneshot_text通道：插件详情中选择的模型优先，未指定时采用Host快速通道；不能从任务模型目录推断本次实际型号，结果按Host回执显示。只分析已确认快照，没有Agent文件/命令工具；提供事实、可能原因与依据、建议处理、验证方法及缺失信息，不执行修复。修复仍需后续单独授权并遵守项目规则。
+
+预览5分钟过期，单次请求使用持久编号，运行/结果/失败记录保存在本插件KV。回执丢失时只检查已有记录，不自动重发AI；重启后预览须重新生成。AI无模型、拒绝权限或失败时不造诊断，保留本地信息和基础Git。独立应用共享本地快照和页面，但尚未接入CLI/API模型，明确显示AI不可用并隐藏发送按钮，不冒充已完成诊断。
+
+验收：178项Node测试；真实独立Electron与隔离Git验证本地信息及未接入AI降级；真实插件runtime/BroadcastChannel传输和模拟Host的oneshot响应验证确认、脱敏、结果显示、无模型和失联不重放，320暗/860亮及中英文。模拟模型结果不等同于已安装Cindy实机或真实推理验证。

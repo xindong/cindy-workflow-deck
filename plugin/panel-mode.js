@@ -33,5 +33,5 @@ $('config-tab').addEventListener('click',event=>{
   mode(false);
   if(close){event.stopImmediatePropagation();$('git-tab').click();}
 },true);
-for(const id of ['beginner-update','beginner-view','beginner-submit'])$(id).addEventListener('click',()=>{$('git-tab').click();},true);
+for(const id of ['beginner-update','beginner-view','beginner-submit','beginner-diagnose'])$(id).addEventListener('click',()=>{$('git-tab').click();},true);
 mode(false);

@@ -1,7 +1,10 @@
 import { configurationState, updateConfiguration } from './core/project-config.mjs';
-export function createConfigurationController({ store, pick, inspect, git, openPreview, changed = () => {} }) {
+export function createConfigurationController({ store, pick, inspect, git, openPreview, diagnosis, changed = () => {} }) {
   return async function handle(method, params = {}) {
     switch (method) {
+      case 'diagnosis-prepare': case 'diagnosis-run': case 'diagnosis-read':
+        if(!diagnosis)throw Object.assign(new Error('当前版本尚未接入 AI 诊断，请更新插件。'),{code:'AI_UNAVAILABLE'});
+        return diagnosis(method,params);
       case 'config-read': return configurationState(await store.read());
       case 'config-save': {
         let result;

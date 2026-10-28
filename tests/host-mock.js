@@ -2,16 +2,17 @@
 const settings=new URLSearchParams(location.search),dark=settings.get('theme')==='dark';
 for(const [name,value]of Object.entries(dark?{'--panel-bg':'#1f1f1e','--surface':'#1f1f1e','--surface-elevated':'#2c2c2a','--surface-chip':'#3c3c3a','--border-default':'#3c3c3a','--text-primary':'#d4d4d4','--text-secondary':'#a3a3a3'}:{'--panel-bg':'#f8f8f6','--surface':'#f8f8f6','--surface-elevated':'#fff','--surface-chip':'#e5e5e5','--border-default':'#d7d7d4','--text-primary':'#262626','--text-secondary':'#737373'}))document.documentElement.style.setProperty(name,value);
 document.documentElement.style.colorScheme=dark?'dark':'light';
-const calls={cards:[],results:[],agentRuns:[],inspections:[],creates:[],errands:[]},options={files:'all',failNode:false,deny:false,lose:false,jobStatus:'running'};
+const calls={cards:[],results:[],agentRuns:[],inspections:[],creates:[],errands:[],inferences:[]},options={files:'all',failNode:false,deny:false,lose:false,jobStatus:'running'};
 let handler,click=0,offset=0;const nativeNow=Date.now;Date.now=()=>nativeNow()+offset;
 const context={session_id:'source-chat',workdir:'/preview/selected-project',workdir_is_local:true,workdir_is_read_only:false};
 const cards=document.createElement('div');cards.id='test-cards';cards.style.cssText='position:fixed;top:0;right:0;max-width:240px;max-height:190px;overflow:auto;overflow-wrap:anywhere;z-index:100';document.body.append(cards);
 function requestBinding(ctx=context){handler({type:'tool-call',tool:'get_workflows',callId:'source-card',args:{session_context:ctx}});}
 globalThis.mockHost={calls,options,context,deliver:msg=>handler(msg),requestBinding,advanceTime:()=>{offset+=11000;}};
 globalThis.cindy={
- async pick(){return {ok:true,path:'/preview/selected-project'};},
+ async pick(){return options.cancelPick?{ok:false,errorCode:'CANCELLED'}:{ok:true,path:options.pickPath||'/preview/selected-project'};},
  onHostMessage(cb){handler=cb;if(!settings.has('direct'))requestBinding();},
  async send(message){
+  if(message.type==='cindy-request'&&message.kind==='oneshot_text'){calls.inferences.push(message);if(options.inferenceLost)throw new Error('lost model reply');if(options.inferenceFailure)return {ok:false,errorCode:options.inferenceFailure};return {ok:true,text:'已知事实：当前项目存在未提交改动。可能原因与证据：需结合错误信息确认。建议处理步骤：先检查操作详情。如何验证：重新读取状态。还缺哪些信息：错误发生的具体步骤。',model:'fixture-model-not-real-inference'};}
   if(message.type==='tool-result'){calls.results.push(message);cards.dataset.lastResult=message.callId;return{ok:true};}
   if(message.type!=='card-update')return{ok:true};calls.cards.push(message);
   let el=document.getElementById(message.callId);if(!el){el=document.createElement('section');el.id=message.callId;cards.append(el);}el.innerHTML=message.html;return{ok:true};
@@ -27,7 +28,7 @@ globalThis.cindy={
    const configured=req.params?.project?.workflows?.[id];
    const file=configured?configured.path:defaults[id];
    const present=!!file&&(options.files==='all'||options.files==='partial'&&id==='feature');
-   return[id,{ok:present,reason:!file?'not_configured':id==='pr'?'skill_unverified':'missing',source:file?(file.startsWith('/')?file:(req.params?.dir||context.workdir)+'/'+file):''}];
+   return[id,{ok:present,reason:!file?'not_configured':id==='pr'?'skill_unverified':'missing',source:file?(file.startsWith('/')?file:(req.params?.project?.workflowDirectory||req.params?.dir||context.workdir)+'/'+file):''}];
   }))}};
  }},
  agent:{async errand(req){calls.errands.push(req);if(options.lose)throw new Error('Lost receipt');if(options.deny)return{ok:false,errorCode:'PERMISSION_DENIED'};return{ok:true,jobId:'direct-'+calls.errands.length};},

@@ -6,7 +6,7 @@ async function journal(ctx){return path.resolve(ctx.root,(await ctx.run(['rev-pa
 async function readReceipt(ctx) {
   try {
     const file=await journal(ctx),stat=await fs.lstat(file);
-    if(!stat.isFile()||stat.isSymbolicLink()||stat.size>16384)fail('REVERT_UNCONFIRMED','文件还原记录无法核对，请联系项目负责人');
+    if(!stat.isFile()||stat.isSymbolicLink()||stat.size>256*1024)fail('REVERT_UNCONFIRMED','文件还原记录无法核对，请联系项目负责人');
     const record=JSON.parse(await fs.readFile(file,'utf8'));
     return record;
   } catch(e){if(e.code!=='ENOENT')throw e;return null;}
@@ -77,39 +77,52 @@ async function compare(ctx,state,params) {
   return result;
 }
 async function revert(ctx,state,params,verify) {
-  const item=await selected(ctx,state,params.path);
-  if(params.confirmPath!==item.path)fail('FILE_CONFIRMATION_REQUIRED','请确认要还原的单个文件');
-  if(!state.head||/[URC]/.test(item.status)||['AA','DD'].includes(item.status))fail('UNSUPPORTED_FILE','冲突、改名或未初始化项目请交由负责人处理，未还原文件');
+  const batch=Array.isArray(params.paths),names=batch?params.paths:[params.path];
+  if(!names.length||names.length>200||new Set(names).size!==names.length||Buffer.byteLength(JSON.stringify(names))>100000)fail('INVALID_PATHS','一次请选择1至200个不同文件；文件名列表过长时请分批还原。');
+  const confirmed=batch?params.confirmPaths:[params.confirmPath];
+  if(JSON.stringify(names)!==JSON.stringify(confirmed))fail('FILE_CONFIRMATION_REQUIRED','请确认要还原的准确文件清单');
+  const items=[];
+  for(const name of names){const item=await selected(ctx,state,name);if(!state.head||/[URC]/.test(item.status)||['AA','DD'].includes(item.status))fail('UNSUPPORTED_FILE','清单含冲突、改名或未初始化项目，整批未还原，请交由负责人处理');items.push(item);}
   const service=require('./beginner-git.cjs'),prior=await service.readReceipt(ctx);
-  if(prior&&!prior.retryable&&['running','blocked','needs-verification'].includes(prior.state))fail('OPERATION_LOCKED','上次操作还需负责人核对，暂不能还原文件');
+  if(prior&&!service.retryableFailure(prior)&&['running','blocked','needs-verification'].includes(prior.state))fail('OPERATION_LOCKED','上次操作还需负责人核对，暂不能还原文件');
   const base=path.resolve(ctx.root,(await ctx.run(['rev-parse','--git-path','jixin-file-backups'])).trim());
   await fs.mkdir(base,{recursive:true,mode:0o700});
   if((await fs.lstat(base)).isSymbolicLink())fail('UNSAFE_BACKUP','备份目录不能是符号链接');
   const backup=path.join(base,randomUUID());await fs.mkdir(backup,{mode:0o700});
-  const args=['--binary','--no-ext-diff','--no-textconv','--no-renames'];
-  const literal=':(literal)'+item.path;
-  await fs.writeFile(path.join(backup,'staged.patch'),await ctx.run(['diff','--cached',...args,'HEAD','--',literal]),{mode:0o600});
-  await fs.writeFile(path.join(backup,'worktree.patch'),await ctx.run(['diff',...args,'--',literal]),{mode:0o600});
-  let content;try{content=await fs.readFile(path.join(ctx.root,item.path));}catch(e){if(e.code!=='ENOENT')throw e;}
-  if(content)await fs.writeFile(path.join(backup,'local-file'),content,{mode:0o600});
-  const record={path:item.path,head:state.head,status:item.status,createdAt:new Date().toISOString(),backup,workingFilePresent:content!==undefined,mode:content===undefined?null:(await fs.lstat(path.join(ctx.root,item.path))).mode,state:'prepared'};
-  const log=await journal(ctx);
-  const write=async()=>{
+  const args=['--binary','--no-ext-diff','--no-textconv','--no-renames'],prepared=[];
+  // Validate and back up every file before changing any selected file or index entry.
+  for(const [index,item] of items.entries()) {
+    const location=batch?path.join(backup,String(index)):backup;
+    if(batch)await fs.mkdir(location,{mode:0o700});
+    const literal=':(literal)'+item.path,entry=await ctx.run(['ls-tree','-z','HEAD','--',literal]);
+    if(entry&&!entry.startsWith('100'))fail('UNSUPPORTED_FILE','最近提交对应路径是链接、目录或子模块，整批未还原');
+    await fs.writeFile(path.join(location,'staged.patch'),await ctx.run(['diff','--cached',...args,'HEAD','--',literal]),{mode:0o600});
+    await fs.writeFile(path.join(location,'worktree.patch'),await ctx.run(['diff',...args,'--',literal]),{mode:0o600});
+    let content;try{content=await fs.readFile(path.join(ctx.root,item.path));}catch(e){if(e.code!=='ENOENT')throw e;}
+    if(content!==undefined)await fs.writeFile(path.join(location,'local-file'),content,{mode:0o600});
+    const file={path:item.path,status:item.status,workingFilePresent:content!==undefined,mode:content===undefined?null:(await fs.lstat(path.join(ctx.root,item.path))).mode};
+    if(batch)await fs.writeFile(path.join(location,'record.json'),JSON.stringify(file),{mode:0o600});
+    prepared.push({...file,literal,entry});
+  }
+  const record={...(batch?{paths:names,completed:[]}:prepared[0]),head:state.head,createdAt:new Date().toISOString(),backup,state:'prepared'};
+  delete record.literal;delete record.entry;
+  const log=await journal(ctx),write=async()=>{
     await fs.writeFile(path.join(backup,'record.json'),JSON.stringify(record),{mode:0o600});
     const temp=log+'.'+randomUUID()+'.tmp';await fs.writeFile(temp,JSON.stringify(record),{flag:'wx',mode:0o600});await fs.rename(temp,log);
   };
-  const entry=await ctx.run(['ls-tree','-z','HEAD','--',literal]);
-  if(entry&&!entry.startsWith('100'))fail('UNSUPPORTED_FILE','最近提交对应路径是链接、目录或子模块，请使用专业工具还原');
-  if((await verify()).fingerprint!==state.fingerprint)fail('STALE_REVIEW','备份期间项目文件或规则发生变化，请刷新后重新确认');
+  if((await verify()).fingerprint!==state.fingerprint)fail('STALE_REVIEW','备份期间项目文件或规则发生变化，请刷新后重新确认；整批未还原');
   await write();
   try {
-    if(entry)await ctx.run(['restore','--source=HEAD','--staged','--worktree','--',literal]);
-    else {
-      if(item.status!=='??')await ctx.run(['rm','--cached','--force','--',literal]);
-      if(content!==undefined)await fs.unlink(path.join(ctx.root,item.path));
+    for(const item of prepared) {
+      if(item.entry)await ctx.run(['restore','--source=HEAD','--staged','--worktree','--',item.literal]);
+      else {
+        if(item.status!=='??')await ctx.run(['rm','--cached','--force','--',item.literal]);
+        if(item.workingFilePresent)await fs.unlink(path.join(ctx.root,item.path));
+      }
+      if(batch){record.completed.push(item.path);await write();}
     }
     record.state='restored';await write();
-  } catch(e) {record.state='needs-verification';await write();fail('REVERT_UNCONFIRMED','还原结果需要核对，请勿重复操作。备份：'+backup+'\n'+(e.stderr||e.message));}
-  return {path:item.path,backup,message:'已还原 '+item.path+' 到本机最近提交（HEAD），含该文件的暂存改动；未拉取或覆盖为线上版本。备份：'+backup};
+  } catch(e) {record.state='needs-verification';await write();fail('REVERT_UNCONFIRMED','还原已停止，结果需要核对，请勿重复操作。全部所选文件的备份：'+backup+'\n'+(e.stderr||e.message));}
+  return {...(batch?{paths:names}:{path:names[0]}),backup,message:'已还原 '+(batch?names.length+' 个所选文件':names[0])+' 到本机最近提交（HEAD），含所选文件的暂存改动；其他文件保持原样，未拉取线上版本。备份：'+backup};
 }
 module.exports={compare,revert,assertSettled,readReceipt,acknowledge};

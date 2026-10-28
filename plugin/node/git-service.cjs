@@ -96,9 +96,9 @@ async function gitRequest(directory,params={}) {
   }
   const previous=queues.get(root)||Promise.resolve();
   const job=previous.then(async()=>{
-    const ctx=await context(directory,['ssh-identity-set','file-revert','file-revert-acknowledge'].includes(action),action==='status'),run=ctx.run;
+    const ctx=await context(directory,['diagnosis-status','ssh-identity-set','file-revert','file-revert-acknowledge','beginner-acknowledge'].includes(action),action==='status'),run=ctx.run;
     let lock;
-    if(!['status','diff','history','issues-list'].includes(action)) {
+    if(!['diagnosis-status','status','diff','history','issues-list'].includes(action)) {
       lock=path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim());
       try {await fs.mkdir(lock);}
       catch(error) {if(error.code==='EEXIST')fail('OPERATION_LOCKED','另一项项目操作正在执行，或上次操作意外中断。请先重新检查；仍无法继续时，让负责人核对实际状态和 Git 元数据中的 jixin-write.lock，不要重复提交。');throw error;}
@@ -108,11 +108,18 @@ async function gitRequest(directory,params={}) {
     if(lock&&!['file-diff','file-revert-acknowledge'].includes(action))await require('./file-changes.cjs').assertSettled(ctx);
     if(action==='identity-fill') {await require('./git-identity.cjs').fillIdentity(ctx,ctx.env,params);return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:true,env:ctx.env});}
     if(action==='prepare') return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:params.confirmProjectSetup===true,env:ctx.env});
+    if(action==='diagnosis-status') {
+      let operationLocked=false;
+      try {await fs.lstat(path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim()));operationLocked=true;}catch(error){if(error.code!=='ENOENT')throw error;}
+      return {...state,operationLocked}; // No write ticket, SSH binding or operation journals.
+    }
     if(action==='status') {
       const token=randomUUID();tickets.set(token,{root,fingerprint:state.fingerprint,expires:Date.now()+10*60*1000});
       for(const [key,t] of tickets) if(t.expires<Date.now()) tickets.delete(key);
       const service=require('./beginner-git.cjs'),receipt=await service.readReceipt(ctx);
-      return {...state,token,sshIdentity:ctx.sshIdentity,fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
+      let operationLocked=false;
+      try {await fs.lstat(path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim()));operationLocked=true;}catch(error){if(error.code!=='ENOENT')throw error;}
+      return {...state,token,operationLocked,sshIdentity:ctx.sshIdentity,fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
     }
     if(action==='issues-list') return require('./github-issues.cjs').listIssues(ctx,params,ctx.env);
     if(action==='file-diff') return await require('./file-changes.cjs').compare(ctx,state,params);
@@ -132,7 +139,7 @@ async function gitRequest(directory,params={}) {
     if(action==='beginner-acknowledge') {
       const service=require('./beginner-git.cjs'),prior=await service.readReceipt(ctx);
       if(!prior || prior.id!==params.recordId) fail('STALE_REVIEW','需要重新检查上次操作记录。');
-      await service.acknowledge(ctx,prior);return {message:'已记录核对，不会重放原操作。'};
+      await service.acknowledge(ctx,prior,state);return {message:'已记录核对，不会重放原操作。'};
     }
     if(action.startsWith('beginner-')) return await require('./beginner-git.cjs').runBeginner(ctx,state,params,ctx.env);
     if(state.protectedBranches.includes(state.branch) && ['commit','push','pr'].includes(action)) fail('PROTECTED_BRANCH','当前为主分支 '+state.branch+'：禁止直接提交或推送。请新建工作分支，提交后通过 PR 合入。');

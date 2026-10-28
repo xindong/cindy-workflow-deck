@@ -14,7 +14,7 @@ for(let i=0;i<9;i++){await writeFile(join(temp,'rule'+i+'.md'),body);links+='[่ง
 const worker=spawn(process.execPath,[join(plugin,'node/worker-entry.cjs')],{stdio:['pipe','pipe','pipe']}),pending=new Map(),lineBytes=[],actions=[];let id=0,browser,fail=true;
 worker.stderr.resume();createInterface({input:worker.stdout}).on('line',line=>{lineBytes.push(Buffer.byteLength(line)+1);const r=JSON.parse(line);pending.get(r.id)?.(r);pending.delete(r.id);});
 const host={request:async options=>{const n=++id,answer=new Promise(yes=>pending.set(n,yes));worker.stdin.write(JSON.stringify({jsonrpc:'2.0',id:n,...options})+'\n');const r=await answer;return r.error?{ok:false,error:r.error}:{ok:true,result:r.result};}};
-const server=createServer(async(req,res)=>{try{const name=join(plugin,new URL(req.url,'http://local').pathname);res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css'})[extname(name)]||'application/octet-stream');res.end(await readFile(name));}catch{res.statusCode=404;res.end();}});
+const server=createServer(async(req,res)=>{try{const name=join(plugin,new URL(req.url,'http://local').pathname);res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css'})[extname(name)]||'application/octet-stream');res.end(await readFile(name));}catch{res.statusCode=404;res.end();}});
 await new Promise(yes=>server.listen(0,'127.0.0.1',yes));
 try{
  browser=await chromium.launch({headless:true});const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
