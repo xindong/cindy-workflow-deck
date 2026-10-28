@@ -12,7 +12,7 @@ globalThis.cindy={
  async pick(){return options.cancelPick?{ok:false,errorCode:'CANCELLED'}:{ok:true,path:options.pickPath||'/preview/selected-project'};},
  onHostMessage(cb){handler=cb;if(!settings.has('direct'))requestBinding();},
  async send(message){
-  if(message.type==='cindy-request'&&message.kind==='oneshot_text'){calls.inferences.push(message);if(options.inferenceLost)throw new Error('lost model reply');if(options.inferenceFailure)return {ok:false,errorCode:options.inferenceFailure};return {ok:true,text:'已知事实：当前项目存在未提交改动。可能原因与证据：需结合错误信息确认。建议处理步骤：先检查操作详情。如何验证：重新读取状态。还缺哪些信息：错误发生的具体步骤。',model:'fixture-model-not-real-inference'};}
+  if(message.type==='cindy-request'&&message.kind==='oneshot_text'){calls.inferences.push(message);if(options.inferenceLost)throw new Error('lost model reply');if(options.inferenceFailure)return {ok:false,errorCode:options.inferenceFailure};return {ok:true,text:'原因：可能是本地修改与团队更新冲突。\n下一步：先检查冲突文件。\n验证：重新检查项目状态。',model:'fixture-model-not-real-inference'};}
   if(message.type==='tool-result'){calls.results.push(message);cards.dataset.lastResult=message.callId;return{ok:true};}
   if(message.type!=='card-update')return{ok:true};calls.cards.push(message);
   let el=document.getElementById(message.callId);if(!el){el=document.createElement('section');el.id=message.callId;cards.append(el);}el.innerHTML=message.html;return{ok:true};
