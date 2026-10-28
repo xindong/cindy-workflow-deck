@@ -33,19 +33,27 @@ try {
  const rows=page.locator('#beginner-files .beginner-file:visible'),search=page.locator('#beginner-file-search'),type=page.locator('#beginner-file-type'),restore=page.locator('#beginner-restore-filtered');
  assert.equal(await rows.count(),450);assert.equal(await restore.isDisabled(),true);
  const directory=page.locator('#beginner-file-directory'),selectDirectory=page.locator('#beginner-select-directory');
+ const clear=page.getByRole('button',{name:'清除筛选条件',exact:true});
+ assert.equal(await restore.textContent(),'丢弃筛选文件的修改…');assert.equal(await clear.isDisabled(),true);
  assert.equal(await selectDirectory.isDisabled(),true);
- await directory.selectOption('notes/sub');await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),1);
- await directory.selectOption('notes');await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),149);assert.equal(await selectDirectory.isDisabled(),true);
+ await directory.selectOption('notes/sub');assert.equal(await rows.count(),1);assert.match(await page.locator('#beginner-selected').textContent(),/显示 1 个/);assert.equal(await page.locator('#beginner-files input:checked').count(),0);await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),1);
+ await directory.selectOption('notes');assert.equal(await rows.count(),149);await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),149);assert.equal(await selectDirectory.isDisabled(),true);
  assert.equal(await page.locator('[data-path="notes-other/asset-149.txt"] input').isChecked(),false);
- await directory.selectOption('art');await page.locator('#beginner-manual').check();await selectDirectory.click();
- assert.equal(await page.locator('#beginner-files input:checked').count(),449);assert.equal(await page.locator('#beginner-manual').isChecked(),false);
+ await directory.selectOption('art');assert.equal(await rows.count(),300);assert.equal(await page.locator('#beginner-files input:checked').count(),0);assert.equal(await directory.locator('option[value=notes]').count(),1);await page.locator('#beginner-manual').check();await selectDirectory.click();
+ assert.equal(await page.locator('#beginner-files input:checked').count(),300);assert.equal(await page.locator('#beginner-manual').isChecked(),false);
+ await page.locator('#beginner-refresh-changes').click();await ready(page);assert.equal(await directory.inputValue(),'art');assert.equal(await rows.count(),300);
+ await directory.selectOption('');assert.equal(await rows.count(),450);assert.equal(await page.locator('#beginner-files input:checked').count(),300);
  await page.locator('#beginner-none').click();await type.selectOption('.md');await directory.selectOption('art');await selectDirectory.click();
  assert.equal(await page.locator('#beginner-files input:checked').count(),150);
  await search.fill('art/asset-00');await page.locator('#beginner-none').click();await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),10);
- await search.fill('no-match');assert.equal(await directory.inputValue(),'');assert.equal(await selectDirectory.isDisabled(),true);assert.equal(await page.locator('#beginner-files-bottom').isDisabled(),true);
+ await search.fill('notes/');assert.equal(await directory.inputValue(),'art');assert.equal(await rows.count(),0);assert.equal(await restore.isDisabled(),true);
+ await page.locator('#beginner-refresh-changes').click();await ready(page);assert.equal(await directory.inputValue(),'art');assert.equal(await rows.count(),0);
+ await type.selectOption('.txt');assert.equal(await directory.inputValue(),'art');assert.equal(await rows.count(),0);assert.equal(await restore.isDisabled(),true);
+ await type.selectOption('.md');
+ await search.fill('no-match');assert.equal(await directory.inputValue(),'art');assert.equal(await selectDirectory.isDisabled(),true);assert.equal(await page.locator('#beginner-files-bottom').isDisabled(),true);
  await search.fill('');await type.selectOption('*');
  await writeFile(join(project,'root-file.txt'),'root fixture');await page.locator('#beginner-refresh-changes').click();await ready(page);
- await directory.selectOption('.');await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),1);
+ await directory.selectOption('.');assert.equal(await rows.count(),1);await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),1);
  assert.equal(await page.locator('[data-path="root-file.txt"] input').isChecked(),true);
  await rm(join(project,'root-file.txt'));await page.locator('#beginner-refresh-changes').click();await ready(page);
  assert.equal(await directory.inputValue(),'');assert.equal(await selectDirectory.isDisabled(),true);assert.equal(calls.filter(p=>['file-revert','beginner-submit'].includes(p.action)).length,0);
@@ -85,6 +93,19 @@ try {
   await page.setViewportSize({width,height:820});await page.emulateMedia({colorScheme:scheme});
   await page.addStyleTag({content:':root{--text-primary:'+(scheme==='dark'?'#ededed':'#262626')+';--text-secondary:'+(scheme==='dark'?'#a3a3a3':'#737373')+';--surface-elevated:'+(scheme==='dark'?'#242424':'#fff')+';--surface:'+(scheme==='dark'?'#191919':'#f7f7f5')+';--panel-bg:var(--surface);--border-default:'+(scheme==='dark'?'#454545':'#ddd')+';--surface-chip:'+(scheme==='dark'?'#383838':'#eee')+';color-scheme:'+scheme+'}'});
   await page.locator('#beginner-submit').click();await ready(page);
+  const beforeClearCalls=calls.length,beforeClearStatus=git(['status','--porcelain']);
+  await search.fill('asset-00');await type.selectOption('.md');await directory.selectOption('art');
+  assert.equal(await rows.count(),10);await page.locator('#beginner-all').click();
+  await clear.click();assert.equal(await search.inputValue(),'');assert.equal(await type.inputValue(),'*');assert.equal(await directory.inputValue(),'');
+  assert.equal(await rows.count(),450);assert.equal(await page.locator('#beginner-files input:checked').count(),10);
+  assert.equal(await clear.isDisabled(),true);assert.equal(await restore.isDisabled(),true);assert.equal(await page.locator('dialog[open]').count(),0);
+  assert.equal(calls.length,beforeClearCalls);assert.equal(git(['status','--porcelain']),beforeClearStatus);
+  await search.fill('no-match');assert.equal(await rows.count(),0);assert.equal(await clear.isEnabled(),true);await clear.click();assert.equal(await rows.count(),450);
+  await search.fill('ART/');await type.selectOption('.txt');
+  const filterCalls=calls.length;await directory.selectOption('art');assert.equal(await rows.count(),150);
+  await page.locator('#beginner-files').focus();await page.keyboard.press('Control+a');assert.equal(await page.locator('#beginner-files input:checked').count(),150);
+  await page.keyboard.press('Escape');assert.equal(await page.locator('#beginner-files input:checked').count(),0);assert.equal(calls.length,filterCalls);
+  await directory.selectOption('');
   const box=await page.locator('#beginner-files').boundingBox();assert.ok(box.height<=280&&box.height>=120);
   assert.ok(await page.locator('#beginner-files').evaluate(e=>e.scrollHeight>e.clientHeight));
   await page.locator('#beginner-files').evaluate(e=>e.scrollTop=0);
@@ -111,6 +132,7 @@ try {
   await page.locator('#beginner-file-search').scrollIntoViewIfNeeded();await page.screenshot({path:join(out,'文件滚动筛选-'+width+'-'+scheme+'.png')});
  }
  await search.fill('art/asset-00');assert.equal(await rows.count(),10);
+ await page.locator('#beginner-files').focus();await page.keyboard.press('Escape');assert.equal(await page.locator('#beginner-files input:checked').count(),0);
  await restore.click();await page.locator('dialog[open]').waitFor();const names=await rows.evaluateAll(items=>items.map(e=>e.dataset.path));
  assert.equal(await page.locator('dialog pre').textContent(),names.join('\n'));assert.equal(await page.locator('dialog').getByRole('button',{name:'确认还原这 10 个文件',exact:true}).isDisabled(),true);
  await page.locator('dialog').getByRole('button',{name:'取消',exact:true}).click();assert.equal(calls.filter(p=>p.action==='file-revert').length,0);assert.equal(await readFile(join(project,names[0]),'utf8'),'fixture 0');
@@ -122,5 +144,5 @@ try {
  await writeFile(join(project,'.git/jixin-file-revert.json'),JSON.stringify({...receipt,state:'needs-verification'}));await search.fill('art/asset-01');await page.locator('#beginner-refresh-changes').click();await ready(page);assert.equal(await restore.isDisabled(),true);
  await page.locator('#beginner-update').click();assert.equal(await page.locator('#beginner-file-filters').isVisible(),false);
  await page.evaluate(()=>document.dispatchEvent(new Event('configuration-invalidated')));await page.evaluate(()=>document.dispatchEvent(new Event('configuration-ready')));await page.locator('#beginner-view:not(:disabled)').waitFor();await page.locator('#beginner-view').click();await ready(page);assert.equal(await search.inputValue(),'');assert.equal(await type.inputValue(),'*');assert.equal(await directory.inputValue(),'');assert.equal(await selectDirectory.isDisabled(),true);
- assert.deepEqual(errors,[]);console.log('PASS: real panel + Git worker, 450 files, folder selection with descendants/prefix isolation/root files/combined filters/additive selection/zero writes, fixed-height scrolling, 320 dark / 860 light, name/folder/type filters, hidden selection cleared, visible select-all, refresh retention, invalidation reset, precise confirm/cancel, rules checkbox, 10 real backed-up restores only, >200/pending disabled. Simulated Host boundary; not installed Cindy.');
+ assert.deepEqual(errors,[]);console.log('PASS: real panel + Git worker, 450 files, automatic directory filtering with descendants/prefix isolation/root files/combined filters/refresh retention/zero writes, fixed-height scrolling, 320 dark / 860 light, name/folder/type filters, hidden selection cleared, visible select-all, refresh retention, invalidation reset, precise confirm/cancel, rules checkbox, 10 real backed-up restores only, >200/pending disabled. Simulated Host boundary; not installed Cindy.');
 } finally {await browser?.close();worker.kill();await new Promise(yes=>server.close(yes));await rm(temp,{recursive:true,force:true});}
