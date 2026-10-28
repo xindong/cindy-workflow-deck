@@ -15,11 +15,13 @@ git(['init','-q','-b','main']);git(['config','user.name','Progress Fixture']);gi
 await writeFile(join(project,'AGENTS.md'),'Preserve project checks.');git(['add','.']);git(['commit','-qm','initial']);
 execFileSync('git',['init','-q','--bare',remote]);git(['remote','add','origin',remote]);git(['push','-qu','origin','main']);
 const slow=join(project,'.git/slow-upload-pack');await writeFile(slow,'#!/bin/sh\nsleep 3\nexec git-upload-pack "$@"\n');await chmod(slow,0o755);git(['config','remote.origin.uploadpack',slow]);
+git(['config','url.'+remote+'.insteadOf','https://github.com/fixture/project.git']);git(['remote','set-url','origin','https://github.com/fixture/project.git']);
+const bin=join(project,'.git/bin');await mkdir(bin);const gh=join(bin,'gh');await writeFile(gh,'#!'+process.execPath+'\nconsole.log("https://example.test/pull/1");\n');await chmod(gh,0o755);
 const out=process.env.JIXIN_PROGRESS_EVIDENCE||join(root,'artifacts/update-progress');await mkdir(out,{recursive:true});
 let app,browser,worker,server,id=0,queryFailure=false;const pending=new Map(),calls=[],errors=[];
 try {
  // Real standalone IPC must allow progress queries while a write is in flight.
- const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
+ const env={...process.env,PATH:bin+':'+process.env.PATH};delete env.ELECTRON_RUN_AS_NODE;
  app=await _electron.launch({executablePath:createRequire(import.meta.url)('electron'),args:[join(root,'desktop/main.cjs'),'--jixin-user-data',join(temp,'data')],cwd:root,env});
  const native=await app.firstWindow();native.on('pageerror',e=>errors.push(e.message));
  await native.locator('#quick-project:not(:disabled)').waitFor();
@@ -29,6 +31,7 @@ try {
  await native.locator('#update-progress-title').filter({hasText:'正在获取'}).waitFor();
  assert.ok(await native.locator('#update-progress-title').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=18));
  assert.equal(await native.locator('#update-progress-target').textContent(),project);
+ await native.locator('#update-progress details > summary').click();
  await native.locator('#update-progress-log [aria-current=step]').filter({hasText:'获取团队版本'}).waitFor();
  assert.equal(await native.locator('#update-progress-bar').getAttribute('value'),null);
  assert.equal(await native.locator('#beginner-confirm').isDisabled(),true);
@@ -38,6 +41,15 @@ try {
  await native.locator('#update-recovery-retry:not(:disabled)').waitFor();await native.locator('#update-recovery-check').click();await native.locator('#update-recovery-retry:not(:disabled)').waitFor();
  git(['config','remote.origin.uploadpack',slow]);await native.locator('#update-recovery-retry').click();await native.locator('#beginner-confirm:not(:disabled)').waitFor();await native.locator('#beginner-confirm').click();
  await native.locator('#update-progress[data-state=done]').waitFor();assert.equal(await native.locator('#update-recovery').isVisible(),false);
+ // Slow a genuine push, so progress must be observed through standalone IPC.
+ await writeFile(join(project,'.git/hooks/pre-push'),'#!/bin/sh\nsleep 4\n');await chmod(join(project,'.git/hooks/pre-push'),0o755);
+ await writeFile(join(project,'hero.txt'),'art update');
+ await native.locator('#beginner-submit').click();await native.locator('#beginner-files input').check();await native.locator('#beginner-summary').fill('调整角色');await native.locator('#beginner-manual').check();await native.locator('#beginner-confirm').click();
+ await native.locator('#submit-progress-title').filter({hasText:'正在上传'}).waitFor();assert.equal(await native.locator('#submit-progress-bar').getAttribute('value'),null);
+ assert.equal(await native.locator('#submit-progress details').getAttribute('open'),null);assert.equal(await native.locator('#beginner-confirm').isDisabled(),true);
+ await native.screenshot({path:join(out,'独立桌面-上传进行中.png'),fullPage:true});
+ await native.locator('#submit-progress[data-state=done]').waitFor();assert.match(await native.locator('#submit-progress-title').textContent(),/等待团队审核/);
+ assert.equal(await native.locator('#submit-progress-bar').getAttribute('value'),'1');assert.equal(git(['status','--porcelain']),'');
  await app.close();app=null;
  // Official plugin worker protocol with the real compact panel and live journal.
  worker=spawn(process.execPath,[join(plugin,'node/inspect-project.cjs')],{stdio:['pipe','pipe','pipe']});worker.stderr.resume();
@@ -53,6 +65,8 @@ try {
  await page.evaluate(async()=>{const {mountGit}=await import('/git-ui.js');mountGit({transport:{call:window.gitTransport},context:()=>({projectId:'fixture',revision:1,ready:true}),notice:()=>{}});});
  await page.locator('#beginner-update:not(:disabled)').waitFor();await page.locator('#beginner-update').click();await page.locator('#beginner-confirm').click();
  await page.locator('#update-progress-title').filter({hasText:'正在获取'}).waitFor();
+ assert.equal(await page.locator('#update-progress details').getAttribute('open'),null);
+ await page.locator('#update-progress details > summary').click();
  await page.locator('#update-progress-log [data-state=running]').filter({hasText:'进行中'}).waitFor();
  for(const width of [320,860]) {
   await page.setViewportSize({width,height:720});await page.emulateMedia({colorScheme:width===320?'dark':'light'});

@@ -257,3 +257,14 @@ test('recovery acknowledgement refuses unfinished Git operations and preserves t
  assert.equal(f.git(['status','--porcelain']),before);assert.equal(f.git(['rev-parse','HEAD']),head);
  await assert.rejects(f.act('beginner-update'),{code:'SSH_IDENTITY_INVALID'});
 });
+test('upload journal remains observable during a genuine slow push without exposing private receipt fields',async t=>{
+ const f=await fixture(t);await writeFile(join(f.root,'hero.txt'),'art');
+ await writeFile(join(f.root,'.git/hooks/pre-push'),'#!/bin/sh\nsleep 2\n');await chmod(join(f.root,'.git/hooks/pre-push'),0o755);
+ const operationId=randomUUID(),token=(await f.status()).token;let settled=false;
+ const upload=gitRequest(f.root,{action:'beginner-submit',operationId,token,rulesConfirmed:true,paths:['hero.txt'],summary:'update art'}).finally(()=>{settled=true;});
+ let record;
+ for(let i=0;i<100&&!settled;i++) {record=await gitRequest(f.root,{action:'operation-progress',operationId});if(record?.step==='push')break;await new Promise(r=>setTimeout(r,40));}
+ assert.equal(record?.step,'push');assert.equal(settled,false);assert.deepEqual(record.completed,['branch','stage','commit']);
+ assert.deepEqual(Object.keys(record).sort(),['completed','id','state','step']);assert.equal(await gitRequest(f.root,{action:'operation-progress',operationId:randomUUID()}),null);
+ const result=await upload;assert.equal(result.state,'awaiting-review');assert.equal((await gitRequest(f.root,{action:'operation-progress',operationId})).state,result.state);
+});

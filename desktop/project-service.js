@@ -19,6 +19,8 @@ export function createProjectService({ file, pickDirectory, pickFile }) {
   const diagnosis=createDiagnosisService({store:{read:async()=>({projectConfiguration:await read()})},git:gitRequest});
   return async function request(method, params = {}) {
     switch (method) {
+      case 'conflict-start': case 'conflict-read':
+        throw Object.assign(new Error('独立应用尚未接入 AI 修复。请在 Cindy 插件中使用，或请负责人处理后点击检查。'),{code:'AI_UNAVAILABLE'});
       case 'diagnosis-prepare': case 'diagnosis-read': case 'diagnosis-run': return diagnosis(method,params);
       case 'config-read': return read();
       case 'config-save': return serial(async () => {

@@ -71,7 +71,7 @@ export function mountGit({transport,context,notice,onConflict,english=false}) {
   tab(!!context().projectId);
   document.getElementById('configuration-form').addEventListener('input',()=>{state=undefined;buttons();});
   diagnosis=mountDiagnosis({transport,context,isBusy:()=>busy,english});
-  beginner=mountBeginner({state:()=>state,ready,isBusy:()=>busy,call,refresh,perform:run,reviewedCall,canRefresh:()=>context().ready,english});
+  beginner=mountBeginner({state:()=>state,ready,isBusy:()=>busy,call,refresh,perform:run,reviewedCall,canRefresh:()=>context().ready,repair:{available:!transport.standalone,call:(method,params)=>transport.call(method,{...context(),...params})},english});
   document.addEventListener('configuration-invalidated',()=>{state=undefined;$('git-confirm').checked=false;beginner?.invalidate();buttons();});
   document.addEventListener('configuration-ready',()=>{buttons();if(context().ready){if(busy)pendingRefresh=true;else void run(refresh);}});
   addEventListener('focus',buttons);buttons();if(context().ready)void run(refresh);
