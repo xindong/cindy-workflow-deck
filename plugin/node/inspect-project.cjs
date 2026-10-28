@@ -108,8 +108,13 @@ async function inspectProject(dir, home = os.homedir(), project) {
       workflowRoot = await fs.realpath(normalized.workflowDirectory);
       if (!(await fs.stat(workflowRoot)).isDirectory()) throw new Error('WORKFLOW_NOT_DIRECTORY');
     }
-    if (normalized.discovery === 'auto') return { ...await discover(workflowRoot), workflowDirectory: workflowRoot };
-    const workflows = {};
+    const ueUpdate = await probe(workflowRoot, 'UPDATE_UE5.md');
+    if (normalized.discovery === 'auto') {
+      const result = await discover(workflowRoot);
+      result.workflows['ue-update'] = ueUpdate;
+      return { ...result, workflowDirectory: workflowRoot };
+    }
+    const workflows = {'ue-update': ueUpdate};
     for (const [id, item] of Object.entries(normalized.workflows)) {
       if (!item.path) { workflows[id] = { ok: false, reason: 'not_configured' }; continue; }
       if (process.platform !== 'win32' && /^[A-Za-z]:[\\/]/.test(item.path)) { workflows[id] = { ok: false, reason: 'platform_mismatch' }; continue; }

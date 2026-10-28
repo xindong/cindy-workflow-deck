@@ -43,3 +43,8 @@
 #diagnosis-panel pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:50dvh; overflow:auto; font-size:12px; line-height:1.7; }
 #diagnosis-panel textarea { width:100%; box-sizing:border-box; }
 #diagnosis-panel .row { flex-wrap:wrap; }
+
+/* Six advanced actions and common controls wrap within narrow panels. */
+@media(max-width:400px) {
+ #compact-footer .dock:has(#toolbar:not([hidden])) { flex-wrap:wrap; justify-content:center; border-radius:18px; max-width:100%; }
+}

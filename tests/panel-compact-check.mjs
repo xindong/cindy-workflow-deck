@@ -37,7 +37,7 @@ try {
    await page.screenshot({path:'artifacts/compact-dock-'+lang+'-'+width+'-'+theme+'.png',fullPage:true});
   }
   await page.locator('#beginner-submit').click();await page.locator('#beginner-all').click();await page.locator('#beginner-none').click();assert.equal(await page.locator('#beginner-files input:checked').count(),0);await page.locator('#beginner-cancel').click();
-  await page.locator('#advanced-mode').click();assert.equal(await page.locator('#toolbar .tool').count(),5);
+  await page.locator('#advanced-mode').click();assert.equal(await page.locator('#toolbar .tool').count(),6);
   assert.equal(await page.locator('#toolbar').isVisible(),true);assert.equal(await page.locator('.beginner-actions').isVisible(),false);
   const advancedDock=await page.locator('#compact-footer .dock').boundingBox();assert.ok(advancedDock.y>720);
   await page.locator('#basic-mode').hover();await page.locator('#compact-tooltip:not([hidden])').waitFor();
@@ -49,5 +49,5 @@ try {
   assert.match(await page.locator('#compact-tooltip').textContent(),lang==='en'?/Choose files/:/文件选择/);
   assert.deepEqual(errors,[]);await page.close();
  }
- console.log('Passed: single bottom-centred capsule geometry, compact icon sizes, 120/320/860 light/dark, Chinese/English hover/focus/Escape, no hover writes/tasks, bulk selection and five advanced icons.');
+ console.log('Passed: single bottom-centred capsule geometry, compact icon sizes, 120/320/860 light/dark, Chinese/English hover/focus/Escape, no hover writes/tasks, bulk selection and six advanced icons.');
 }finally{await browser?.close();server.kill();}

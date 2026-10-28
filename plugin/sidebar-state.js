@@ -74,7 +74,7 @@ export function createSidebar({ inspect, agent, store, now = () => Date.now(), c
       await checkBinding(binding);
       if (active === source && bindings.get(source) === binding && binding.problem === 'unsupported') return { state: 'rejected', code: 'UNSUPPORTED_HOST' };
       // Recheck after I/O: switching chat during a check must never launch into the old one.
-      if (active !== source || bindings.get(source) !== binding || !view().workflows[workflowId].enabled) return { state: 'rejected', code: 'FLOW_UNAVAILABLE' };
+      if (active !== source || bindings.get(source) !== binding || !view().workflows[workflowId]?.enabled) return { state: 'rejected', code: 'FLOW_UNAVAILABLE' };
       const text = buildPrompt(workflowId, goal, binding.workflows[workflowId].source || '');
       while (Object.keys(launches).length >= 80) {
         const old = Object.keys(launches).find(id => launches[id].state !== 'uncertain');

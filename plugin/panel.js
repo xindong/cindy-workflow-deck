@@ -1,4 +1,4 @@
-import { CHANNEL, WORKFLOWS } from './workflows.js';
+import { CHANNEL, ADVANCED_ACTIONS as WORKFLOWS } from './workflows.js';
 const $ = id => document.getElementById(id);
 const upgrade = locale => locale === 'zh-CN' ? '当前 Cindy 缺少所需插件接口，请升级 Cindy 后再试。' : 'A required plugin interface is unavailable. Upgrade Cindy and try again.';
 const usage = {
@@ -52,7 +52,7 @@ function renderLogs(){
   if(atBottom)list.scrollTop=list.scrollHeight;
 }
 const t=()=>strings[locale]; const requests=new Map(); const channel=new BroadcastChannel(CHANNEL);
-const icons={experiment:['M9 3h6M10 3v6l-6 10a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2L14 9V3','M8 15h8'],feature:['M12 4v16M4 12h16'],tooling:['M14 6a5 5 0 0 0-6 6L3 17a3 3 0 0 0 4 4l5-5a5 5 0 0 0 6-6l-3 3-4-4 3-3Z'],pr:['M6 6v12M18 18v-7a5 5 0 0 0-5-5h-1M15 3l-3 3 3 3','M4 4h4v4H4zM4 16h4v4H4zM16 16h4v4h-4z'],merge:['M6 6v12M18 6v3a4 4 0 0 1-4 4h-4M13 10l-3 3 3 3','M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4z']};
+const icons={'ue-update':['M12 3v12M7 10l5 5 5-5','M4 16v5h16v-5','M18 3h3v5'],experiment:['M9 3h6M10 3v6l-6 10a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2L14 9V3','M8 15h8'],feature:['M12 4v16M4 12h16'],tooling:['M14 6a5 5 0 0 0-6 6L3 17a3 3 0 0 0 4 4l5-5a5 5 0 0 0 6-6l-3 3-4-4 3-3Z'],pr:['M6 6v12M18 18v-7a5 5 0 0 0-5-5h-1M15 3l-3 3 3 3','M4 4h4v4H4zM4 16h4v4H4zM16 16h4v4h-4z'],merge:['M6 6v12M18 6v3a4 4 0 0 1-4 4h-4M13 10l-3 3 3 3','M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4z']};
 function feedback(text){$('feedback').textContent=text;$('feedback').hidden=!text;}
 function request(type,args={}) {
   const reqId=crypto.randomUUID();const message={from:'panel',type,reqId,...args};
@@ -74,13 +74,13 @@ channel.onmessage=({data})=>{
 };
 async function wake(){const response=await fetch('/wake');if(!response.ok)throw new Error('WAKE_FAILED');}
 async function readLocale(){try{const r=await fetch('/app-context');const data=await r.json();locale=data.context?.locale==='zh-CN'?'zh-CN':'en';}catch{locale='en';}document.documentElement.lang=locale;}
-function disabledReason(flow){const item=state.workflows?.[flow.id];return (item?.reason === 'unsupported' || state.state === 'unsupported') ? upgrade(locale) : t().reasons[item?.reason || state.state] || t().reasons.check_failed;}
+function disabledReason(flow){if(flow.id==='ue-update' && ['missing','empty','symlink','not_file','unreadable','check_failed'].includes(state.workflows?.[flow.id]?.reason || 'missing') && state.state==='ready')return locale==='zh-CN'?'流程文件位置根目录未找到可读取的非空 UPDATE_UE5.md。请放入文件后重新检查。':'A readable, nonempty UPDATE_UE5.md is required at the workflow directory root. Add it and recheck.';const item=state.workflows?.[flow.id];return (item?.reason === 'unsupported' || state.state === 'unsupported') ? upgrade(locale) : t().reasons[item?.reason || state.state] || t().reasons.check_failed;}
 function hideTip(){$('tooltip').hidden=true;tipFlow='';}
 function showTip(flow,button){
   tipFlow=flow.id;const item=state.workflows?.[flow.id];
   $('tip-title').textContent=locale==='zh-CN'?flow.label:flow.en;
   const compact=innerWidth<=180,copy=compactCopy[locale];
-  $('tip-action').textContent=compact?copy.actions[flow.id]:t().action+t().actions[flow.id]+' '+t().independent;
+  $('tip-action').textContent=flow.id==='ue-update'?(locale==='zh-CN'?'新建任务，先检查磁盘空间、预计耗时并提示；在任务中确认后才更新引擎。':'New task: check disk space and estimated duration, then ask for confirmation before updating.'):compact?copy.actions[flow.id]:t().action+t().actions[flow.id]+' '+t().independent;
   $('tip-source').textContent=compact?flow.source:item?.source || flow.source;
   const none=state.state==='ready'&&!Object.values(state.workflows||{}).some(item=>item.enabled);
   const reason=compact&&copy[item?.reason || state.state] || disabledReason(flow);
@@ -113,7 +113,7 @@ function render(){
   for(const button of $('toolbar').querySelectorAll('button')){const flow=WORKFLOWS.find(flow=>flow.id===button.dataset.workflow);button.setAttribute('aria-label',locale==='zh-CN'?flow.label:flow.en);button.setAttribute('aria-disabled',String(pending||!state.workflows?.[flow.id]?.enabled));}
   const basename=(state.directory||'').replace(/[\\/]+$/,'').split(/[\\/]/).pop();
   $('project-name').textContent=basename||t().unbound;$('workflow-directory').textContent=state.directory||t().unbound;
-  $('summary').textContent=pending?t().preparing:state.state==='unbound'?t().bind:state.state==='checking'?t().checking:state.state==='readonly'?t().readonly:state.state==='check_failed'?t().failed:state.busy?t().busy:Date.now()<state.nextLaunchAt?t().cooldown:!available?t().none:available<5?t().partial+' '+available+'/5':t().ready;
+  $('summary').textContent=pending?t().preparing:state.state==='unbound'?t().bind:state.state==='checking'?t().checking:state.state==='readonly'?t().readonly:state.state==='check_failed'?t().failed:state.busy?t().busy:Date.now()<state.nextLaunchAt?t().cooldown:!available?t().none:available<WORKFLOWS.length?t().partial+' '+available+'/'+WORKFLOWS.length:t().ready;
   $('refresh').setAttribute('aria-label',t().refresh);$('details-toggle').setAttribute('aria-label',t().details);
   if(state.state==='check_failed'&&state.checkError)$('summary').textContent+=' · '+state.checkError;
   if(state.mode==='project' && state.busy)$('summary').textContent=state.verificationNeeded?(locale==='zh-CN'?'结果待核实：请先检查任务列表，再手动解除阻塞。':'Unverified result. Check the task list before unlocking.'):(locale==='zh-CN'?'工作流任务运行中，完成后自动恢复按钮。':'Workflow running. Buttons return when it finishes.');
