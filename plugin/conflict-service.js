@@ -3,7 +3,7 @@ import {configurationState} from './core/project-config.mjs';
 export function createConflictService({store,agent,git}) {
   let queue=Promise.resolve();
   const fail=(code,message)=>{throw Object.assign(new Error(message),{code});};
-  async function handle(method,params) {
+  async function handle(method,params,source) {
     const current=configurationState(await store.read());
     const project=current.configuration.projects.find(p=>p.id===current.configuration.activeProjectId&&p.id===params.projectId);
     if(current.revision!==params.revision)fail('CONFIG_CONFLICT','项目已切换，请重新检查。');
@@ -45,11 +45,11 @@ export function createConflictService({store,agent,git}) {
     const beforeDispatch=configurationState(await store.read());
     if(beforeDispatch.revision!==current.revision){record={...record,state:'rejected',code:'CONFIG_CONFLICT'};await save(record);return record;}
     let reply;
-    try {reply=await agent.errand({task,title:'协助处理更新冲突',workingDir:project.directory,sessionKey:'conflict-'+params.operationId});}
+    try {reply=await agent.errand({task,title:'协助处理更新冲突',workingDir:project.directory,sessionKey:'conflict-'+params.operationId,...(source.callId?{callId:source.callId}:{})});}
     catch {return record;}
     if(reply?.ok===true&&reply.jobId)record={...record,state:'running',jobId:reply.jobId,...(reply.sessionId?{sessionId:reply.sessionId}:{})};
     else if(reply?.ok===false)record={...record,state:'rejected',code:reply.errorCode||'HOST_REJECTED'};
     await save(record);return record;
   }
-  return (method,params={})=>{const work=queue.then(()=>handle(method,params));queue=work.catch(()=>{});return work;};
+  return (method,params={},source={})=>{const work=queue.then(()=>handle(method,params,source));queue=work.catch(()=>{});return work;};
 }

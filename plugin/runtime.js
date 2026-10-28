@@ -47,7 +47,7 @@ async function refreshSidebar() {
   return activeSidebar() === projectSidebar ? projectSidebar.view() : sidebar.refresh();
 }
 const executionLog = createExecutionLog({ store, changed: result => channel.postMessage({ from: 'main', type: 'execution-log', result }) });
-const diagnosis=createDiagnosisService({store,git:(dir,params)=>gitWithHost(cindy.node,dir,params),askText:prompt=>cindy.send({type:'cindy-request',kind:'oneshot_text',prompt,maxTokens:2500})});
+const diagnosis=createDiagnosisService({store,git:(dir,params)=>gitWithHost(cindy.node,dir,params),askText:prompt=>cindy.send({type:'cindy-request',kind:'oneshot_text',prompt,maxTokens:450})});
 const conflict=createConflictService({store,agent:cindy.agent,git:(dir,params)=>gitWithHost(cindy.node,dir,params)});
 const configure = createConfigurationController({ store, diagnosis, conflict,
   openPreview: url => cindy.preview({url}),
@@ -107,6 +107,26 @@ channel.onmessage = ({ data }) => {
   void promise.then(reply => channel.postMessage(reply));
 };
 export function handleHostMessage(message) {
+  if(message.type==='tool-call'&&['assist_update_conflict','diagnose_issue'].includes(message.tool)) {
+    void (async()=>{
+      try {
+        const config=configurationState(await store.read());
+        const params={projectId:config.configuration.activeProjectId,revision:config.revision};
+        const args=message.args||{};let result;
+        if(message.tool==='assist_update_conflict') {
+          result=await conflict(args.action==='check'?'conflict-read':'conflict-start',{...params,operationId:args.requestId,strategy:'ask',instructions:args.instructions||''},{callId:message.callId});
+        } else {
+          const prepared=await diagnosis('diagnosis-prepare',{...params,problem:args.problem,failure:args.recentError||'',english:await englishLocale()});
+          const record=await diagnosis('diagnosis-run',{...params,token:prepared.token,operationId:args.requestId});
+          result={state:record.state,text:record.text,model:record.model,message:record.message};
+        }
+        await cindy.send({type:'tool-result',callId:message.callId,ok:true,result});
+      } catch(error) {
+        await cindy.send({type:'tool-result',callId:message.callId,ok:false,errorCode:error.code||'AI_UNAVAILABLE',message:error.message});
+      }
+    })();return;
+  }
+
   if (message.type === 'event') void executionLog.event(message).catch(error => {
     if (error.code !== 'UNOWNED_SESSION') channel.postMessage({ from: 'main', type: 'log-error' });
   });
