@@ -7,13 +7,13 @@ function fixture() {
   const calls=[], options={status:'running'};
   const store={read:async()=>structuredClone(data),update:async fn=>{if(options.failWrite)throw new Error('disk');data={...data,...fn(data)};}};
   const agent={errand:async args=>{calls.push(args);if(options.lose)throw new Error('lost');return options.reply||{ok:true,jobId:'job-'+calls.length};},queryErrand:async args=>options.query||{ok:true,jobId:args.jobId,status:options.status,sessionId:'task-'+args.jobId}};
-  const inspect=async()=>{if(options.inspect)await options.inspect();return{workflows:workflows()};};
+  const inspect=async()=>{if(options.inspect)await options.inspect();return{workflows:{...workflows(),...(options.ue?{'ue-update':options.ue}:{})}};};
   const sidebar=createProjectSidebar({store,agent,inspect,now:()=>time});
   return {sidebar,store,calls,options,agent,tick:()=>{time+=11000;},get data(){return data;},set data(value){data=value;}};
 }
 test('saved root enables five workflows without any chat or launch, and survives restart',async()=>{
   const f=fixture();assert.equal((await f.sidebar.refresh()).state,'ready');assert.equal(f.sidebar.view().directory,'/project');
-  assert.ok(Object.values(f.sidebar.view().workflows).every(w=>w.enabled));assert.equal(f.calls.length,0);
+  assert.ok(Object.entries(f.sidebar.view().workflows).filter(([id])=>id!=='ue-update').every(([,w])=>w.enabled));assert.equal(f.calls.length,0);
   const fresh=createProjectSidebar({store:f.store,agent:f.agent,inspect:async()=>({workflows:workflows()})});
   assert.equal((await fresh.refresh()).state,'ready');assert.equal(f.calls.length,0);
 });
@@ -66,4 +66,21 @@ test('thrown job queries persist verification and explicit acknowledgement permi
  await f.sidebar.acknowledge();assert.equal(f.sidebar.view().busy,false);assert.equal(f.sidebar.view().verificationNeeded,false);
  await f.sidebar.launch('project-request-00001','feature','p');assert.equal(f.calls.length,1);
  f.tick();await f.sidebar.launch('project-request-00002','feature','p');assert.equal(f.calls.length,2);
+});
+
+test('UE update is optional, checks file again on launch, and uses durable real dispatch',async()=>{
+ const f=fixture();await f.sidebar.refresh();
+ assert.equal(f.sidebar.view().workflows['ue-update'].enabled,false);
+ assert.equal((await f.sidebar.launch('ue-update-request-0001','ue-update','p')).code,'FLOW_UNAVAILABLE');
+ assert.equal(f.calls.length,0);
+ f.options.ue={ok:true,source:'/flows/UPDATE_UE5.md'};await f.sidebar.refresh();
+ assert.equal(f.sidebar.view().workflows['ue-update'].enabled,true);
+ f.options.ue={ok:false,reason:'missing'};
+ assert.equal((await f.sidebar.launch('ue-update-request-0002','ue-update','p')).code,'FLOW_UNAVAILABLE');
+ f.options.ue={ok:true,source:'/flows/UPDATE_UE5.md'};
+ const reply=await f.sidebar.launch('ue-update-request-0003','ue-update','p','直接更新');assert.equal(reply.state,'accepted');
+ await f.sidebar.launch('ue-update-request-0003','ue-update','p');assert.equal(f.calls.length,1);
+ const call=f.calls[0];assert.equal(call.workingDir,'/project');assert.equal(call.title,'更新 UE 引擎');
+ assert.ok(call.task.includes('/flows/UPDATE_UE5.md'));
+ for(const part of ['仅授权先做更新前检查','空间需求待确认','相同磁盘合并计算','暂无法可靠估计','请求明确确认','禁止 fetch/pull'])assert.ok(call.task.includes(part),part);
 });

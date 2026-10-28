@@ -14,7 +14,7 @@ const paths = {
 const descriptions = {
   "beginner-diagnose": ["描述问题或带入最近错误，预览后交给 AI 分析；不会执行修复。", "Describe an issue or include the recent error; review before AI analysis. No repairs are executed."],
   "basic-mode": ["日常 Git 操作：更新项目、查看改动、提交修改。", "Daily Git: update, view changes and submit work."],
-  "advanced-mode": ["切换到原来的五个工作流图标及执行记录。", "Open the five workflow icons and execution log."],
+  "advanced-mode": ["切换到工作流、UE 引擎更新及执行记录。", "Open workflows, UE engine update and execution log."],
   "git-tab": ["返回日常操作图标栏。", "Return to daily actions."],
   "config-tab": ["选择或切换已有项目，只需设置项目根目录。", "Choose or switch an existing project root."],
   "beginner-update": ["获取团队最新内容；有未提交修改时会暂停，点击后还需确认。", "Get team updates. Stops for unsubmitted work; confirmation required."],

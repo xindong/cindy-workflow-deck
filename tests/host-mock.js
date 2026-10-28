@@ -23,7 +23,7 @@ globalThis.cindy={
   if(req.method==='project/git' && req.params.action==='issues-list') return {ok:true,result:{repository:'team/art',login:'artist',issues:[{number:12,title:'调整角色颜色',url:'https://github.com/team/art/issues/12',repository:'team/art'}]}};
   if(req.method==='project/git' && req.params.action==='beginner-submit') {options.beginnerReceipt={id:req.params.operationId,issue:req.params.issue,state:'awaiting-review',message:'修改已提交，等待团队审核。',completed:['branch','stage','commit','push','review']};return {ok:true,result:options.beginnerReceipt};}
   if(req.method==='project/git') return {ok:true,result:{root:req.params.dir,branch:'main',head:'fixture',changes:options.beginnerReceipt?[]:[{status:'??',path:'角色.png'}],fingerprint:options.beginnerReceipt?'after':'before',beginnerReceipt:options.beginnerReceipt||null,branches:['main'],protectedBranches:['main','master'],sources:[{path:'AGENTS.md',content:'Main requires PR.'}],incomplete:false,hooksPath:'.git/hooks',hooks:[],hooksReady:true,requirements:{},token:'mock-review-token'}};
-  const defaults={experiment:'_S/experiment.md',feature:'_S/feature.md',tooling:'_S/tooling.md',pr:'.agents/skills/xd-pr-review/SKILL.md',merge:'_E/merge.md'};
+  const defaults={experiment:'_S/experiment.md',feature:'_S/feature.md',tooling:'_S/tooling.md',pr:'.agents/skills/xd-pr-review/SKILL.md',merge:'_E/merge.md',...(options.ueFile?{'ue-update':'UPDATE_UE5.md'}:{})};
   return{ok:true,result:{checkedAt:new Date().toISOString(),workflows:Object.fromEntries(Object.keys(defaults).map(id=>{
    const configured=req.params?.project?.workflows?.[id];
    const file=configured?configured.path:defaults[id];
