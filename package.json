@@ -1,6 +1,6 @@
 {
   "name": "jixin-make-a-wish",
-  "version": "0.2.18",
+  "version": "0.2.19",
   "private": true,
   "type": "module",
   "description": "极心许愿：独立桌面与 Cindy 插件共用的项目配置、Git 与工作流工具。",

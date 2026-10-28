@@ -46,7 +46,11 @@ try {
  await page.locator('#beginner-none').click();await type.selectOption('.md');await directory.selectOption('art');await selectDirectory.click();
  assert.equal(await page.locator('#beginner-files input:checked').count(),150);
  await search.fill('art/asset-00');await page.locator('#beginner-none').click();await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),10);
- await search.fill('no-match');assert.equal(await directory.inputValue(),'');assert.equal(await selectDirectory.isDisabled(),true);assert.equal(await page.locator('#beginner-files-bottom').isDisabled(),true);
+ await search.fill('notes/');assert.equal(await directory.inputValue(),'art');assert.equal(await rows.count(),0);assert.equal(await restore.isDisabled(),true);
+ await page.locator('#beginner-refresh-changes').click();await ready(page);assert.equal(await directory.inputValue(),'art');assert.equal(await rows.count(),0);
+ await type.selectOption('.txt');assert.equal(await directory.inputValue(),'art');assert.equal(await rows.count(),0);assert.equal(await restore.isDisabled(),true);
+ await type.selectOption('.md');
+ await search.fill('no-match');assert.equal(await directory.inputValue(),'art');assert.equal(await selectDirectory.isDisabled(),true);assert.equal(await page.locator('#beginner-files-bottom').isDisabled(),true);
  await search.fill('');await type.selectOption('*');
  await writeFile(join(project,'root-file.txt'),'root fixture');await page.locator('#beginner-refresh-changes').click();await ready(page);
  await directory.selectOption('.');assert.equal(await rows.count(),1);await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),1);

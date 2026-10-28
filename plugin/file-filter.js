@@ -28,6 +28,9 @@ export function createFileFilter({state,onChange,onRestore,english=false}) {
    if(!parts.length)counts.set('.',(counts.get('.')||0)+1);
    for(let i=1;i<=parts.length;i++){const name=parts.slice(0,i).join('/');counts.set(name,(counts.get(name)||0)+1);}
   }
+  // Keep an explicit directory constraint when other filters yield no matches.
+  // Drop it on refresh only if that directory no longer exists in the change list.
+  if(previous&&!counts.has(previous)&&(state()?.changes||[]).some(item=>inDirectory(item.path)))counts.set(previous,0);
   directory.replaceChildren(new Option(say('全部目录','All folders'),''),...[...counts].sort(([a],[b])=>a.localeCompare(b)).map(([name,count])=>new Option((name==='.'?say('根目录文件（不含子目录）','Root files (no subfolders)'):name+'/')+' ('+count+')',name)));
   directory.value=counts.has(previous)?previous:'';
  }
