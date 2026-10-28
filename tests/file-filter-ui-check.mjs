@@ -63,7 +63,15 @@ try {
  assert.equal(await page.locator('#beginner-files input:checked').count(),150);assert.equal(await page.locator('#beginner-manual').isChecked(),false);
  await page.keyboard.press('Meta+Shift+a');assert.equal(await page.locator('#beginner-files input:checked').count(),0);
  await page.keyboard.press('Meta+a');assert.equal(await page.locator('#beginner-files input:checked').count(),150);
+ const selectionCalls=calls.length;
+ await page.locator('#beginner-manual').check();await page.locator('#beginner-files').focus();await page.keyboard.press('Escape');
+ assert.equal(await page.locator('#beginner-files input:checked').count(),0);assert.equal(await page.locator('#beginner-manual').isChecked(),false);assert.equal(calls.length,selectionCalls);
+ await page.keyboard.press('Escape');assert.equal(await page.locator('#beginner-files input:checked').count(),0);
+ await checks.first().focus();await page.keyboard.press('Control+a');assert.equal(await page.locator('#beginner-files input:checked').count(),150);
+ await checks.first().focus();await page.keyboard.press('Escape');assert.equal(await page.locator('#beginner-files input:checked').count(),0);
+ await page.keyboard.press('Meta+a');assert.equal(await page.locator('#beginner-files input:checked').count(),150);
  await search.focus();await page.keyboard.press('Control+a');assert.equal(await page.locator('#beginner-files input:checked').count(),150);
+ await search.press('Escape');assert.equal(await page.locator('#beginner-files input:checked').count(),150);
  await page.locator('#beginner-summary').fill('keep this text');await page.locator('#beginner-summary').press('Control+a');assert.equal(await page.locator('#beginner-files input:checked').count(),150);
  await page.locator('#beginner-none').click();await checks.nth(2).click();await checks.nth(6).click({modifiers:['Shift']});await checks.nth(4).click({modifiers:['Shift']});
  assert.equal(await page.locator('#beginner-files input:checked').count(),2);

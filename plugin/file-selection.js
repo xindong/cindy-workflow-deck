@@ -1,7 +1,7 @@
 export function createFileSelection({list,canSelect,onChange,english=false}) {
   let anchor;
   const hint=document.createElement('p');hint.id='file-selection-help';hint.className='file-selection-help';
-  hint.textContent=english?'Shift + click: select a range · Ctrl/⌘ + click: toggle a file · Ctrl/⌘ + A: select filtered files · Ctrl/⌘ + Home or ⌘ + ↑: jump to top · Ctrl/⌘ + End or ⌘ + ↓: jump to bottom (focus the list first)':'Shift + 点击：连续选择 · Ctrl/⌘ + 点击：勾选或取消单个 · Ctrl/⌘ + A：全选筛选结果 · Ctrl/⌘ + Home 或 ⌘ + ↑：跳到顶部 · Ctrl/⌘ + End 或 ⌘ + ↓：跳到底部（先聚焦文件列表）';
+  hint.textContent=english?'Shift + click: select a range · Ctrl/⌘ + click: toggle a file · Ctrl/⌘ + A: select filtered files · Esc: clear selection · Ctrl/⌘ + Home or ⌘ + ↑: jump to top · Ctrl/⌘ + End or ⌘ + ↓: jump to bottom (focus the list first)':'Shift + 点击：连续选择 · Ctrl/⌘ + 点击：勾选或取消单个 · Ctrl/⌘ + A：全选筛选结果 · Esc：取消全选 · Ctrl/⌘ + Home 或 ⌘ + ↑：跳到顶部 · Ctrl/⌘ + End 或 ⌘ + ↓：跳到底部（先聚焦文件列表）';
   document.getElementById('beginner-selection').append(hint);list.tabIndex=0;list.setAttribute('aria-describedby',hint.id);
   const boxes=()=>[...list.querySelectorAll('.beginner-file:not([hidden]) input[type=checkbox]')].filter(box=>!box.disabled);
   list.addEventListener('click',event=>{
@@ -20,8 +20,13 @@ export function createFileSelection({list,canSelect,onChange,english=false}) {
     onChange();
   });
   list.addEventListener('keydown',event=>{
-    if(event.altKey||!(event.ctrlKey||event.metaKey))return;
     if(event.target.closest('textarea,select,[contenteditable=true],input:not([type=checkbox])'))return;
+    if(event.key==='Escape'&&!event.altKey&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey) {
+      if(!canSelect())return;
+      event.preventDefault();event.stopPropagation();
+      for(const box of boxes())box.checked=false;anchor=undefined;onChange();return;
+    }
+    if(event.altKey||!(event.ctrlKey||event.metaKey))return;
     if(!event.shiftKey&&(event.key==='Home'||(event.metaKey&&event.key==='ArrowUp'))) {
       event.preventDefault();list.scrollTop=0;return;
     }
