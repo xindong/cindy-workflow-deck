@@ -24,7 +24,7 @@ try {
  await mkdir(join(project,'art/sub'),{recursive:true});await mkdir(join(project,'artwork'));
  await writeFile(join(project,'art/a.txt'),'a');await writeFile(join(project,'art/sub/b.txt'),'b');await writeFile(join(project,'artwork/c.txt'),'c');
  await native.locator('#beginner-view').click();await ready(native);
- await native.locator('#beginner-file-directory').selectOption('art');await native.locator('#beginner-select-directory').click();
+ await native.locator('#beginner-file-directory').selectOption('art');assert.equal(await native.locator('#beginner-files .beginner-file:visible').count(),2);await native.locator('#beginner-select-directory').click();
  assert.equal(await native.locator('#beginner-files input:checked').count(),2);assert.equal(await native.locator('[data-path="artwork/c.txt"] input').isChecked(),false);
  await mkdir(join(root,'artifacts/file-filter'),{recursive:true});await native.screenshot({path:join(root,'artifacts/file-filter/按目录全选-独立Mac应用.png'),fullPage:true});
  for(let i=0;i<12;i++)await writeFile(join(project,'art/sub/extra-'+i+'.txt'),'scroll fixture');
