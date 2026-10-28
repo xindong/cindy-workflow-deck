@@ -26,6 +26,12 @@ try {
  await native.locator('#beginner-view').click();await ready(native);
  await native.locator('#beginner-file-directory').selectOption('art');assert.equal(await native.locator('#beginner-files .beginner-file:visible').count(),2);await native.locator('#beginner-select-directory').click();
  assert.equal(await native.locator('#beginner-files input:checked').count(),2);assert.equal(await native.locator('[data-path="artwork/c.txt"] input').isChecked(),false);
+ assert.equal(await native.locator('#beginner-restore-filtered').textContent(),'丢弃筛选文件的修改…');
+ await native.locator('#beginner-file-search').fill('a.txt');await native.locator('#beginner-file-type').selectOption('.txt');
+ const beforeClearStatus=git(['status','--porcelain']);await native.getByRole('button',{name:'清除筛选条件',exact:true}).click();
+ assert.equal(await native.locator('#beginner-file-search').inputValue(),'');assert.equal(await native.locator('#beginner-file-type').inputValue(),'*');assert.equal(await native.locator('#beginner-file-directory').inputValue(),'');
+ assert.equal(await native.locator('#beginner-files .beginner-file:visible').count(),3);assert.equal(await native.locator('#beginner-files input:checked').count(),1);
+ assert.equal(git(['status','--porcelain']),beforeClearStatus);assert.equal(await native.locator('dialog[open]').count(),0);
  await mkdir(join(root,'artifacts/file-filter'),{recursive:true});await native.screenshot({path:join(root,'artifacts/file-filter/按目录全选-独立Mac应用.png'),fullPage:true});
  for(let i=0;i<12;i++)await writeFile(join(project,'art/sub/extra-'+i+'.txt'),'scroll fixture');
  await native.locator('#beginner-refresh-changes').click();await ready(native);

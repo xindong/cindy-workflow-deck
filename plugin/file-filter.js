@@ -10,7 +10,11 @@ export function createFileFilter({state,onChange,onRestore,english=false}) {
  selectDirectory.title=say('勾选此目录及子目录中符合当前筛选条件的文件，保留其它已选文件','Select matching files in this folder and subfolders; keep other selections');
  const bottom=document.createElement('button');bottom.id='beginner-files-bottom';bottom.type='button';bottom.textContent=say('跳到底部','Jump to bottom');bottom.title=say('直接滚到当前文件列表的最后一项','Scroll to the last file in the current list');bottom.setAttribute('aria-controls','beginner-files');
  bottom.onclick=()=>{if(bottom.disabled)return;const list=$('beginner-files');list.focus({preventScroll:true});list.scrollTop=list.scrollHeight;};
- restore.id='beginner-restore-filtered';restore.type='button';restore.textContent=say('还原筛选结果','Restore filtered files');bar.append(searchLabel,typeLabel,directoryLabel,selectDirectory,bottom,restore);$('beginner-files').before(bar);
+ const clear=document.createElement('button');clear.id='beginner-clear-filters';clear.type='button';clear.textContent=say('清除筛选条件','Clear filters');
+ clear.title=say('清空名称、类型和目录筛选，不修改文件或取消已有勾选','Reset name, type and folder filters without changing files or clearing checked files');
+ restore.id='beginner-restore-filtered';restore.type='button';restore.textContent=say('丢弃筛选文件的修改…','Discard changes in filtered files…');
+ restore.title=say('丢弃当前筛选结果中所有文件的暂存及未暂存修改，不以勾选为准；先查看确认清单并备份','Discard staged and unstaged changes in all filtered files, regardless of checkboxes; review the confirmation list and back up first');
+ bar.append(searchLabel,typeLabel,directoryLabel,selectDirectory,bottom,clear,restore);$('beginner-files').before(bar);
  const extension=name=>{const file=name.split('/').pop(),dot=file.lastIndexOf('.');return dot>0?file.slice(dot).toLowerCase():'<none>';};
  function matchesNameType(item){return item.path.toLowerCase().includes(search.value.trim().toLowerCase())&&(type.value==='*'||extension(item.path)===type.value);}
  function matches(item){return matchesNameType(item)&&(!directory.value||inDirectory(item.path));}
@@ -33,10 +37,12 @@ export function createFileFilter({state,onChange,onRestore,english=false}) {
   type.replaceChildren(new Option(say('全部类型','All types'),'*'),...[...counts].sort(([a],[b])=>a.localeCompare(b)).map(([ext,count])=>new Option((ext==='<none>'?say('无扩展名','No extension'):ext)+' ('+count+')',ext)));
   type.value=counts.has(previous)?previous:'*';renderDirectories();apply();
  }
- function update(can,blocked){const files=visible(),boxes=directoryBoxes();search.disabled=type.disabled=directory.disabled=!can;bottom.disabled=!can||!files.length;selectDirectory.disabled=!can||!boxes.some(box=>!box.checked);restore.disabled=!can||!!blocked||!files.length||files.length>200||!state()?.head||files.some(f=>/[URC]/.test(f.status)||['AA','DD'].includes(f.status));}
+ function update(can,blocked){const files=visible(),boxes=directoryBoxes();search.disabled=type.disabled=directory.disabled=!can;clear.disabled=!can||!(search.value||type.value!=='*'||directory.value);bottom.disabled=!can||!files.length;selectDirectory.disabled=!can||!boxes.some(box=>!box.checked);restore.disabled=!can||!!blocked||!files.length||files.length>200||!state()?.head||files.some(f=>/[URC]/.test(f.status)||['AA','DD'].includes(f.status));}
  search.oninput=type.onchange=()=>{renderDirectories();apply();onChange();};
  directory.onchange=()=>{apply();$('beginner-files').scrollTop=0;onChange();};
  selectDirectory.onclick=()=>{if(selectDirectory.disabled)return;for(const box of directoryBoxes())if(!box.disabled)box.checked=true;onChange();};
  restore.onclick=()=>{if(!restore.disabled)onRestore(visible());};
- render();return {visible,render,update,reset(){search.value='';type.value='*';directory.value='';render();},setHidden(value){bar.hidden=value;}};
+ function reset(){search.value='';type.value='*';directory.value='';render();}
+ clear.onclick=()=>{if(clear.disabled)return;reset();$('beginner-files').scrollTop=0;onChange();};
+ render();return {visible,render,update,reset,setHidden(value){bar.hidden=value;}};
 }

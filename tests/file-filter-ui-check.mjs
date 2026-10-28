@@ -33,6 +33,8 @@ try {
  const rows=page.locator('#beginner-files .beginner-file:visible'),search=page.locator('#beginner-file-search'),type=page.locator('#beginner-file-type'),restore=page.locator('#beginner-restore-filtered');
  assert.equal(await rows.count(),450);assert.equal(await restore.isDisabled(),true);
  const directory=page.locator('#beginner-file-directory'),selectDirectory=page.locator('#beginner-select-directory');
+ const clear=page.getByRole('button',{name:'清除筛选条件',exact:true});
+ assert.equal(await restore.textContent(),'丢弃筛选文件的修改…');assert.equal(await clear.isDisabled(),true);
  assert.equal(await selectDirectory.isDisabled(),true);
  await directory.selectOption('notes/sub');assert.equal(await rows.count(),1);assert.match(await page.locator('#beginner-selected').textContent(),/显示 1 个/);assert.equal(await page.locator('#beginner-files input:checked').count(),0);await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),1);
  await directory.selectOption('notes');assert.equal(await rows.count(),149);await selectDirectory.click();assert.equal(await page.locator('#beginner-files input:checked').count(),149);assert.equal(await selectDirectory.isDisabled(),true);
@@ -87,6 +89,15 @@ try {
   await page.setViewportSize({width,height:820});await page.emulateMedia({colorScheme:scheme});
   await page.addStyleTag({content:':root{--text-primary:'+(scheme==='dark'?'#ededed':'#262626')+';--text-secondary:'+(scheme==='dark'?'#a3a3a3':'#737373')+';--surface-elevated:'+(scheme==='dark'?'#242424':'#fff')+';--surface:'+(scheme==='dark'?'#191919':'#f7f7f5')+';--panel-bg:var(--surface);--border-default:'+(scheme==='dark'?'#454545':'#ddd')+';--surface-chip:'+(scheme==='dark'?'#383838':'#eee')+';color-scheme:'+scheme+'}'});
   await page.locator('#beginner-submit').click();await ready(page);
+  const beforeClearCalls=calls.length,beforeClearStatus=git(['status','--porcelain']);
+  await search.fill('asset-00');await type.selectOption('.md');await directory.selectOption('art');
+  assert.equal(await rows.count(),10);await page.locator('#beginner-all').click();
+  await clear.click();assert.equal(await search.inputValue(),'');assert.equal(await type.inputValue(),'*');assert.equal(await directory.inputValue(),'');
+  assert.equal(await rows.count(),450);assert.equal(await page.locator('#beginner-files input:checked').count(),10);
+  assert.equal(await clear.isDisabled(),true);assert.equal(await restore.isDisabled(),true);assert.equal(await page.locator('dialog[open]').count(),0);
+  assert.equal(calls.length,beforeClearCalls);assert.equal(git(['status','--porcelain']),beforeClearStatus);
+  await search.fill('no-match');assert.equal(await rows.count(),0);assert.equal(await clear.isEnabled(),true);await clear.click();assert.equal(await rows.count(),450);
+  await search.fill('ART/');await type.selectOption('.txt');
   const filterCalls=calls.length;await directory.selectOption('art');assert.equal(await rows.count(),150);
   await page.locator('#beginner-files').focus();await page.keyboard.press('Control+a');assert.equal(await page.locator('#beginner-files input:checked').count(),150);
   await page.keyboard.press('Escape');assert.equal(await page.locator('#beginner-files input:checked').count(),0);assert.equal(calls.length,filterCalls);
@@ -117,6 +128,7 @@ try {
   await page.locator('#beginner-file-search').scrollIntoViewIfNeeded();await page.screenshot({path:join(out,'文件滚动筛选-'+width+'-'+scheme+'.png')});
  }
  await search.fill('art/asset-00');assert.equal(await rows.count(),10);
+ await page.locator('#beginner-files').focus();await page.keyboard.press('Escape');assert.equal(await page.locator('#beginner-files input:checked').count(),0);
  await restore.click();await page.locator('dialog[open]').waitFor();const names=await rows.evaluateAll(items=>items.map(e=>e.dataset.path));
  assert.equal(await page.locator('dialog pre').textContent(),names.join('\n'));assert.equal(await page.locator('dialog').getByRole('button',{name:'确认还原这 10 个文件',exact:true}).isDisabled(),true);
  await page.locator('dialog').getByRole('button',{name:'取消',exact:true}).click();assert.equal(calls.filter(p=>p.action==='file-revert').length,0);assert.equal(await readFile(join(project,names[0]),'utf8'),'fixture 0');
