@@ -46,6 +46,13 @@ try{
    await page.screenshot({path:join(out,'AI诊断-模拟结果-'+lang+'-'+width+'-'+theme+'.png'),fullPage:true});
    assert.equal(await page.evaluate(()=>mockHost.calls.errands.length),0);assert.equal(await page.evaluate(()=>mockHost.calls.inspections.some(r=>r.method==='project/git'&&!['status','diagnosis-status','prepare'].includes(r.params.action))),false);
   }
+  const inferenceCount=await page.evaluate(()=>mockHost.calls.inferences.length);
+  await page.locator('#config-tab').click();await page.evaluate(()=>mockHost.options.pickPath='/preview/history-flows');
+  await page.locator('#choose-workflow-directory').click();await page.locator('#notice').filter({hasText:lang==='en'?'Workflow folder saved':'流程目录已保存'}).waitFor();
+  await page.locator('#git-tab').click();await page.locator('#beginner-diagnose:not(:disabled)').click();await page.locator('#diagnosis-check').click();
+  await page.locator('#diagnosis-result').filter({hasText:'已知事实'}).waitFor();
+  assert.match(await page.locator('#diagnosis-status').textContent(),lang==='en'?/snapshot from before/:/配置变更前的诊断快照/);
+  assert.equal(await page.evaluate(()=>mockHost.calls.inferences.length),inferenceCount);
   // An explicit provider error is readable, while its code remains in details.
   await page.evaluate(()=>{mockHost.options.inferenceFailure='NO_CANDIDATE';});await page.locator('#diagnosis-prepare').click();await page.locator('#diagnosis-send:not(:disabled)').waitFor();await page.locator('#diagnosis-send').click();
   await page.locator('#diagnosis-status').filter({hasText:'没有可用的 AI'}).waitFor();assert.equal(await page.locator('#diagnosis-result').textContent(),'');assert.ok(!(await page.locator('#diagnosis-status').textContent()).includes('NO_CANDIDATE'));assert.match(await page.locator('#diagnosis-error-details').textContent(),/NO_CANDIDATE/);

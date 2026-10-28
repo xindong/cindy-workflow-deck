@@ -45,5 +45,18 @@ try {
  await panel.evaluate(()=>{mockHost.options.cancelPick=false;mockHost.options.pickPath='/preview/selected-project';});
  await panel.locator('#quick-project').click();await panel.locator('#beginner-submit:not(:disabled)').waitFor();assert.equal(await panel.locator('#project option').count(),1);
  for(const width of [120,320,860]) {await panel.setViewportSize({width,height:720});await panel.locator('#config-tab').click();assert.equal(await panel.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await panel.locator('#config-tab').click();const r=await panel.locator('.dock').boundingBox();assert.ok(Math.abs(r.x+r.width/2-width/2)<2);}
- console.log('Passed: one folder choice auto-saves and prepares real native project hooks; no manual form/add/save, no hook execution or HEAD/index/worktree changes; repeated choice deduplicates; reload; simulated Cindy prepare RPC and zero AI, bottom capsule and narrow configuration.');
+ await panel.close();
+ const legacyProjects=['one','two'].map(id=>({id,name:'Legacy '+id,directory:'/preview/'+id,workflows:Object.fromEntries(['experiment','feature','tooling','pr','merge'].map(flow=>[flow,{path:'custom/'+flow+'.md',external:false}]))}));
+ const legacy={projectConfiguration:{revision:10,configuration:{schemaVersion:1,activeProjectId:'one',projects:legacyProjects}}};
+ await fetch(base+'/kv',{method:'PUT',body:JSON.stringify(legacy)});
+ const legacyPage=await browser.newPage();await legacyPage.goto(base+'/panel.html?direct=1');await legacyPage.locator('#config-tab').click();
+ await legacyPage.locator('#choose-workflow-directory:not(:disabled)').waitFor();await legacyPage.evaluate(()=>mockHost.options.pickPath='/preview/legacy-flows');
+ await legacyPage.locator('#choose-workflow-directory').click();await legacyPage.locator('#notice').filter({hasText:'流程目录已保存'}).waitFor();
+ let saved=await(await fetch(base+'/kv')).json();
+ assert.deepEqual(saved.projectConfiguration.configuration.projects,[{...legacyProjects[0],workflowDirectory:'/preview/legacy-flows'},legacyProjects[1]]);
+ await legacyPage.locator('#reset-workflow-directory').click();await legacyPage.locator('#notice').filter({hasText:'已改用执行项目内的流程'}).waitFor();
+ saved=await(await fetch(base+'/kv')).json();assert.deepEqual(saved.projectConfiguration.configuration.projects,legacyProjects);
+ assert.equal(await legacyPage.evaluate(()=>mockHost.calls.inspections.filter(r=>r.method==='project/git'&&r.params.action==='prepare').length),0);
+ await legacyPage.close();
+ console.log('Passed: one folder choice auto-saves and prepares real native project hooks; flow location choose/reset preserves both legacy projects and manual workflows with no Git prepare; reload, simulated Cindy RPC and zero AI, narrow layout.');
 }finally{await app?.close();await browser?.close();server?.kill();await rm(temp,{recursive:true,force:true});await rm(flows,{recursive:true,force:true});}

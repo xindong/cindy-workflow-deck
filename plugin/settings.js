@@ -102,11 +102,12 @@ function showPreparation(result){
   if(result.identity?.state==='ready')identityInfo.textContent=say('已保存到当前项目：','Saved for this project: ')+result.identity.name+' <'+result.identity.email+'>';
 }
 async function saveConfiguration() {
-  const configuration=normalizeConfiguration({...draft,projects:draft.projects.map(project=>({id:project.id,directory:project.directory,...(project.workflowDirectory?{workflowDirectory:project.workflowDirectory}:{}),discovery:'auto'}))});
+  const configuration=normalizeConfiguration(draft);
   state=await transport.call('config-save',{expectedRevision:state.revision,configuration});
   draft=structuredClone(state.configuration);dirty=false;render();
 }
 async function saveAndPrepare() {
+  if(active()){active().discovery='auto';delete active().workflows;}
   await saveConfiguration();
   if(!active()){notice(say('项目配置已保存。','Project settings saved.'));setupStatus.textContent='';setupDetails.hidden=true;return false;}
   notice(say('项目已保存，正在自动准备…','Project saved. Preparing local settings…'));

@@ -20,12 +20,14 @@ export function mountDiagnosis({transport,context,isBusy,english=false}) {
  function update(){const can=context().ready&&!isBusy();$('beginner-diagnose').disabled=entry.disabled=!can||busy;prepare.disabled=!can||busy;send.disabled=!can||busy||!preview?.available;check.disabled=!can||busy;problem.disabled=failure.disabled=busy;}
  function clearPreview(){preview=undefined;operationId='';errorDetails.hidden=true;send.hidden=true;details.hidden=true;packet.textContent='';ai.textContent='';}
  function show(record){
-  if(!record){status.textContent=say('尚未发送诊断请求。','No diagnosis has been sent.');return;}
+  result.textContent='';
+  if(!record){ai.textContent='';status.textContent=say('尚未发送诊断请求。','No diagnosis has been sent.');return;}
   operationId=record.operationId;errorDetails.hidden=true;
 
   if(record.state==='completed'){result.textContent=record.text+(record.truncated?say('\n（结果过长，已截短）','\n(Result truncated)'):'');ai.textContent=say('本次实际模型：','Actual model: ')+record.model;status.textContent=say('诊断已返回。建议尚未执行，请核对后再决定处理。','Diagnosis received. No suggested repair has been executed.');}
   else if(record.state==='failed'){status.textContent=record.message;errorText.textContent=record.code;errorDetails.hidden=false;}
   else status.textContent=record.message||say('诊断正在处理中；可稍后检查结果。请勿重复发送。','Diagnosis is pending; check the result later. Do not send it again.');
+  if(record.staleSnapshot)status.textContent+=' '+say('这是配置变更前的诊断快照，请结合当前项目状态核对。','This diagnosis uses a snapshot from before the settings changed; check it against the current project.');
  }
  async function work(fn){if(busy)return;const key=ctxKey(),epoch=generation;busy=true;update();try{const value=await fn();if(epoch===generation&&key===ctxKey()&&context().ready)return value;}catch(error){if(epoch===generation&&key===ctxKey()){status.textContent=redactDiagnosis(error.message||say('诊断暂不可用，请检查 AI 连接。','Diagnosis is unavailable; check the AI connection.'));errorText.textContent=error.code||'';errorDetails.hidden=!error.code;}}finally{busy=false;update();}}
  function open(){panel.hidden=false;$('beginner-sheet').hidden=true;failure.value=redactDiagnosis(($('beginner-result-details').hidden?'':$('beginner-detail').textContent)||$('file-action-status')?.textContent||$('git-output').textContent||'').slice(0,10000);clearPreview();result.textContent='';status.textContent='';update();panel.scrollIntoView({block:'nearest'});}

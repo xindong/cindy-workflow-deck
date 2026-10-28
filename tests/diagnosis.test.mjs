@@ -47,6 +47,19 @@ test('expired preview, wrong project, stale revision and missing preview never c
  await assert.rejects(f.run('diagnosis-run',{...params,revision:2}),{code:'CONFIG_CONFLICT'});
  f.tick(300001);await assert.rejects(f.run('diagnosis-run',params),{code:'DIAGNOSIS_EXPIRED'});assert.equal(f.prompts.length,0);
 });
+test('saved diagnosis survives settings revisions for the same project directory, but cannot cross directories or authorize stale previews',async()=>{
+ const f=fixture(),preview=await f.run('diagnosis-prepare',{problem:'更新失败'});
+ const result=await f.run('diagnosis-run',{token:preview.token,operationId:'diagnosis-history-0001'});
+ const oldPreview=await f.run('diagnosis-prepare',{problem:'another'});
+ await f.store.update(data=>({projectConfiguration:{...data.projectConfiguration,revision:2,configuration:{...data.projectConfiguration.configuration,projects:[{id:'p',directory:'/project',workflowDirectory:'/flows',discovery:'auto'}]}}}));
+ f.restart();const read=await f.run('diagnosis-read',{revision:2});
+ assert.equal(read.text,result.text);assert.equal(read.staleSnapshot,true);assert.equal(read.revision,1);assert.equal(f.prompts.length,1);
+ assert.equal((await f.run('diagnosis-prepare',{revision:2,problem:'new'})).previous.text,result.text);
+ await assert.rejects(f.run('diagnosis-run',{revision:2,token:oldPreview.token,operationId:'diagnosis-history-0002'}),{code:'DIAGNOSIS_EXPIRED'});
+ await assert.rejects(f.run('diagnosis-read',{revision:1}),{code:'CONFIG_CONFLICT'});
+ await f.store.update(data=>({projectConfiguration:{...data.projectConfiguration,revision:3,configuration:{...data.projectConfiguration.configuration,projects:[{id:'p',directory:'/different',discovery:'auto'}]}}}));
+ assert.equal(await f.run('diagnosis-read',{revision:3}),null);assert.equal(f.prompts.length,1);
+});
 test('in-flight double click and lost inference reply cannot auto replay or fabricate diagnosis',async()=>{
  const f=fixture(),preview=await f.run('diagnosis-prepare',{problem:'test'});let release;f.options.wait=new Promise(yes=>{release=yes;});
  const running=f.run('diagnosis-run',{token:preview.token,operationId:'diagnosis-request-0003'});
