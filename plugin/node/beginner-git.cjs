@@ -145,4 +145,4 @@ async function acknowledge(ctx,prior,state) {
   await assertNoPendingGit(ctx,state);
   await writeReceipt(ctx,{...prior,state:'acknowledged',previousState:prior.state,acknowledgedAt:new Date().toISOString()});
 }
-module.exports={readReceipt,runBeginner,acknowledge,retryableFailure};
+module.exports={assertNoPendingGit,readReceipt,runBeginner,acknowledge,retryableFailure};

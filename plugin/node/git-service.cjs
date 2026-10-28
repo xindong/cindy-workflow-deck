@@ -91,7 +91,7 @@ async function gitRequest(directory,params={}) {
   if(action==='operation-progress') {
     if(typeof params.operationId!=='string'||!/^[a-zA-Z0-9-]{16,60}$/.test(params.operationId)) fail('INVALID_REQUEST','操作编号无效');
     const ctx=await context(directory,true),record=await require('./beginner-git.cjs').readReceipt(ctx);
-    if(!record||record.id!==params.operationId||record.action!=='beginner-update')return null;
+    if(!record||record.id!==params.operationId||!['beginner-update','beginner-submit'].includes(record.action))return null;
     return {id:record.id,state:record.state,step:record.step,completed:record.completed||[]};
   }
   const previous=queues.get(root)||Promise.resolve();
@@ -117,9 +117,10 @@ async function gitRequest(directory,params={}) {
       const token=randomUUID();tickets.set(token,{root,fingerprint:state.fingerprint,expires:Date.now()+10*60*1000});
       for(const [key,t] of tickets) if(t.expires<Date.now()) tickets.delete(key);
       const service=require('./beginner-git.cjs'),receipt=await service.readReceipt(ctx);
+      let pendingGit=false;try {await service.assertNoPendingGit(ctx,state);}catch(error){if(error.code!=='PROJECT_CONFLICT')throw error;pendingGit=true;}
       let operationLocked=false;
       try {await fs.lstat(path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim()));operationLocked=true;}catch(error){if(error.code!=='ENOENT')throw error;}
-      return {...state,token,operationLocked,sshIdentity:ctx.sshIdentity,fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
+      return {...state,token,pendingGit,operationLocked,sshIdentity:ctx.sshIdentity,fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
     }
     if(action==='issues-list') return require('./github-issues.cjs').listIssues(ctx,params,ctx.env);
     if(action==='file-diff') return await require('./file-changes.cjs').compare(ctx,state,params);

@@ -7,14 +7,14 @@
 .update-progress progress:indeterminate { background:linear-gradient(90deg,transparent,var(--text-secondary,#737373),transparent) no-repeat; background-size:40% 100%; animation:update-progress-sweep 1.8s ease-in-out infinite; }
 .update-progress p { margin:8px 0 0; font-size:13px; line-height:1.7; color:var(--text-primary,#262626); overflow-wrap:anywhere; }
 .update-progress .update-progress-caption { margin:0 0 6px; font-size:12px; font-weight:600; color:var(--text-secondary,#737373); }
-#update-progress-target,#update-progress-time { font-size:12px; color:var(--text-secondary,#737373); }
-#update-progress-log { list-style:none; padding:0; margin:12px 0; display:grid; gap:7px; }
-#update-progress-log li { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:7px; align-items:baseline; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.update-progress details p,.update-progress [id$="-time"] { font-size:12px; color:var(--text-secondary,#737373); }
+.update-progress ol { list-style:none; padding:0; margin:12px 0; display:grid; gap:7px; }
+.update-progress ol li { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:7px; align-items:baseline; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
 .update-step-marker { text-align:center; }
 .update-step-status { font-size:12px; color:var(--text-secondary,#737373); }
-#update-progress-log [data-state=pending] { color:var(--text-secondary,#737373); }
-#update-progress-log [data-state=running],#update-progress-log [data-state=attention] { font-weight:650; }
-#update-progress-log [data-state=running] .update-step-status,#update-progress-log [data-state=attention] .update-step-status { color:var(--text-primary,#262626); }
+.update-progress ol [data-state=pending] { color:var(--text-secondary,#737373); }
+.update-progress ol [data-state=running],.update-progress ol [data-state=attention] { font-weight:650; }
+.update-progress ol [data-state=running] .update-step-status,.update-progress ol [data-state=attention] .update-step-status { color:var(--text-primary,#262626); }
 @keyframes update-progress-sweep { from { background-position:-70% 0; } to { background-position:170% 0; } }
 @media(prefers-reduced-motion:reduce) { .update-progress progress:indeterminate { animation:none; background-position:50% 0; } }
 @media(prefers-color-scheme:dark) { .update-progress { color:var(--text-primary,#e5e5e5); border-color:var(--border-default,#525252); } }
@@ -27,3 +27,15 @@
 #update-recovery .row { display:flex; flex-wrap:wrap; gap:8px; }
 #update-recovery .check { display:flex; align-items:start; gap:8px; margin:14px 0; }
 #update-recovery .check input { width:auto; flex:none; margin-top:5px; }
+
+.update-progress summary { cursor:pointer; font-size:12px; color:var(--text-secondary,#737373); margin-top:10px; }
+
+#conflict-dialog { width:calc(100% - 32px); max-width:440px; box-sizing:border-box; padding:20px; border:1px solid var(--border-default,#d7d7d4); border-radius:12px; background:var(--panel-bg,#f8f8f6); color:var(--text-primary,#262626); }
+#conflict-dialog label { display:block; margin:12px 0; }
+#conflict-dialog textarea,#conflict-dialog select { width:100%; box-sizing:border-box; font:inherit; }
+#conflict-dialog button { margin:4px; }
+
+#conflict-dialog button,#conflict-dialog textarea,#conflict-dialog select { color:var(--text-primary,#262626); background:var(--surface,#fff); }
+@media(prefers-color-scheme:dark) { #conflict-dialog { color:var(--text-primary,#e5e5e5); background:var(--panel-bg,#262626); } #conflict-dialog button,#conflict-dialog textarea,#conflict-dialog select { color:var(--text-primary,#e5e5e5); background:var(--surface,#262626); } }
+
+.update-progress progress:indeterminate,.update-progress progress:indeterminate::-webkit-progress-bar { background-color:var(--border-default,#d7d7d4); }

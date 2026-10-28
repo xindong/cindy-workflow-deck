@@ -11,16 +11,17 @@ export function changeLabel(status,english=false) {
   if(/[RC]/.test(status)) return english?'Renamed':'改名';
   return english?'Modified':'修改';
 }
-export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedCall=call,canRefresh=ready,english=false}) {
+export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedCall=call,canRefresh=ready,repair,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
   const progress=createUpdateProgress({call,getRoot:()=>state()?.root||'',english});
-  const recovery=createUpdateRecovery({state,ready,isBusy,isUpdating:()=>progress.isRunning(),canRefresh,perform,refresh,reviewedCall,openUpdate:()=>open('update'),english});
+  const upload=createUpdateProgress({call,getRoot:()=>state()?.root||'',english,kind:'submit'});
+  const recovery=createUpdateRecovery({state,ready,isBusy,isUpdating:()=>progress.isRunning()||upload.isRunning(),canRefresh,perform,refresh,reviewedCall,repair,openUpdate:()=>open('update'),english});
   const fileActions=createFileActions({state,ready,isBusy,call,perform,reviewedCall,refresh,canRefresh,english});
   const filter=createFileFilter({state,english,onChange:()=>{$('beginner-manual').checked=false;update();},onRestore:items=>fileActions.askRestoreMany(items)});
   const selection=createFileSelection({list:$('beginner-files'),english,canSelect:()=>ready()&&!isBusy()&&!!state(),onChange:()=>{$('beginner-manual').checked=false;update();}});
   let mode='view',rendered='',renderedRoot='',selected=new Set(),issueRows=[],issueLoading=false,issueGeneration=0,checkingChanges=false,changesGeneration=0;
   if(english) {
-    const labels={'全选':'Select all','全不选':'Select none','关联 GitHub 事项（Issue）':'Link a GitHub issue','事项范围':'Issue filter','分配给我的':'Assigned to me','我创建的':'Created by me','加载我的事项':'Load my issues','对应事项':'Related issue','暂不关联':'No issue selected','只读取当前项目、当前 GitHub 账号的未关闭事项；关联不会自动关闭事项。':'Only open issues in this project for the current GitHub account. Linking does not close issues.','日常工作':'Daily work','基础':'Basic','我的项目':'My project','更新项目':'Update project','拿到团队最新内容':'Get the latest team version','查看我的改动':'View my changes','看这次改了哪些文件':'See changed files','提交我的修改':'Submit my changes','选文件，写一句说明':'Choose files and describe the change','重新检查':'Check again','这次改了什么？':'What changed?','用一句话说明':'Describe your change','如果团队要求这次修改先做验收或审批，我已经完成。':'I completed any tests or approvals required by the team for this change.','确认提交':'Confirm submission','先不操作':'Not now','操作详情（可交给项目负责人）':'Details for the project owner','本项目的提交要求（不确定请联系负责人）':'Project requirements (ask the owner if unsure)','更多工具（项目负责人）':'More tools (project owner)','我已核对上次操作，允许后续新操作':'I verified the previous operation; allow new operations'};
+    const labels={'全选':'Select all','全不选':'Select none','关联事项（可选）':'Link an issue (optional)','关联 GitHub 事项（Issue）':'Link a GitHub issue','事项范围':'Issue filter','分配给我的':'Assigned to me','我创建的':'Created by me','加载我的事项':'Load my issues','对应事项':'Related issue','暂不关联':'No issue selected','只读取当前项目、当前 GitHub 账号的未关闭事项；关联不会自动关闭事项。':'Only open issues in this project for the current GitHub account. Linking does not close issues.','日常工作':'Daily work','基础':'Basic','我的项目':'My project','更新项目':'Update project','拿到团队最新内容':'Get the latest team version','查看我的改动':'View my changes','看这次改了哪些文件':'See changed files','提交我的修改':'Submit my changes','选文件，写一句说明':'Choose files and describe the change','重新检查':'Check again','这次改了什么？':'What changed?','用一句话说明':'Describe your change','如果团队要求这次修改先做验收或审批，我已经完成。':'I completed any tests or approvals required by the team for this change.','确认提交':'Confirm submission','先不操作':'Not now','操作详情（可交给项目负责人）':'Details for the project owner','本项目的提交要求（不确定请联系负责人）':'Project requirements (ask the owner if unsure)','更多工具（项目负责人）':'More tools (project owner)','我已核对上次操作，允许后续新操作':'I verified the previous operation; allow new operations'};
     const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;
     while((node=walker.nextNode())){const text=node.textContent.trim();if(labels[text])node.textContent=node.textContent.replace(text,labels[text]);}
     $('beginner-summary').placeholder='For example: adjusted the character clothing colors';
@@ -29,7 +30,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   function update() {
     const current=state(),can=ready()&&!isBusy()&&!!current;
     for(const id of ['beginner-update','beginner-view','beginner-submit'])$(id).disabled=!can;
-    const blocked=current && (current.operationLocked || !current.hooksReady || current.incomplete || current.fileRevertReceipt&&!['restored','acknowledged'].includes(current.fileRevertReceipt.state) || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
+    const blocked=current && (current.operationLocked || current.pendingGit || !current.hooksReady || current.incomplete || current.fileRevertReceipt&&!['restored','acknowledged'].includes(current.fileRevertReceipt.state) || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
     $('beginner-confirm').disabled=!can || blocked || issueLoading || (mode==='submit' && (!chosen().length || chosen().length>200 || !$('beginner-summary').value.trim() || (current.sources.length>0 && !$('beginner-manual').checked)));
     const total=current?.changes.length||0,count=chosen().length;
     $('beginner-refresh-changes').disabled=isBusy()||!canRefresh();
@@ -48,7 +49,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     for(const box of document.querySelectorAll('#beginner-files input'))box.disabled=isBusy();
     fileActions.update();
     recovery.render();
-    if(progress.isRunning()) {
+    if(progress.isRunning()||upload.isRunning()) {
       $('beginner-message').textContent='';$('beginner-message').dataset.quiet='true';
       $('beginner-result-details').hidden=true;
     }
@@ -58,7 +59,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   function render() {
     const current=state();if(!current){update();return;}
     recovery.checked();
-    progress.sync(current.beginnerReceipt);
+    progress.sync(current.beginnerReceipt);upload.sync(current.beginnerReceipt);
     $('beginner-project').textContent=current.root.split(/[\\/]/).filter(Boolean).pop()||say('我的项目','My project');
     $('beginner-state').textContent=current.changes.length?say('有 '+current.changes.length+' 个文件尚未提交','You have '+current.changes.length+' unsubmitted files'):say('电脑里的修改已保存，没有待提交文件','No unsubmitted files on this computer');
     if(renderedRoot!==current.root) {filter.reset();selected.clear();clearIssues();rendered='';$('beginner-summary').value='';$('beginner-manual').checked=false;$('beginner-sheet').hidden=true;for(const box of document.querySelectorAll('#beginner-files input'))box.checked=false;}
@@ -93,11 +94,11 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     if(next!=='submit'&&issueLoading)clearIssues();
     mode=next;$('beginner-manual').checked=false;$('beginner-sheet').hidden=false;$('beginner-confirmation').hidden=false;$('beginner-confirm').hidden=next==='view';$('beginner-plan').hidden=next==='view';
     $('beginner-sheet-title').textContent=next==='update'?say('更新到团队最新内容','Get team updates'):say('这次改了什么？','What changed?');
-    $('beginner-sheet-help').textContent=next==='update'?say('先预检冲突；通过后暂存本地修改、拉取团队版本，再取回修改及原暂存状态。','Check conflicts first, then back up local changes, update and restore changes and staging.'):say('只勾选这次要交给团队的文件，不要勾选别人的修改。','Select only the files you want to share. Do not include someone else’s work.');
+    $('beginner-sheet-help').textContent=next==='update'?say('获取团队最新内容，保留你的本地修改。','Get team updates while keeping your local changes.'):say('只勾选这次要交给团队的文件，不要勾选别人的修改。','Select only the files you want to share. Do not include someone else’s work.');
     $('beginner-selection').hidden=next==='update';$('beginner-changes-status').hidden=next==='update';$('beginner-issue-section').hidden=next!=='submit';
     $('beginner-team-rules').hidden=next!=='submit'||!state()?.sources.length;$('beginner-files').hidden=next==='update';filter.setHidden(next==='update');$('beginner-summary-label').hidden=next!=='submit';
     $('beginner-manual-label').hidden=next!=='submit'||!state()?.sources.length;
-    $('beginner-plan').textContent=next==='update'?say('工具会安全获取团队版本；无法自动处理时会停止并说明。','The tool gets the team version safely and stops if assistance is required.'):say('正式版本不能直接修改。工具会先建立独立工作分支，运行项目检查，再上传送审；通过团队审核后才能合入。下方是本项目要求，拿不准请先联系负责人。','The tool creates a separate work branch, runs project checks and uploads for team review. It never commits directly to the primary branch or merges automatically. Check the project requirements below; ask the project owner if unsure.');
+    $('beginner-plan').textContent=next==='update'?say('工具会安全获取团队版本；无法自动处理时会停止并说明。','The tool gets the team version safely and stops if assistance is required.'):say('保存并检查所选文件，上传后交给团队审核。','Save and check selected files, then upload for team review.');
     $('beginner-confirm').textContent=next==='update'?say('确认更新','Confirm update'):say('确认提交','Confirm submission');
     update();
   }
@@ -157,12 +158,14 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   $('beginner-confirm').onclick=()=>perform(async()=>{
     const current=state(),action=mode==='update'?'beginner-update':'beginner-submit';
     const operationId=crypto.randomUUID();
-    if(mode==='update')progress.start(operationId);
+    const tracker=action==='beginner-update'?progress:upload;
+    (action==='beginner-update'?upload:progress).clear();tracker.start(operationId);
     let result;
+    $('beginner-sheet').hidden=true;
     try {
       result=await reviewedCall(action,{token:current.token,operationId,paths:chosen(),summary:$('beginner-summary').value.trim(),issue:mode==='submit'?(issueRows.find(row=>String(row.number)===$('beginner-issue').value)||null):null,rulesConfirmed:mode==='update'||!current.sources.length||$('beginner-manual').checked});
-      if(mode==='update')progress.finish(result);
-    } catch(error) {if(mode==='update')progress.fail(error);throw error;}
+      tracker.finish(result);
+    } catch(error) {tracker.fail(error);$('beginner-sheet').hidden=false;throw error;}
     $('beginner-sheet').hidden=true;$('beginner-manual').checked=false;
     await refresh();$('beginner-message').textContent=result.message||say('操作结果需要核对。','Please verify the operation result.');
     if(result.state==='awaiting-review'||result.state==='review-draft'){$('beginner-summary').value='';clearIssues();}
@@ -172,7 +175,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     await reviewedCall('beginner-acknowledge',{token:state().token,recordId:state().beginnerReceipt.id,rulesConfirmed:true});await refresh();
   });
   function error(problem) {
-    recovery.error();
+    recovery.error(problem);
     $('beginner-message').dataset.quiet='false';
     const help=errorHelp(problem,english);
     $('beginner-message').textContent=help.message;
@@ -180,7 +183,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   }
   function invalidate(){
     fileActions.invalidate();filter.reset();selection.reset();
-    progress.clear();recovery.clear();changesGeneration++;checkingChanges=false;
+    progress.clear();upload.clear();recovery.clear();changesGeneration++;checkingChanges=false;
     $('beginner-changes-status').textContent='';$('beginner-changes-status').hidden=true;
     rendered='';renderedRoot='';selected.clear();clearIssues();
     $('beginner-files').replaceChildren();$('beginner-summary').value='';
