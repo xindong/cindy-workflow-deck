@@ -12,6 +12,7 @@ export function errorHelp(error={},english=false) {
  else if(/git-lfs.*not found|git: 'lfs'|git-lfs: command not found/i.test(raw))message=choose('项目需要大文件组件 Git LFS，但这台电脑尚未准备好。请联系项目负责人配置后再重新检查。','This project needs Git LFS. Ask the project owner to set it up on this computer, then check again.');
  else {
   const messages={
+   AI_REPAIR_PENDING:['AI 正在处理项目或处理结果待核对。请先到任务列表确认任务已停止或结束，再从恢复卡检查或确认解除限制。','AI is working on this project or its result needs verification. Verify the task has stopped or ended, then check or confirm recovery in the repair card.'],
    NOT_GIT_PROJECT:['这个目录不是已有的团队 Git 项目。请选择项目最外层文件夹；如果刚下载的是压缩包，请联系项目负责人获取完整项目。','This folder is not an existing Git project. Select the project root or ask the owner for a complete checkout.'],
    NOT_PROJECT_ROOT:['选到了项目内部的子文件夹。请选择包含整个项目的最外层文件夹。','Select the project root rather than a subfolder.'],
    GIT_REQUIRED:['这台电脑缺少版本管理组件 Git。请联系项目负责人配置后再试。','Git is missing. Ask the project owner to install it, then try again.'],

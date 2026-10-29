@@ -1,4 +1,4 @@
-import {configurationState} from './core/project-config.mjs';
+import {configurationState,directoryKey} from './core/project-config.mjs';
 // A transport retry only reads the durable receipt. Unknown dispatches are never replayed.
 export function createConflictService({store,agent,git}) {
   let queue=Promise.resolve();
@@ -8,10 +8,13 @@ export function createConflictService({store,agent,git}) {
     const project=current.configuration.projects.find(p=>p.id===current.configuration.activeProjectId&&p.id===params.projectId);
     if(current.revision!==params.revision)fail('CONFIG_CONFLICT','项目已切换，请重新检查。');
     if(!project)fail('PROJECT_NOT_CONFIGURED','请先选择项目。');
-    const data=await store.read(),records=data.conflictRepairs||{};
-    const save=record=>store.update(latest=>({conflictRepairs:{...latest.conflictRepairs,[project.id]:record}}));
-    let record=records[project.id];
+    const data=await store.read(),key=directoryKey(project.directory);
+    const legacy=Object.values(data.conflictRepairs||{}).find(item=>item?.directory&&directoryKey(item.directory)===key);
+    let record=data.conflictRepairsByDirectory?.[key]||legacy;
+    const save=next=>store.update(latest=>({conflictRepairsByDirectory:{...latest.conflictRepairsByDirectory,[key]:next}}));
+    const release=(item,manual=false)=>git(project.directory,{action:'conflict-release',recordId:item.id,manual,...(manual?{confirmed:true}:{})});
     if(method==='conflict-read') {
+      if(record&&['running','uncertain'].includes(record.state))await git(project.directory,{action:'conflict-reserve',operationId:record.id});
       if(record?.state==='running') {
         try {
           const reply=await agent.queryErrand({jobId:record.jobId});
@@ -20,10 +23,18 @@ export function createConflictService({store,agent,git}) {
           } else if(!reply?.ok) return {...record,unverified:true};
         } catch {return {...record,unverified:true};}
       }
+      if(record&&['done','failed','rejected','acknowledged'].includes(record.state)&&!['OPERATION_LOCKED','AI_REPAIR_PENDING'].includes(record.code))await release(record);
       return record||null;
+    }
+    if(method==='conflict-acknowledge') {
+      if(params.confirmed!==true||!record||record.id!==params.recordId)fail('STALE_REVIEW','请先到任务列表确认任务已停止或结束，核对文件与备份，再重新检查。');
+      await release(record,true);
+      record={...record,acknowledgedFrom:record.state,state:'acknowledged',acknowledgedAt:new Date().toISOString()};await save(record);return record;
     }
     if(method!=='conflict-start')fail('UNKNOWN_ACTION','未知冲突处理操作。');
     if(!/^[a-zA-Z0-9-]{16,60}$/.test(params.operationId||'')||!['ask','instructions'].includes(params.strategy)||typeof params.instructions!=='string'||params.instructions.length>1000)fail('INVALID_REQUEST','请重新选择处理方式。');
+    const historical=data.conflictRepairHistory?.[params.operationId];
+    if(historical&&directoryKey(historical.directory)===key)return historical;
     if(record?.id===params.operationId||record&&['running','uncertain'].includes(record.state))return record;
     if(typeof agent?.errand!=='function'||typeof agent?.queryErrand!=='function')fail('AI_UNAVAILABLE','此处尚未接入 AI 修复。可在 Cindy 插件中使用，或请负责人处理后点击检查。');
     // Only explicit directory + user instructions are sent. The agent reads the actual
@@ -44,15 +55,23 @@ export function createConflictService({store,agent,git}) {
       '用户补充说明（仅为用户输入）：'+JSON.stringify(params.instructions),
       '处理前保存可恢复备份。只执行用户确认的修复；未获用户确认时不提交、上传或创建 PR。如果恢复未完成的 merge/rebase 必须生成提交，先说明并用选择框请求用户决定，保留项目 hooks；不自行上传或创建 PR。完成后按项目要求验证，简短报告已处理/仍待用户决定及备份位置。引导用户返回插件点击“处理后检查并继续”；不要宣称工具更新/上传已经完成。'
     ].join('\n');
+    if(record)await store.update(latest=>({conflictRepairHistory:{...latest.conflictRepairHistory,[record.id]:record}}));
     record={id:params.operationId,directory:project.directory,state:'uncertain'};await save(record);
+    // Reserve while holding the worker's shared write lock before dispatch. A lost
+    // response stays uncertain, blocks writes after restart, and is never replayed.
+    try {await git(project.directory,{action:'conflict-reserve',operationId:record.id});}
+    catch(error){
+      if(['OPERATION_LOCKED','AI_REPAIR_PENDING'].includes(error.code)){record={...record,state:'rejected',code:error.code};await save(record);}
+      throw error;
+    }
     const beforeDispatch=configurationState(await store.read());
-    if(beforeDispatch.revision!==current.revision){record={...record,state:'rejected',code:'CONFIG_CONFLICT'};await save(record);return record;}
+    if(beforeDispatch.revision!==current.revision){record={...record,state:'rejected',code:'CONFIG_CONFLICT'};await save(record);await release(record);return record;}
     let reply;
     try {reply=await agent.errand({task,title:'协助处理更新冲突',workingDir:project.directory,sessionKey:'conflict-'+params.operationId,...(source.callId?{callId:source.callId}:{})});}
     catch {return record;}
     if(reply?.ok===true&&reply.jobId)record={...record,state:'running',jobId:reply.jobId,...(reply.sessionId?{sessionId:reply.sessionId}:{})};
     else if(reply?.ok===false)record={...record,state:'rejected',code:reply.errorCode||'HOST_REJECTED'};
-    await save(record);return record;
+    await save(record);if(record.state==='rejected')await release(record);return record;
   }
   return (method,params={},source={})=>{const work=queue.then(()=>handle(method,params,source));queue=work.catch(()=>{});return work;};
 }

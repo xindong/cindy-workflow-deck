@@ -96,7 +96,7 @@ async function gitRequest(directory,params={}) {
   }
   const previous=queues.get(root)||Promise.resolve();
   const job=previous.then(async()=>{
-    const ctx=await context(directory,['diagnosis-status','ssh-identity-set','file-revert','file-revert-acknowledge','beginner-acknowledge'].includes(action),action==='status'),run=ctx.run;
+    const ctx=await context(directory,['diagnosis-status','conflict-reserve','conflict-release','ssh-identity-set','file-revert','file-revert-acknowledge','beginner-acknowledge'].includes(action),action==='status'),run=ctx.run;
     let lock;
     if(!['diagnosis-status','status','diff','history','issues-list'].includes(action)) {
       lock=path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim());
@@ -105,13 +105,17 @@ async function gitRequest(directory,params={}) {
     }
     try {
     const state=await snapshot(ctx);
+    const repair=require('./repair-reservation.cjs');
+    if(action==='conflict-reserve')return await repair.reserve(ctx,params.operationId);
+    if(action==='conflict-release')return await repair.release(ctx,params,state);
+    if(lock&&action!=='file-diff')await repair.assertAvailable(ctx);
     if(lock&&!['file-diff','file-revert-acknowledge'].includes(action))await require('./file-changes.cjs').assertSettled(ctx);
     if(action==='identity-fill') {await require('./git-identity.cjs').fillIdentity(ctx,ctx.env,params);return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:true,env:ctx.env});}
     if(action==='prepare') return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:params.confirmProjectSetup===true,env:ctx.env});
     if(action==='diagnosis-status') {
       let operationLocked=false;
       try {await fs.lstat(path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim()));operationLocked=true;}catch(error){if(error.code!=='ENOENT')throw error;}
-      return {...state,operationLocked}; // No write ticket, SSH binding or operation journals.
+      return {...state,operationLocked,aiRepair:await repair.read(ctx)}; // No write ticket or SSH binding.
     }
     if(action==='status') {
       const token=randomUUID();tickets.set(token,{root,fingerprint:state.fingerprint,expires:Date.now()+10*60*1000});
@@ -120,7 +124,7 @@ async function gitRequest(directory,params={}) {
       let pendingGit=false;try {await service.assertNoPendingGit(ctx,state);}catch(error){if(error.code!=='PROJECT_CONFLICT')throw error;pendingGit=true;}
       let operationLocked=false;
       try {await fs.lstat(path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim()));operationLocked=true;}catch(error){if(error.code!=='ENOENT')throw error;}
-      return {...state,token,pendingGit,operationLocked,sshIdentity:ctx.sshIdentity,fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
+      return {...state,token,pendingGit,operationLocked,aiRepair:await repair.read(ctx),sshIdentity:ctx.sshIdentity,fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
     }
     if(action==='issues-list') return require('./github-issues.cjs').listIssues(ctx,params,ctx.env);
     if(action==='file-diff') return await require('./file-changes.cjs').compare(ctx,state,params);

@@ -5,7 +5,7 @@ export function createUpdateProgress({call,getRoot=()=>'',english=false,kind='up
   const say=(zh,en)=>english?en:zh;
   const submit=kind==='submit',prefix=submit?'submit-progress':'update-progress';
   const success=record=>submit?['awaiting-review','review-draft'].includes(record?.state):record?.state==='updated';
-  const completion=()=>submit?say('上传完成，等待团队审核','Uploaded; awaiting team review'):say('更新完成','Update complete');
+  const completion=record=>submit?(record?.state==='review-draft'?say('上传完成，草稿待完善并发起审核','Uploaded; complete the draft and request review'):say('上传完成，等待团队审核','Uploaded; awaiting team review')):say('更新完成','Update complete');
   const box=document.createElement('section');box.id=prefix+'';box.hidden=true;
   box.className='update-progress';box.setAttribute('aria-label',submit?say('上传进度','Upload progress'):say('更新进度','Update progress'));
   const title=document.createElement('strong');title.id=prefix+'-title';title.setAttribute('role','status');title.setAttribute('aria-live','polite');
@@ -71,7 +71,7 @@ export function createUpdateProgress({call,getRoot=()=>'',english=false,kind='up
       steps.hidden=false;
       if(success(result)) {
         box.dataset.state='done';bar.value=1;
-        title.textContent=completion();
+        title.textContent=completion(result);
         steps.textContent=result.message||say('项目已更新。','Project updated.');
       } else {
         box.dataset.state='attention';bar.value=0;
@@ -88,7 +88,7 @@ export function createUpdateProgress({call,getRoot=()=>'',english=false,kind='up
     sync(record) {
       if(!active&&record?.id===observedId&&success(record)&&box.dataset.state!=='done') {
         box.dataset.state='done';bar.value=1;renderLog(record.completed,record.step,true);
-        title.textContent=completion()+say('（已核对）',' (verified)');steps.hidden=false;steps.textContent=record.message||'';
+        title.textContent=completion(record)+say('（已核对）',' (verified)');steps.hidden=false;steps.textContent=record.message||'';
       }
     },
     clear(){stop();observedId='';box.hidden=true;},

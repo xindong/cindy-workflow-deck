@@ -1,8 +1,8 @@
-import { configurationState, updateConfiguration } from './core/project-config.mjs';
+import { configurationState, updateConfiguration, directoryKey } from './core/project-config.mjs';
 export function createConfigurationController({ store, pick, inspect, git, openPreview, diagnosis, conflict, changed = () => {} }) {
   return async function handle(method, params = {}) {
     switch (method) {
-      case 'conflict-start': case 'conflict-read':
+      case 'conflict-start': case 'conflict-read': case 'conflict-acknowledge':
         if(!conflict)throw Object.assign(new Error('AI 修复尚未接入，请使用 Cindy 插件。'),{code:'AI_UNAVAILABLE'});
         return conflict(method,params);
       case 'diagnosis-prepare': case 'diagnosis-run': case 'diagnosis-read':
@@ -24,6 +24,14 @@ export function createConfigurationController({ store, pick, inspect, git, openP
         if(current.revision !== params.revision) throw Object.assign(new Error('项目配置已变化，请重新加载'),{code:'CONFIG_CONFLICT'});
         const project = current.configuration.projects.find(p=>p.id===current.configuration.activeProjectId && p.id===params.projectId);
         if(!project || !git) throw new Error('请先保存项目或升级插件');
+        // Also protect live tasks saved by earlier versions, before disk reservations
+        // existed. New dispatch/write races are guarded by the worker reservation.
+        if(!['status','diagnosis-status','operation-progress','file-open','file-diff','diff','history','issues-list'].includes(params.action)){
+          const data=await store.read(),records={...data.conflictRepairsByDirectory};
+          for(const record of Object.values(data.conflictRepairs||{}))if(record?.directory){const key=directoryKey(record.directory);records[key]??=record;}
+          const key=directoryKey(project.directory);
+          if(Object.values(records).some(record=>record?.directory&&directoryKey(record.directory)===key&&['running','uncertain'].includes(record.state)))throw Object.assign(new Error('AI 正在处理项目或处理结果待核对，请先从恢复卡检查或确认任务已结束。'),{code:'AI_REPAIR_PENDING'});
+        }
         if(params.action==='file-open') {
           if(!openPreview)throw Object.assign(new Error('当前宿主不支持侧边栏预览，请更新 Cindy。'),{code:'UNSUPPORTED_HOST'});
           const result=await git(project.directory,{...params,action:'file-diff',preview:true});

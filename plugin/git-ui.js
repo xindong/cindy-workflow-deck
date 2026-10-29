@@ -18,7 +18,7 @@ export function mountGit({transport,context,notice,onConflict,english=false}) {
     beginner?.update();diagnosis?.update();
     for(const button of document.querySelectorAll('[data-git]')) {
       const action=button.dataset.git, read=['diff','diff-staged','history'].includes(action);
-      button.disabled=!ready || (!read && (!$('git-confirm').checked || !state.hooksReady || state.incomplete || state.fileRevertReceipt&&!['restored','acknowledged'].includes(state.fileRevertReceipt.state))) || (['commit','push','pr'].includes(action) && state.protectedBranches.includes(state.branch));
+      button.disabled=!ready || (!read && (state.aiRepair || !$('git-confirm').checked || !state.hooksReady || state.incomplete || state.fileRevertReceipt&&!['restored','acknowledged'].includes(state.fileRevertReceipt.state))) || (['commit','push','pr'].includes(action) && state.protectedBranches.includes(state.branch));
     }
   }
   async function call(action,extra={}) {
