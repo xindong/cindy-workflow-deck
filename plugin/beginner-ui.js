@@ -30,7 +30,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   function update() {
     const current=state(),can=ready()&&!isBusy()&&!!current;
     for(const id of ['beginner-update','beginner-view','beginner-submit'])$(id).disabled=!can;
-    const blocked=current && (current.operationLocked || current.pendingGit || !current.hooksReady || current.incomplete || current.fileRevertReceipt&&!['restored','acknowledged'].includes(current.fileRevertReceipt.state) || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
+    const blocked=current && (recovery.isPending() || current.aiRepair || current.operationLocked || current.pendingGit || !current.hooksReady || current.incomplete || current.fileRevertReceipt&&!['restored','acknowledged'].includes(current.fileRevertReceipt.state) || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
     $('beginner-confirm').disabled=!can || blocked || issueLoading || (mode==='submit' && (!chosen().length || chosen().length>200 || !$('beginner-summary').value.trim() || (current.sources.length>0 && !$('beginner-manual').checked)));
     const total=current?.changes.length||0,count=chosen().length;
     $('beginner-refresh-changes').disabled=isBusy()||!canRefresh();

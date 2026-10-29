@@ -102,7 +102,7 @@ export function createFileActions({state,ready,isBusy,call,perform,reviewedCall,
     const current=state(),receipt=current?.fileRevertReceipt,blocked=receipt&&!['restored','acknowledged'].includes(receipt.state);
     const updatePending=current?.beginnerReceipt&&!current.beginnerReceipt.retryable&&['running','blocked','needs-verification'].includes(current.beginnerReceipt.state);
     recovery.hidden=!blocked;recoveryText.textContent=blocked?say('上次还原结果待核对。备份：','Previous restore needs verification. Backup: ')+receipt.backup:'';ack.disabled=isBusy()||!ready();
-    for(const button of document.querySelectorAll('.file-actions button'))button.disabled=isBusy()||!ready()||button.dataset.unsupported==='true'||!!(blocked||updatePending||current?.operationLocked)&&button.dataset.restore==='true';
+    for(const button of document.querySelectorAll('.file-actions button'))button.disabled=isBusy()||!ready()||button.dataset.unsupported==='true'||!!(blocked||updatePending||current?.operationLocked||current?.aiRepair)&&button.dataset.restore==='true';
   }
   return {append,update,askRestoreMany,invalidate:()=>{generation++;close();status.textContent='';clearFeedback();}};
 }
