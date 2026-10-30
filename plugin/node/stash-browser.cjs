@@ -121,4 +121,4 @@ async function request(ctx,state,params) {
   if(params.action==='stash-files')return {entry,files:rows};
   return compare(ctx,state,params,entry,rows);
 }
-module.exports={request};
+module.exports={request,selected,files,validPath};

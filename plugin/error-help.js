@@ -13,9 +13,15 @@ export function errorHelp(error={},english=false) {
  else if(/git-lfs.*not found|git: 'lfs'|git-lfs: command not found/i.test(raw))message=choose('项目需要大文件组件 Git LFS，但这台电脑尚未准备好。请联系项目负责人配置后再重新检查。','This project needs Git LFS. Ask the project owner to set it up on this computer, then check again.');
  else {
   const messages={
+   STASH_RESTORE_CONFLICT:['这条暂存记录与本地文件或暂存区存在冲突，尚未取回。请先查看对比，再由项目负责人协助合并；原文件和记录均保留。','This stash conflicts with local files or the index and was not restored. Compare the contents and ask the project owner to help merge; original files and the stash are retained.'],
+   STASH_RESTORE_UNCONFIRMED:['上次暂存取回结果待核对，已暂停后续写入。请先检查实际文件、暂存区和备份，再确认恢复；不要重复取回。','The last stash restore needs verification; further writes are paused. Check actual files, the index and backups, then confirm recovery; do not repeat restore.'],
+   STASH_ALREADY_RESTORED:['这条记录已取回到当前项目，无需重复操作。原 Stash 仍保留。','This stash was already restored to the current project; no repeat is needed. The original stash is retained.'],
+   STASH_CONFIRMATION_REQUIRED:['请先预检并确认要取回的具体暂存记录。','Preflight and confirm the exact stash to restore.'],
+   STASH_BACKUP_SPACE:['备份所在磁盘空间不足，尚未取回。请先释放空间，再重新预检。','The backup disk has insufficient space. Nothing was restored; free space and preflight again.'],
+   EMPTY_STASH:['这条暂存记录没有可取回的文件。','This stash has no files to restore.'],
    INVALID_STASH:['请选择当前列表中的 Stash 暂存记录。','Select a stash from the current list.'],
    STASH_CHANGED:['暂存记录或文件清单已变化，请点“刷新记录”后重新选择。','The stash or file list changed. Refresh stashes and choose again.'],
-   STASH_TOO_LARGE:['这条暂存记录超过2000个文件，请使用项目专业工具查看。','This stash exceeds 2,000 files. Inspect it with project tools.'],
+   STASH_TOO_LARGE:['这条暂存记录的文件数量或清单大小超过显示范围，请使用项目专业工具查看。','The stash file count or list size exceeds the display limit. Inspect it with project tools.'],
    INVALID_TARGET:['请选择与本地对比或与服务器最新对比。','Choose local or latest online comparison.'],
    AI_REPAIR_PENDING:['AI 正在处理项目或处理结果待核对。请先到任务列表确认任务已停止或结束，再从恢复卡检查或确认解除限制。','AI is working on this project or its result needs verification. Verify the task has stopped or ended, then check or confirm recovery in the repair card.'],
    NOT_GIT_PROJECT:['这个目录不是已有的团队 Git 项目。请选择项目最外层文件夹；如果刚下载的是压缩包，请联系项目负责人获取完整项目。','This folder is not an existing Git project. Select the project root or ask the owner for a complete checkout.'],
