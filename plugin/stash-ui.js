@@ -1,5 +1,6 @@
 import {errorHelp} from './error-help.js';
-export function mountStash({state,ready,isBusy,call,perform,english=false}) {
+import {mountStashRestore} from './stash-restore-ui.js';
+export function mountStash({state,ready,isBusy,call,perform,reviewedCall,refresh,canRefresh=ready,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
   const button=$('beginner-stashes'),name=button.querySelector('strong'),hint=button.querySelector('strong+span');
   name.textContent=say('查看暂存记录','View stashes');hint.textContent=say('查看 Stash 文件并对比','Inspect stash files and compare');
@@ -7,7 +8,7 @@ export function mountStash({state,ready,isBusy,call,perform,english=false}) {
   const header=document.createElement('div');header.className='row';
   const title=document.createElement('h3'),reload=document.createElement('button'),close=document.createElement('button');
   title.textContent=say('暂存记录 · Stash','Saved changes · Stash');reload.id='stash-refresh';reload.type=close.type='button';reload.textContent=say('刷新记录','Refresh stashes');close.textContent=say('收起','Close');header.append(title,reload,close);
-  const help=document.createElement('p');help.textContent=say('只读查看，不会应用或删除记录。与本地工作区对比，或先获取服务器最新版本再对比；线上对比只更新远端缓存。','Read only: stashes are neither applied nor deleted. Compare with your working tree or fetch the latest server version to compare; fetching only updates remote caches.');
+  const help=document.createElement('p');help.textContent=say('查看和对比不改文件；选中记录后可预检并确认取回，原 Stash 保留。线上对比会先获取最新版本，只更新远端缓存。','Viewing and comparing leave files unchanged. Select a stash to preflight and confirm restoring it; the original stash is retained. Online comparison fetches the latest version and only updates remote caches.');
   const status=document.createElement('p');status.id='stash-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   const errors=document.createElement('details'),errorTitle=document.createElement('summary'),errorBody=document.createElement('pre');errors.hidden=true;errorTitle.textContent=say('操作详情','Technical details');errors.append(errorTitle,errorBody);
   const entries=document.createElement('div');entries.id='stash-entries';entries.className='stash-list';
@@ -15,6 +16,7 @@ export function mountStash({state,ready,isBusy,call,perform,english=false}) {
   const comparison=document.createElement('section'),diffTitle=document.createElement('h4'),diffInfo=document.createElement('p'),output=document.createElement('pre');
   comparison.id='stash-comparison';comparison.hidden=true;diffTitle.id='stash-diff-title';diffInfo.id='stash-diff-info';output.id='stash-diff';comparison.append(diffTitle,diffInfo,output);
   section.append(header,help,status,errors,entries,fileTitle,files,comparison);$('beginner-message').before(section);
+  const restoring=mountStashRestore({state,ready,isBusy,call,perform,reviewedCall,refresh,canRefresh,english});
   let generation=0,currentRoot='',selectedId='';
   const valid=(n,root)=>n===generation&&ready()&&state()?.root===root;
   const clearError=()=>{errors.hidden=true;errorBody.textContent='';};
@@ -30,7 +32,7 @@ export function mountStash({state,ready,isBusy,call,perform,english=false}) {
   }
   function load() {
     return read(async(n,root)=>{
-      section.hidden=false;currentRoot=root;selectedId='';entries.replaceChildren();files.replaceChildren();fileTitle.textContent='';clearDiff();
+      section.hidden=false;currentRoot=root;selectedId='';restoring.clear();entries.replaceChildren();files.replaceChildren();fileTitle.textContent='';clearDiff();
       status.textContent=say('正在读取暂存记录…','Loading stashes…');
       const result=await call('stash-list');if(!valid(n,root))return;
       status.textContent=result.entries.length?say('找到 '+result.entries.length+' 条暂存记录，选择一条查看文件。','Found '+result.entries.length+' stashes. Choose one to inspect.') : say('当前项目没有 Stash 暂存记录。','This project has no stashes.');
@@ -40,11 +42,12 @@ export function mountStash({state,ready,isBusy,call,perform,english=false}) {
         pick.type='button';pick.className='stash-entry';pick.dataset.stashId=entry.id;pick.setAttribute('aria-pressed','false');
         label.textContent=entry.ref+' · '+entry.subject;date.textContent=entry.createdAt+' · '+entry.id.slice(0,12);pick.append(label,date);
         pick.onclick=()=>read(async(n,root)=>{
-          selectedId=entry.id;files.replaceChildren();fileTitle.textContent='';clearDiff();
+          selectedId=entry.id;restoring.clear();files.replaceChildren();fileTitle.textContent='';clearDiff();
           for(const item of entries.querySelectorAll('button'))item.setAttribute('aria-pressed',String(item===pick));
           status.textContent=say('正在读取记录中的文件…','Loading files in this stash…');
           const result=await call('stash-files',{stashId:entry.id});if(!valid(n,root)||selectedId!==entry.id)return;
           fileTitle.textContent=entry.ref+' · '+result.files.length+say(' 个文件',' files');
+          restoring.select(result.entry);
           status.textContent=say('“−”为暂存记录内容，“+”为对比目标内容。暂存区标记仅说明保存时的来源，对比使用该记录最终工作区版本。','“−” is the stash content and “+” is the comparison target. The staged marker identifies its saved source; comparison uses the stash’s final working-tree version.');
           for(const file of result.files) {
             const row=document.createElement('div'),name=document.createElement('span'),actions=document.createElement('div');row.className='stash-file';row.dataset.path=file.path;actions.className='row';
@@ -66,8 +69,8 @@ export function mountStash({state,ready,isBusy,call,perform,english=false}) {
       }
     });
   }
-  function invalidate(){generation++;currentRoot='';selectedId='';section.hidden=true;entries.replaceChildren();files.replaceChildren();fileTitle.textContent='';clearDiff();clearError();status.textContent='';}
-  function update(){if(currentRoot&&(!ready()||state()?.root!==currentRoot))invalidate();const disabled=!ready()||isBusy();button.disabled=disabled;reload.disabled=disabled;for(const item of section.querySelectorAll('.stash-list button'))item.disabled=disabled;}
+  function invalidate(){generation++;currentRoot='';selectedId='';restoring.invalidate();section.hidden=true;entries.replaceChildren();files.replaceChildren();fileTitle.textContent='';clearDiff();clearError();status.textContent='';}
+  function update(){if(currentRoot&&(!ready()||state()?.root!==currentRoot))invalidate();const disabled=!ready()||isBusy();button.disabled=disabled;reload.disabled=disabled;for(const item of section.querySelectorAll('.stash-list button'))item.disabled=disabled;restoring.update();}
   button.onclick=load;reload.onclick=load;close.onclick=()=>{section.hidden=true;};
   update();return {update,invalidate};
 }

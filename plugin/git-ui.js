@@ -19,7 +19,7 @@ export function mountGit({transport,context,notice,onConflict,english=false}) {
     beginner?.update();diagnosis?.update();stashes?.update();
     for(const button of document.querySelectorAll('[data-git]')) {
       const action=button.dataset.git, read=['diff','diff-staged','history'].includes(action);
-      button.disabled=!ready || (!read && (state.aiRepair || !$('git-confirm').checked || !state.hooksReady || state.incomplete || state.fileRevertReceipt&&!['restored','acknowledged'].includes(state.fileRevertReceipt.state))) || (['commit','push','pr'].includes(action) && state.protectedBranches.includes(state.branch));
+      button.disabled=!ready || (!read && (state.aiRepair || state.stashRestoreReceipt&&!['restored','acknowledged'].includes(state.stashRestoreReceipt.state) || !$('git-confirm').checked || !state.hooksReady || state.incomplete || state.fileRevertReceipt&&!['restored','acknowledged'].includes(state.fileRevertReceipt.state))) || (['commit','push','pr'].includes(action) && state.protectedBranches.includes(state.branch));
     }
   }
   async function call(action,extra={}) {
@@ -73,7 +73,7 @@ export function mountGit({transport,context,notice,onConflict,english=false}) {
   document.getElementById('configuration-form').addEventListener('input',()=>{state=undefined;buttons();});
   diagnosis=mountDiagnosis({transport,context,isBusy:()=>busy,english});
   beginner=mountBeginner({state:()=>state,ready,isBusy:()=>busy,call,refresh,perform:run,reviewedCall,canRefresh:()=>context().ready,repair:{available:!transport.standalone,call:(method,params)=>transport.call(method,{...context(),...params})},english});
-  stashes=mountStash({state:()=>state,ready,isBusy:()=>busy,call,perform:run,english});
+  stashes=mountStash({state:()=>state,ready,isBusy:()=>busy,call,perform:run,reviewedCall,refresh,canRefresh:()=>context().ready,english});
   document.addEventListener('configuration-invalidated',()=>{state=undefined;$('git-confirm').checked=false;beginner?.invalidate();stashes?.invalidate();buttons();});
   document.addEventListener('configuration-ready',()=>{buttons();if(context().ready){if(busy)pendingRefresh=true;else void run(refresh);}});
   addEventListener('focus',buttons);buttons();if(context().ready)void run(refresh);

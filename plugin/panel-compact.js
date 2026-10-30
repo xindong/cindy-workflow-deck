@@ -13,7 +13,7 @@ const paths = {
   "git-refresh": ["M20 11a8 8 0 1 0-2 7M20 4v7h-7"]
 };
 const descriptions = {
-  "beginner-stashes": ["查看 Stash 暂存记录及文件，与本地或服务器最新版本对比，不应用或删除记录。", "Inspect stash entries and files; compare with local or the latest server version without applying or deleting stashes."],
+  "beginner-stashes": ["查看 Stash 记录与文件，对比本地或服务器最新版本；可预检并确认取回，保留原记录。", "Inspect stash entries and files, compare local or latest online, and preflight then confirm restoring while keeping the stash."],
   "beginner-diagnose": ["描述问题或带入最近错误，预览后交给 AI 分析；不会执行修复。", "Describe an issue or include the recent error; review before AI analysis. No repairs are executed."],
   "basic-mode": ["日常 Git 操作：更新项目、查看改动、提交修改。", "Daily Git: update, view changes and submit work."],
   "advanced-mode": ["切换到工作流、UE 引擎更新及执行记录。", "Open workflows, UE engine update and execution log."],
