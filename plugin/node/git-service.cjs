@@ -96,9 +96,10 @@ async function gitRequest(directory,params={}) {
   }
   const previous=queues.get(root)||Promise.resolve();
   const job=previous.then(async()=>{
-    const ctx=await context(directory,['diagnosis-status','conflict-reserve','conflict-release','ssh-identity-set','file-revert','file-revert-acknowledge','beginner-acknowledge'].includes(action),action==='status'),run=ctx.run;
+    const localStash=['stash-list','stash-files'].includes(action)||action==='stash-diff'&&params.target==='local';
+    const ctx=await context(directory,localStash||['diagnosis-status','conflict-reserve','conflict-release','ssh-identity-set','file-revert','file-revert-acknowledge','beginner-acknowledge'].includes(action),action==='status'),run=ctx.run;
     let lock;
-    if(!['diagnosis-status','status','diff','history','issues-list'].includes(action)) {
+    if(!localStash&&!['diagnosis-status','status','diff','history','issues-list'].includes(action)) {
       lock=path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim());
       try {await fs.mkdir(lock);}
       catch(error) {if(error.code==='EEXIST')fail('OPERATION_LOCKED','另一项项目操作正在执行，或上次操作意外中断。请先重新检查；仍无法继续时，让负责人核对实际状态和 Git 元数据中的 jixin-write.lock，不要重复提交。');throw error;}
@@ -108,8 +109,9 @@ async function gitRequest(directory,params={}) {
     const repair=require('./repair-reservation.cjs');
     if(action==='conflict-reserve')return await repair.reserve(ctx,params.operationId);
     if(action==='conflict-release')return await repair.release(ctx,params,state);
-    if(lock&&action!=='file-diff')await repair.assertAvailable(ctx);
-    if(lock&&!['file-diff','file-revert-acknowledge'].includes(action))await require('./file-changes.cjs').assertSettled(ctx);
+    if(lock&&!['file-diff','stash-diff'].includes(action))await repair.assertAvailable(ctx);
+    if(lock&&!['file-diff','stash-diff','file-revert-acknowledge'].includes(action))await require('./file-changes.cjs').assertSettled(ctx);
+    if(['stash-list','stash-files','stash-diff'].includes(action))return await require('./stash-browser.cjs').request(ctx,state,params);
     if(action==='identity-fill') {await require('./git-identity.cjs').fillIdentity(ctx,ctx.env,params);return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:true,env:ctx.env});}
     if(action==='prepare') return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:params.confirmProjectSetup===true,env:ctx.env});
     if(action==='diagnosis-status') {

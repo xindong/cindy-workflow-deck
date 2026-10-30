@@ -26,7 +26,7 @@ export function createConfigurationController({ store, pick, inspect, git, openP
         if(!project || !git) throw new Error('请先保存项目或升级插件');
         // Also protect live tasks saved by earlier versions, before disk reservations
         // existed. New dispatch/write races are guarded by the worker reservation.
-        if(!['status','diagnosis-status','operation-progress','file-open','file-diff','diff','history','issues-list'].includes(params.action)){
+        if(!['status','diagnosis-status','operation-progress','file-open','file-diff','diff','history','issues-list','stash-list','stash-files','stash-diff'].includes(params.action)){
           const data=await store.read(),records={...data.conflictRepairsByDirectory};
           for(const record of Object.values(data.conflictRepairs||{}))if(record?.directory){const key=directoryKey(record.directory);records[key]??=record;}
           const key=directoryKey(project.directory);

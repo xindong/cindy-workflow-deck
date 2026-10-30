@@ -14,6 +14,10 @@
 
 根目录须经宿主选择器亲选；手填路径或失效授权请重新选择。Host原生插件任务目录覆盖优先，须与当前项目一致；AI在操作前核对实际目录，不一致必须停止。配置不授予完全访问权限，不创建或执行项目脚本。旧聊天绑定卡仅兼容未配置项目，不是正常使用的前置条件。
 
+## 分支与 Stash 暂存记录
+
+项目名旁显示当前执行项目的分支；游离状态显示提交号。“重新检查”及 Git 操作后的刷新同步分支。“查看暂存记录”列出最近100条 Stash，选择记录后显示文件、修改类型及保存来源（工作区、暂存区、未跟踪）。对比使用记录最终工作区版本，可与当前本地工作区或服务器最新版本逐文件对比。线上目标优先当前分支的 origin 跟踪分支，其次服务器同名分支，最后服务器默认分支；每次联网获取，显示目标分支、提交号及时间，失败不以旧缓存代替。查看不应用或删除记录，不改工作区、暂存区或当前分支；线上对比会更新远端缓存。结果在当前界面显示，不新增任务或窗口。二进制、Git LFS 或超过1 MiB的文件仅显示摘要（LFS可显示指针元数据，不下载资源）；链接、目录、子模块及超过2000个文件的记录请用项目专业工具查看。
+
 ## 日志与恢复
 
 AI 使用 report_progress 回报实际步骤、输出摘要、阻塞或完成；不是全部终端 stdout。Cindy 旁听事件仅是运行元数据；AI 报告完成与 Host 本轮结束分别展示，都不能替代业务验收。可选择任务查看保留的日志尾部；容量有限，旧日志会淘汰。无回报时等待或查看任务聊天，不假称完成。派发回执不确定时先检查任务列表，不连续重试，以免重复创建任务。
@@ -21,6 +25,8 @@ AI 使用 report_progress 回报实际步骤、输出摘要、阻塞或完成；
 缺少必要接口或宿主明确不支持时提示升级 Cindy；权限拒绝需检查插件授权和关联，网络、磁盘错误需按原错误处理，不能用其它通道绕过。面板的分离窗口、最小化和恢复由 Cindy 标题栏提供。Node 进程有当前系统账号权限，流程发现只读；基础Git写操作会运行项目hooks及过滤器，不是操作系统级沙箱。
 
 ## English quick start
+
+The project heading shows the current branch (or detached commit). View stashes lists saved entries and their files, with in-app comparisons against the current working tree or freshly fetched origin upstream/same-name/default branch. The target commit and check time are displayed. Stashes, local files and the index remain unchanged; online comparison updates remote caches. Binary, LFS and files over 1 MiB show summaries; LFS assets are not downloaded. No task or preview window is created.
 
 Select the project root with Choose directory in plugin settings and save. Available workflow buttons activate automatically; no chat command or card binding is needed. Actions for the same execution directory reuse one project task with a stable sessionKey. Each operation has its own request id; history is reference only and old operations are never replayed. Model and permissions come from Cindy plugin task settings. Direct launch uses agent.errand, which is disclosed during installation. Only one workflow runs at a time, with at least 10 seconds between launches; the panel queries running jobs every five seconds. After checking an uncertain task in the task list, unlock explicitly without resending it. Keep any native task directory override consistent with the selected root; tasks must stop on a mismatch.
 
