@@ -13,6 +13,8 @@ export function changeLabel(status,english=false) {
 }
 export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedCall=call,canRefresh=ready,repair,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
+  const project=$('beginner-project'),heading=document.createElement('div'),branch=document.createElement('span');
+  heading.className='project-heading';project.before(heading);heading.append(project,branch);branch.id='beginner-branch';branch.hidden=true;
   const progress=createUpdateProgress({call,getRoot:()=>state()?.root||'',english});
   const upload=createUpdateProgress({call,getRoot:()=>state()?.root||'',english,kind:'submit'});
   const recovery=createUpdateRecovery({state,ready,isBusy,isUpdating:()=>progress.isRunning()||upload.isRunning(),canRefresh,perform,refresh,reviewedCall,repair,openUpdate:()=>open('update'),english});
@@ -29,6 +31,8 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   function chosen(){return [...document.querySelectorAll('#beginner-files input:checked')].map(item=>item.value);}
   function update() {
     const current=state(),can=ready()&&!isBusy()&&!!current;
+    branch.hidden=!ready()||!current;
+    if(!branch.hidden){branch.textContent='⑂ '+(current.branch||say('游离提交','Detached HEAD')+' '+(current.head?.slice(0,12)||''));branch.title=say('当前执行项目分支：','Current execution project branch: ')+(current.branch||current.head||say('尚无提交','No commits yet'));}
     for(const id of ['beginner-update','beginner-view','beginner-submit'])$(id).disabled=!can;
     const blocked=current && (recovery.isPending() || current.aiRepair || current.operationLocked || current.pendingGit || !current.hooksReady || current.incomplete || current.fileRevertReceipt&&!['restored','acknowledged'].includes(current.fileRevertReceipt.state) || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
     $('beginner-confirm').disabled=!can || blocked || issueLoading || (mode==='submit' && (!chosen().length || chosen().length>200 || !$('beginner-summary').value.trim() || (current.sources.length>0 && !$('beginner-manual').checked)));
