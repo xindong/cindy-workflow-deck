@@ -13,7 +13,7 @@
 #git-view .beginner-heading h2 { margin:0; font-size:11px; font-weight:500; color:var(--text-secondary,#737373); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 #git-view .beginner-heading p { font-size:11px; margin:7px 0; }
 .basic-empty { flex:1; min-height:80px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; font-size:12px; line-height:1.7; color:var(--text-secondary,#737373); padding:16px; }
-#git-view:has(#beginner-sheet:not([hidden])) .basic-empty, #git-view:has(#diagnosis-panel:not([hidden])) .basic-empty, #git-view:has(#stash-browser:not([hidden])) .basic-empty { display:none; }
+#git-view:has(#beginner-sheet:not([hidden])) .basic-empty, #git-view:has(#diagnosis-panel:not([hidden])) .basic-empty, #git-view:has(#stash-browser:not([hidden])) .basic-empty, #git-view:has(#outgoing-panel:not([hidden])) .basic-empty { display:none; }
 #git-view #beginner-message[data-quiet="true"] { display:none; }
 #git-view .beginner-message { font-size:11px; margin:10px 0; flex-shrink:0; }
 #git-view .beginner-sheet { padding:12px; margin:10px 0; }

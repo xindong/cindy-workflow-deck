@@ -65,7 +65,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     recovery.checked();
     progress.sync(current.beginnerReceipt);upload.sync(current.beginnerReceipt);
     $('beginner-project').textContent=current.root.split(/[\\/]/).filter(Boolean).pop()||say('我的项目','My project');
-    $('beginner-state').textContent=current.changes.length?say('有 '+current.changes.length+' 个文件尚未提交','You have '+current.changes.length+' unsubmitted files'):say('电脑里的修改已保存，没有待提交文件','No unsubmitted files on this computer');
+    $('beginner-state').textContent=current.changes.length?say('有 '+current.changes.length+' 个文件尚未提交','You have '+current.changes.length+' unsubmitted files'):current.outgoing?.count>0?say('没有待提交文件，另有 '+current.outgoing.count+' 条提交尚未推送','No unsubmitted files; '+current.outgoing.count+' commits have not been pushed'):say('电脑里的修改已保存，没有待提交文件','No unsubmitted files on this computer');
     if(renderedRoot!==current.root) {filter.reset();selected.clear();clearIssues();rendered='';$('beginner-summary').value='';$('beginner-manual').checked=false;$('beginner-sheet').hidden=true;for(const box of document.querySelectorAll('#beginner-files input'))box.checked=false;}
     if(rendered!==current.fingerprint) {
       $('beginner-manual').checked=false;
@@ -95,6 +95,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     update();
   }
   function open(next) {
+    if(next==='update')recovery.forUpdate();
     if(next!=='submit'&&issueLoading)clearIssues();
     mode=next;$('beginner-manual').checked=false;$('beginner-sheet').hidden=false;$('beginner-confirmation').hidden=false;$('beginner-confirm').hidden=next==='view';$('beginner-plan').hidden=next==='view';
     $('beginner-sheet-title').textContent=next==='update'?say('更新到团队最新内容','Get team updates'):say('这次改了什么？','What changed?');
@@ -193,5 +194,5 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-files').replaceChildren();$('beginner-summary').value='';
     $('beginner-manual').checked=false;$('beginner-sheet').hidden=true;update();
   }
-  update();return {render,update,error,invalidate};
+  update();return {render,update,error,invalidate,assistStash:entry=>recovery.assistStash(entry)};
 }

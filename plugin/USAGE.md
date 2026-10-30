@@ -20,6 +20,12 @@
 
 选中 Stash 后可点“取回整条记录到本地…”：隔离副本预检通过后，确认全部文件及项目要求，再备份并取回保存的工作区和暂存状态。已有文件或暂存内容不能安全合并时停止，原项目不变；不切分支、不提交上传，原记录保留。预检会写临时文件及 Git 快照对象，但不改变原工作区、索引或 stash 引用。实际取回中断或回执不确定时先检查，核对文件、暂存区、备份且完成 Git 冲突处理后，显式确认解除限制，不重放旧请求。
 
+## Stash 冲突协助与未推送状态
+
+取回发生冲突时，可点“协助解决冲突并取回…”，在同一项目任务里按准确的 Stash 标识处理。文本优先合并，二进制和语义取舍先询问；任务需完整取回所有记录文件并核对原有修改及暂存状态，保留原 Stash。完成后点“检查取回处理结果”并核对确认，不要再次整条取回来重放 apply。AI 结束不等于取回完成，人工确认后才解除 AI 处理保护；实际取回恢复卡仍待核对时再完成其确认。独立应用请负责人协助。
+
+项目状态还显示“已提交、未推送”的数量，点击可查看提交清单。依据本机上次获取的远端记录；需要最新状态请先获取远端再检查，不自动推送。即使没有待提交文件，本地尚未推送的提交也会单独提示；缺少有效远端记录则显示待核对。
+
 ## 日志与恢复
 
 AI 使用 report_progress 回报实际步骤、输出摘要、阻塞或完成；不是全部终端 stdout。Cindy 旁听事件仅是运行元数据；AI 报告完成与 Host 本轮结束分别展示，都不能替代业务验收。可选择任务查看保留的日志尾部；容量有限，旧日志会淘汰。无回报时等待或查看任务聊天，不假称完成。派发回执不确定时先检查任务列表，不连续重试，以免重复创建任务。
@@ -27,6 +33,8 @@ AI 使用 report_progress 回报实际步骤、输出摘要、阻塞或完成；
 缺少必要接口或宿主明确不支持时提示升级 Cindy；权限拒绝需检查插件授权和关联，网络、磁盘错误需按原错误处理，不能用其它通道绕过。面板的分离窗口、最小化和恢复由 Cindy 标题栏提供。Node 进程有当前系统账号权限，流程发现只读；基础Git写操作会运行项目hooks及过滤器，不是操作系统级沙箱。
 
 ## English quick start
+
+For stash conflicts, Resolve conflicts and restore sends the verified fixed stash id to the same project task. AI must back up, ask about choices, merge text and complete the entire stash restore, including untracked files and index state. Checking never reapplies the stash; user verification is required before releasing the repair reservation. Standalone AI repair remains unavailable. Committed, not pushed shows cached outgoing counts and a clickable commit list even when the worktree is clean; it never implies a live server check or pushes automatically.
 
 The project heading shows the current branch (or detached commit). View stashes lists saved entries and their files, with in-app comparisons against the current working tree or freshly fetched origin upstream/same-name/default branch. Viewing and comparing leave local files and the index unchanged; online comparison updates remote caches. Binary, LFS and files over 1 MiB show summaries; LFS assets are not downloaded. Select a stash to preflight restoring it in an isolated copy, then review its file list and confirm. Local files and the index are backed up before applying the whole stash with its staged state. The original stash is kept; no branch switch, commit or push. Conflicts stop preflight without altering the source project. Uncertain actual restores require checking and explicit recovery acknowledgement and never replay automatically. No task or preview window is created.
 

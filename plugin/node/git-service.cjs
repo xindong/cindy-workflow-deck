@@ -97,9 +97,9 @@ async function gitRequest(directory,params={}) {
   const previous=queues.get(root)||Promise.resolve();
   const job=previous.then(async()=>{
     const localStash=['stash-list','stash-files'].includes(action)||action==='stash-diff'&&params.target==='local';
-    const ctx=await context(directory,localStash||['stash-restore-preview','stash-restore','stash-restore-acknowledge','diagnosis-status','conflict-reserve','conflict-release','ssh-identity-set','file-revert','file-revert-acknowledge','beginner-acknowledge'].includes(action),action==='status'),run=ctx.run;
+    const ctx=await context(directory,localStash||['outgoing-list','stash-restore-preview','stash-restore','stash-restore-acknowledge','diagnosis-status','conflict-reserve','conflict-release','ssh-identity-set','file-revert','file-revert-acknowledge','beginner-acknowledge'].includes(action),action==='status'),run=ctx.run;
     let lock;
-    if(!localStash&&!['diagnosis-status','status','diff','history','issues-list'].includes(action)) {
+    if(!localStash&&!['outgoing-list','diagnosis-status','status','diff','history','issues-list'].includes(action)) {
       lock=path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim());
       try {await fs.mkdir(lock);}
       catch(error) {if(error.code==='EEXIST')fail('OPERATION_LOCKED','另一项项目操作正在执行，或上次操作意外中断。请先重新检查；仍无法继续时，让负责人核对实际状态和 Git 元数据中的 jixin-write.lock，不要重复提交。');throw error;}
@@ -130,12 +130,13 @@ async function gitRequest(directory,params={}) {
       let pendingGit=false;try {await service.assertNoPendingGit(ctx,state);}catch(error){if(error.code!=='PROJECT_CONFLICT')throw error;pendingGit=true;}
       let operationLocked=false;
       try {await fs.lstat(path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim()));operationLocked=true;}catch(error){if(error.code!=='ENOENT')throw error;}
-      return {...state,token,pendingGit,operationLocked,aiRepair:await repair.read(ctx),sshIdentity:ctx.sshIdentity,stashRestoreReceipt:await stashRestore.read(ctx),fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
+      return {...state,token,pendingGit,operationLocked,outgoing:await require('./outgoing-commits.cjs').read(ctx,state),aiRepair:await repair.read(ctx),sshIdentity:ctx.sshIdentity,stashRestoreReceipt:await stashRestore.read(ctx),fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
     }
     if(action==='issues-list') return require('./github-issues.cjs').listIssues(ctx,params,ctx.env);
     if(action==='file-diff') return await require('./file-changes.cjs').compare(ctx,state,params);
     if(action==='diff') return {output:await run(['diff',...(params.staged?['--cached']:[]),'--no-ext-diff','--no-textconv','--stat','--patch'])};
     if(action==='history') return {output:await run(['log','-20','--format=%h %s (%an)','--no-show-signature'])};
+    if(action==='outgoing-list')return require('./outgoing-commits.cjs').read(ctx,state,true);
     if(!['stash-restore','stash-restore-acknowledge','file-revert','file-revert-acknowledge','ssh-identity-set','branch-create','branch-switch','stage','unstage','commit','fetch','pull','push','pr','beginner-submit','beginner-update','beginner-acknowledge'].includes(action)) fail('UNKNOWN_ACTION','不支持此 Git 操作');
     if(action.startsWith('beginner-')) {const prior=await require('./beginner-git.cjs').readReceipt(ctx);if(prior?.id===params.operationId)return prior;}
     const ticket=tickets.get(params.token);tickets.delete(params.token);

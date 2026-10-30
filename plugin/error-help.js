@@ -13,7 +13,7 @@ export function errorHelp(error={},english=false) {
  else if(/git-lfs.*not found|git: 'lfs'|git-lfs: command not found/i.test(raw))message=choose('项目需要大文件组件 Git LFS，但这台电脑尚未准备好。请联系项目负责人配置后再重新检查。','This project needs Git LFS. Ask the project owner to set it up on this computer, then check again.');
  else {
   const messages={
-   STASH_RESTORE_CONFLICT:['这条暂存记录与本地文件或暂存区存在冲突，尚未取回。请先查看对比，再由项目负责人协助合并；原文件和记录均保留。','This stash conflicts with local files or the index and was not restored. Compare the contents and ask the project owner to help merge; original files and the stash are retained.'],
+   STASH_RESTORE_CONFLICT:['这条暂存记录与本地文件或暂存区存在冲突，尚未取回。请先查看对比，再点“协助解决冲突并取回…”完成合并；独立应用可请项目负责人处理。原文件和记录均保留。','This stash conflicts with local files or the index and was not restored. Compare, then choose Resolve conflicts and restore. In standalone, ask the project owner to help. Original files and the stash are retained.'],
    STASH_RESTORE_UNCONFIRMED:['上次暂存取回结果待核对，已暂停后续写入。请先检查实际文件、暂存区和备份，再确认恢复；不要重复取回。','The last stash restore needs verification; further writes are paused. Check actual files, the index and backups, then confirm recovery; do not repeat restore.'],
    STASH_ALREADY_RESTORED:['这条记录已取回到当前项目，无需重复操作。原 Stash 仍保留。','This stash was already restored to the current project; no repeat is needed. The original stash is retained.'],
    STASH_CONFIRMATION_REQUIRED:['请先预检并确认要取回的具体暂存记录。','Preflight and confirm the exact stash to restore.'],

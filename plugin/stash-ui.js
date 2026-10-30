@@ -1,6 +1,6 @@
 import {errorHelp} from './error-help.js';
 import {mountStashRestore} from './stash-restore-ui.js';
-export function mountStash({state,ready,isBusy,call,perform,reviewedCall,refresh,canRefresh=ready,english=false}) {
+export function mountStash({state,ready,isBusy,call,perform,reviewedCall,refresh,onStashConflict,canRefresh=ready,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
   const button=$('beginner-stashes'),name=button.querySelector('strong'),hint=button.querySelector('strong+span');
   name.textContent=say('查看暂存记录','View stashes');hint.textContent=say('查看 Stash 文件并对比','Inspect stash files and compare');
@@ -16,7 +16,7 @@ export function mountStash({state,ready,isBusy,call,perform,reviewedCall,refresh
   const comparison=document.createElement('section'),diffTitle=document.createElement('h4'),diffInfo=document.createElement('p'),output=document.createElement('pre');
   comparison.id='stash-comparison';comparison.hidden=true;diffTitle.id='stash-diff-title';diffInfo.id='stash-diff-info';output.id='stash-diff';comparison.append(diffTitle,diffInfo,output);
   section.append(header,help,status,errors,entries,fileTitle,files,comparison);$('beginner-message').before(section);
-  const restoring=mountStashRestore({state,ready,isBusy,call,perform,reviewedCall,refresh,canRefresh,english});
+  const restoring=mountStashRestore({state,ready,isBusy,call,perform,reviewedCall,refresh,onStashConflict,canRefresh,english});
   let generation=0,currentRoot='',selectedId='';
   const valid=(n,root)=>n===generation&&ready()&&state()?.root===root;
   const clearError=()=>{errors.hidden=true;errorBody.textContent='';};
