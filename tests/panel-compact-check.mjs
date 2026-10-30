@@ -6,10 +6,10 @@ const server=spawn('python3',['tests/serve-preview.py'],{stdio:['ignore','pipe',
 let browser;
 try {
  const base=await new Promise((yes,no)=>{server.stdout.once('data',b=>yes(b.toString().trim()));server.once('error',no);});
- browser=await chromium.launch({headless:true});
+ browser=await chromium.launch({headless:true,...(process.env.JIXIN_BROWSER_EXECUTABLE?{executablePath:process.env.JIXIN_BROWSER_EXECUTABLE}:{})});
  await mkdir('artifacts',{recursive:true});
  for(const lang of ['zh-CN','en']) {
-  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});
   await page.route('**/app-context',r=>r.fulfill({json:{context:{locale:lang}}}));
   await page.goto(base+'/panel.html?direct=1');await page.locator('#add:not(:disabled)').waitFor({state:'attached'});
   if(lang==='zh-CN') {if(!await page.locator('#config-view').isVisible())await page.locator('#config-tab').click();await page.locator('#project-manager').evaluate(e=>e.open=true);await page.locator('#project-manager').evaluate(e=>e.open=true);await page.locator('#add').click();await page.locator('#pick-directory').click();await page.locator('#save').click();}
@@ -20,10 +20,10 @@ try {
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
    const dock=await page.locator('#compact-footer .dock').boundingBox();
    assert.equal(await page.locator('.dock').count(),1);
-   assert.ok(dock.y+dock.height>780&&dock.height<180,JSON.stringify(dock));
+   assert.ok(dock.y+dock.height>780&&dock.height<=(width<230?220:180),JSON.stringify(dock));
    assert.ok(Math.abs(dock.x+dock.width/2-width/2)<2,JSON.stringify(dock));
    assert.equal(await page.locator('#basic-view>nav').isVisible(),false);
-   for(const id of ['advanced-mode','config-tab','beginner-update','beginner-view','beginner-submit','beginner-diagnose','git-refresh']) {
+   for(const id of ['advanced-mode','config-tab','beginner-update','beginner-view','beginner-submit','beginner-diagnose','beginner-stashes','git-refresh']) {
     assert.equal(await page.locator('#'+id+' svg').count(),1);
     const r=await page.locator('#'+id).boundingBox();assert.ok(r.width<=36&&r.height<=36);
     await page.locator('#'+id).hover();await page.locator('#compact-tooltip:not([hidden])').waitFor();

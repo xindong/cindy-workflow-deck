@@ -6,12 +6,23 @@ export function errorHelp(error={},english=false) {
  if(code==='PROTOCOL_ERROR'&&/stdout|1\s*M(?:B|iB)|单行|超[过限]/i.test(raw))message=choose('项目信息较多，当前插件一次接收不下，因此没能显示项目状态。请升级插件后点“重新检查”；无需重新选择目录或删除文件。若刚执行过更新或提交，请先核对实际结果，不要重复操作。','There is more project information than this plugin can receive at once. Update the plugin and check again; do not delete files or select the folder again. If an update or submission was in progress, verify its result before retrying.');
  else if(['RESULT_TRANSFER_EXPIRED','RESULT_TOO_LARGE'].includes(code))message=choose('项目信息读取中断或超过显示容量，暂时无法显示完整结果。请点“重新检查”；如果仍失败，请把操作详情交给项目负责人。若刚执行过更新或提交，请先核对实际结果，不要重复操作。','Project information could not be read completely. Check again; if it still fails, share the details with the project owner. Verify any update or submission before repeating it.');
  else if(code==='HOST_NOT_READY')message=choose('当前没有可显示对比的任务对话。请先打开 Cindy 中的普通任务对话，再双击文件；伙伴聊天暂不能承载这个预览。','Open an ordinary Cindy task conversation, then double-click the file again. Teammate chats cannot currently host this preview.');
+ else if(code==='STASH_REMOTE_FAILED')message=choose('暂时无法获取服务器最新版本，请检查网络和项目连接后重新对比。没有使用旧缓存冒充最新版本，文件和暂存记录未改动。','Cannot fetch the latest server version. Check the network and project connection, then compare again. No stale cache was substituted; files and stashes are unchanged.');
  else if(/Permission denied \(publickey\)|Authentication failed|could not read Username/i.test(raw)||['SSH_IDENTITY_INVALID','SSH_IDENTITY_REQUIRED'].includes(code))message=choose('无法连接团队仓库：当前项目的登录或 SSH 密钥未通过验证。请让项目负责人检查该项目绑定的账号、密钥和仓库访问权限，再重新检查。','Repository authentication failed. Ask the project owner to check this project’s account, SSH key and repository access, then check again.');
  else if(/does not appear to be a git repository|Could not read from remote repository|repository .*not found/i.test(raw))message=choose('无法访问团队仓库。请让项目负责人检查仓库地址和当前账号的访问权限，再重新尝试更新。','Cannot access the team repository. Ask the project owner to verify the repository address and account access, then try updating again.');
  else if(['EACCES','EPERM','PERMISSION_DENIED'].includes(code))message=choose('没有权限读取或操作这个项目。请确认所选目录允许访问，并让项目负责人检查文件权限；不要删除项目或重复提交。','Access to this project was denied. Check folder access and ask the project owner to review permissions; do not delete the project or repeat a submission.');
  else if(/git-lfs.*not found|git: 'lfs'|git-lfs: command not found/i.test(raw))message=choose('项目需要大文件组件 Git LFS，但这台电脑尚未准备好。请联系项目负责人配置后再重新检查。','This project needs Git LFS. Ask the project owner to set it up on this computer, then check again.');
  else {
   const messages={
+   STASH_RESTORE_CONFLICT:['这条暂存记录与本地文件或暂存区存在冲突，尚未取回。请先查看对比，再点“协助解决冲突并取回…”完成合并；独立应用可请项目负责人处理。原文件和记录均保留。','This stash conflicts with local files or the index and was not restored. Compare, then choose Resolve conflicts and restore. In standalone, ask the project owner to help. Original files and the stash are retained.'],
+   STASH_RESTORE_UNCONFIRMED:['上次暂存取回结果待核对，已暂停后续写入。请先检查实际文件、暂存区和备份，再确认恢复；不要重复取回。','The last stash restore needs verification; further writes are paused. Check actual files, the index and backups, then confirm recovery; do not repeat restore.'],
+   STASH_ALREADY_RESTORED:['这条记录已取回到当前项目，无需重复操作。原 Stash 仍保留。','This stash was already restored to the current project; no repeat is needed. The original stash is retained.'],
+   STASH_CONFIRMATION_REQUIRED:['请先预检并确认要取回的具体暂存记录。','Preflight and confirm the exact stash to restore.'],
+   STASH_BACKUP_SPACE:['备份所在磁盘空间不足，尚未取回。请先释放空间，再重新预检。','The backup disk has insufficient space. Nothing was restored; free space and preflight again.'],
+   EMPTY_STASH:['这条暂存记录没有可取回的文件。','This stash has no files to restore.'],
+   INVALID_STASH:['请选择当前列表中的 Stash 暂存记录。','Select a stash from the current list.'],
+   STASH_CHANGED:['暂存记录或文件清单已变化，请点“刷新记录”后重新选择。','The stash or file list changed. Refresh stashes and choose again.'],
+   STASH_TOO_LARGE:['这条暂存记录的文件数量或清单大小超过显示范围，请使用项目专业工具查看。','The stash file count or list size exceeds the display limit. Inspect it with project tools.'],
+   INVALID_TARGET:['请选择与本地对比或与服务器最新对比。','Choose local or latest online comparison.'],
    AI_REPAIR_PENDING:['AI 正在处理项目或处理结果待核对。请先到任务列表确认任务已停止或结束，再从恢复卡检查或确认解除限制。','AI is working on this project or its result needs verification. Verify the task has stopped or ended, then check or confirm recovery in the repair card.'],
    NOT_GIT_PROJECT:['这个目录不是已有的团队 Git 项目。请选择项目最外层文件夹；如果刚下载的是压缩包，请联系项目负责人获取完整项目。','This folder is not an existing Git project. Select the project root or ask the owner for a complete checkout.'],
    NOT_PROJECT_ROOT:['选到了项目内部的子文件夹。请选择包含整个项目的最外层文件夹。','Select the project root rather than a subfolder.'],

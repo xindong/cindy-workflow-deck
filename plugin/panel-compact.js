@@ -1,6 +1,7 @@
 // Compact controls are presentation only: existing handlers and native disabled
 // states stay on the original buttons. Hover and focus never start operations.
 const paths = {
+  "beginner-stashes": ["M3 8l9-5 9 5-9 5-9-5M3 12l9 5 9-5M3 16l9 5 9-5"],
   "beginner-diagnose": ["M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14M15 15l6 6M7 10h6M10 7v6"],
   "basic-mode": ["M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"],
   "advanced-mode": ["M9 3h6M10 3v6L4 19v2h16v-2L14 9V3M8 15h8"],
@@ -12,6 +13,7 @@ const paths = {
   "git-refresh": ["M20 11a8 8 0 1 0-2 7M20 4v7h-7"]
 };
 const descriptions = {
+  "beginner-stashes": ["查看 Stash 记录与文件，对比本地或服务器最新版本；可预检并确认取回，保留原记录。", "Inspect stash entries and files, compare local or latest online, and preflight then confirm restoring while keeping the stash."],
   "beginner-diagnose": ["描述问题或带入最近错误，预览后交给 AI 分析；不会执行修复。", "Describe an issue or include the recent error; review before AI analysis. No repairs are executed."],
   "basic-mode": ["日常 Git 操作：更新项目、查看改动、提交修改。", "Daily Git: update, view changes and submit work."],
   "advanced-mode": ["切换到工作流、UE 引擎更新及执行记录。", "Open workflows, UE engine update and execution log."],

@@ -1,6 +1,11 @@
 import { CHANNEL } from './workflows.js';
 export function createSettingsTransport() {
-  if (globalThis.jixinDesktop) return { call: (method, params = {}) => globalThis.jixinDesktop.request(method, params), standalone: true, close() {} };
+  if (globalThis.jixinDesktop) return { call: async(method, params = {}) => {
+    if(!globalThis.jixinDesktop.requestResult)return globalThis.jixinDesktop.request(method, params);
+    const response=await globalThis.jixinDesktop.requestResult(method,params);
+    if(!response.ok)throw Object.assign(new Error(response.message),{code:response.code});
+    return response.result;
+  }, standalone: true, close() {} };
   const channel = new BroadcastChannel(CHANNEL);
   const pending = new Map();
   const configurationListeners=new Set();
@@ -20,7 +25,7 @@ export function createSettingsTransport() {
     const reqId = crypto.randomUUID();
     return new Promise((resolve, reject) => {
       // A native picker waits for a human decision, rather than an RPC deadline.
-      const timer = method === 'config-pick-directory' ? undefined : setTimeout(() => { clearInterval(pending.get(reqId)?.retry); pending.delete(reqId); reject(Object.assign(new Error('插件逻辑未响应，请确认插件已启用。写入结果不确定时先重新加载，不要重复保存。'), { code: 'RESPONSE_UNCONFIRMED' })); }, method === 'diagnosis-run' ? 75000 : method === 'git-request' ? (params.action?.startsWith('beginner-')?915000:125000) : 30000);
+      const timer = method === 'config-pick-directory' ? undefined : setTimeout(() => { clearInterval(pending.get(reqId)?.retry); pending.delete(reqId); reject(Object.assign(new Error('插件逻辑未响应，请确认插件已启用。写入结果不确定时先重新加载，不要重复保存。'), { code: 'RESPONSE_UNCONFIRMED' })); }, method === 'diagnosis-run' ? 75000 : method === 'git-request' ? (params.action?.startsWith('beginner-')||params.action?.startsWith('stash-restore')?915000:125000) : 30000);
       const item={resolve,reject,timer}; pending.set(reqId,item);
       const send=()=>channel.postMessage({from:'settings',type:method,reqId,params});
       void awake.then(()=>{

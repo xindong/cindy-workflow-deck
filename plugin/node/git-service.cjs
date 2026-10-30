@@ -96,9 +96,10 @@ async function gitRequest(directory,params={}) {
   }
   const previous=queues.get(root)||Promise.resolve();
   const job=previous.then(async()=>{
-    const ctx=await context(directory,['diagnosis-status','conflict-reserve','conflict-release','ssh-identity-set','file-revert','file-revert-acknowledge','beginner-acknowledge'].includes(action),action==='status'),run=ctx.run;
+    const localStash=['stash-list','stash-files'].includes(action)||action==='stash-diff'&&params.target==='local';
+    const ctx=await context(directory,localStash||['outgoing-list','stash-restore-preview','stash-restore','stash-restore-acknowledge','diagnosis-status','conflict-reserve','conflict-release','ssh-identity-set','file-revert','file-revert-acknowledge','beginner-acknowledge'].includes(action),action==='status'),run=ctx.run;
     let lock;
-    if(!['diagnosis-status','status','diff','history','issues-list'].includes(action)) {
+    if(!localStash&&!['outgoing-list','diagnosis-status','status','diff','history','issues-list'].includes(action)) {
       lock=path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim());
       try {await fs.mkdir(lock);}
       catch(error) {if(error.code==='EEXIST')fail('OPERATION_LOCKED','另一项项目操作正在执行，或上次操作意外中断。请先重新检查；仍无法继续时，让负责人核对实际状态和 Git 元数据中的 jixin-write.lock，不要重复提交。');throw error;}
@@ -108,8 +109,13 @@ async function gitRequest(directory,params={}) {
     const repair=require('./repair-reservation.cjs');
     if(action==='conflict-reserve')return await repair.reserve(ctx,params.operationId);
     if(action==='conflict-release')return await repair.release(ctx,params,state);
-    if(lock&&action!=='file-diff')await repair.assertAvailable(ctx);
-    if(lock&&!['file-diff','file-revert-acknowledge'].includes(action))await require('./file-changes.cjs').assertSettled(ctx);
+    const stashRestore=require('./stash-restore.cjs');
+    if(action==='stash-restore') {const prior=await stashRestore.read(ctx);if(prior?.id===params.operationId){if(prior.stashId!==params.stashId)fail('INVALID_REQUEST','相同取回编号不能用于另一条记录。');return prior;}}
+    if(lock&&!['file-diff','stash-diff'].includes(action))await repair.assertAvailable(ctx);
+    if(lock&&!['file-diff','stash-diff','file-revert-acknowledge'].includes(action))await require('./file-changes.cjs').assertSettled(ctx);
+    if(lock&&!['file-diff','stash-diff','stash-restore-acknowledge'].includes(action))await stashRestore.assertSettled(ctx);
+    if(['stash-list','stash-files','stash-diff'].includes(action))return await require('./stash-browser.cjs').request(ctx,state,params);
+    if(action==='stash-restore-preview')return await stashRestore.preview(ctx,state,params);
     if(action==='identity-fill') {await require('./git-identity.cjs').fillIdentity(ctx,ctx.env,params);return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:true,env:ctx.env});}
     if(action==='prepare') return await require('./project-setup.cjs').prepareProject(ctx,state,{confirmed:params.confirmProjectSetup===true,env:ctx.env});
     if(action==='diagnosis-status') {
@@ -124,13 +130,14 @@ async function gitRequest(directory,params={}) {
       let pendingGit=false;try {await service.assertNoPendingGit(ctx,state);}catch(error){if(error.code!=='PROJECT_CONFLICT')throw error;pendingGit=true;}
       let operationLocked=false;
       try {await fs.lstat(path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim()));operationLocked=true;}catch(error){if(error.code!=='ENOENT')throw error;}
-      return {...state,token,pendingGit,operationLocked,aiRepair:await repair.read(ctx),sshIdentity:ctx.sshIdentity,fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
+      return {...state,token,pendingGit,operationLocked,outgoing:await require('./outgoing-commits.cjs').read(ctx,state),aiRepair:await repair.read(ctx),sshIdentity:ctx.sshIdentity,stashRestoreReceipt:await stashRestore.read(ctx),fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
     }
     if(action==='issues-list') return require('./github-issues.cjs').listIssues(ctx,params,ctx.env);
     if(action==='file-diff') return await require('./file-changes.cjs').compare(ctx,state,params);
     if(action==='diff') return {output:await run(['diff',...(params.staged?['--cached']:[]),'--no-ext-diff','--no-textconv','--stat','--patch'])};
     if(action==='history') return {output:await run(['log','-20','--format=%h %s (%an)','--no-show-signature'])};
-    if(!['file-revert','file-revert-acknowledge','ssh-identity-set','branch-create','branch-switch','stage','unstage','commit','fetch','pull','push','pr','beginner-submit','beginner-update','beginner-acknowledge'].includes(action)) fail('UNKNOWN_ACTION','不支持此 Git 操作');
+    if(action==='outgoing-list')return require('./outgoing-commits.cjs').read(ctx,state,true);
+    if(!['stash-restore','stash-restore-acknowledge','file-revert','file-revert-acknowledge','ssh-identity-set','branch-create','branch-switch','stage','unstage','commit','fetch','pull','push','pr','beginner-submit','beginner-update','beginner-acknowledge'].includes(action)) fail('UNKNOWN_ACTION','不支持此 Git 操作');
     if(action.startsWith('beginner-')) {const prior=await require('./beginner-git.cjs').readReceipt(ctx);if(prior?.id===params.operationId)return prior;}
     const ticket=tickets.get(params.token);tickets.delete(params.token);
     if(!ticket || ticket.root!==root || ticket.expires<Date.now() || ticket.fingerprint!==state.fingerprint) fail('STALE_REVIEW','仓库或规则已变化，请刷新并重新核对');
@@ -138,6 +145,8 @@ async function gitRequest(directory,params={}) {
     if(action==='file-revert-acknowledge') return await require('./file-changes.cjs').acknowledge(ctx,params);
     if(state.incomplete) fail('RULE_DISCOVERY_INCOMPLETE','规则路由超过读取上限，请使用高级工作流核对');
     if(!state.hooksReady) fail('HOOKS_NOT_READY','项目 hooks 未正确启用或不可执行，请按贡献指南配置后重试');
+    if(action==='stash-restore')return await stashRestore.restore(ctx,state,params,()=>snapshot(ctx));
+    if(action==='stash-restore-acknowledge')return await stashRestore.acknowledge(ctx,state,params);
     if(action==='file-revert') return await require('./file-changes.cjs').revert(ctx,state,params,()=>snapshot(ctx));
     if(action==='ssh-identity-set') return await require('./project-ssh.cjs').bind(ctx,params);
     if(!state.branch) fail('DETACHED_HEAD','当前为 detached HEAD，请先在外部恢复命名分支');

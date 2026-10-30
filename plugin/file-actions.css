@@ -25,3 +25,21 @@
 .file-selection-help { flex-basis:100%; margin:4px 0; font-size:12px; line-height:1.6; color:var(--text-secondary,#737373); overflow-wrap:anywhere; }
 #beginner-files:focus-visible { outline:2px solid var(--text-secondary,#737373); outline-offset:2px; }
 .file-dialog pre { max-height:30vh; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; }
+.project-heading { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; }
+#beginner-branch { font-size:13px; line-height:1.6; border:1px solid var(--border-default,#d7d7d4); border-radius:6px; padding:3px 8px; max-width:100%; overflow-wrap:anywhere; }
+#stash-browser { min-width:0; flex-shrink:0; }
+#stash-browser .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+#stash-browser h3 { flex:1 1 150px; }
+#stash-browser h4 { font-size:13px; overflow-wrap:anywhere; }
+.stash-list { max-height:280px; overflow:auto; scrollbar-gutter:stable; }
+.stash-entry { display:block; width:100%; text-align:left; padding:10px; margin:6px 0; }
+.stash-entry strong,.stash-entry span { display:block; overflow-wrap:anywhere; }
+.stash-entry span { font-size:11px; margin-top:6px; color:var(--text-secondary,#737373); }
+.stash-entry[aria-pressed="true"] { border-width:2px; font-weight:600; }
+.stash-file { display:grid; gap:8px; padding:10px 0; border-bottom:1px solid var(--border-default,#d7d7d4); font-size:12px; }
+.stash-file>span { overflow-wrap:anywhere; }
+#stash-diff { max-height:340px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+#stash-diff-info { white-space:pre-wrap; }
+#outgoing-summary { font-size:12px; margin:6px 0; max-width:100%; text-align:left; white-space:normal; }
+#outgoing-panel { flex-shrink:0; }
+#outgoing-commits article { padding:8px 0; overflow-wrap:anywhere; border-bottom:1px solid var(--border-default,#d7d7d4); }

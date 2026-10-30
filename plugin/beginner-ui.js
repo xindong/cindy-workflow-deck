@@ -13,6 +13,8 @@ export function changeLabel(status,english=false) {
 }
 export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedCall=call,canRefresh=ready,repair,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh;
+  const project=$('beginner-project'),heading=document.createElement('div'),branch=document.createElement('span');
+  heading.className='project-heading';project.before(heading);heading.append(project,branch);branch.id='beginner-branch';branch.hidden=true;
   const progress=createUpdateProgress({call,getRoot:()=>state()?.root||'',english});
   const upload=createUpdateProgress({call,getRoot:()=>state()?.root||'',english,kind:'submit'});
   const recovery=createUpdateRecovery({state,ready,isBusy,isUpdating:()=>progress.isRunning()||upload.isRunning(),canRefresh,perform,refresh,reviewedCall,repair,openUpdate:()=>open('update'),english});
@@ -29,8 +31,10 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
   function chosen(){return [...document.querySelectorAll('#beginner-files input:checked')].map(item=>item.value);}
   function update() {
     const current=state(),can=ready()&&!isBusy()&&!!current;
+    branch.hidden=!ready()||!current;
+    if(!branch.hidden){branch.textContent='⑂ '+(current.branch||say('游离提交','Detached HEAD')+' '+(current.head?.slice(0,12)||''));branch.title=say('当前执行项目分支：','Current execution project branch: ')+(current.branch||current.head||say('尚无提交','No commits yet'));}
     for(const id of ['beginner-update','beginner-view','beginner-submit'])$(id).disabled=!can;
-    const blocked=current && (recovery.isPending() || current.aiRepair || current.operationLocked || current.pendingGit || !current.hooksReady || current.incomplete || current.fileRevertReceipt&&!['restored','acknowledged'].includes(current.fileRevertReceipt.state) || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
+    const blocked=current && (recovery.isPending() || current.aiRepair || current.operationLocked || current.pendingGit || !current.hooksReady || current.incomplete || current.stashRestoreReceipt&&!['restored','acknowledged'].includes(current.stashRestoreReceipt.state) || current.fileRevertReceipt&&!['restored','acknowledged'].includes(current.fileRevertReceipt.state) || current.beginnerReceipt && !current.beginnerReceipt.retryable && ['running','blocked','needs-verification'].includes(current.beginnerReceipt.state));
     $('beginner-confirm').disabled=!can || blocked || issueLoading || (mode==='submit' && (!chosen().length || chosen().length>200 || !$('beginner-summary').value.trim() || (current.sources.length>0 && !$('beginner-manual').checked)));
     const total=current?.changes.length||0,count=chosen().length;
     $('beginner-refresh-changes').disabled=isBusy()||!canRefresh();
@@ -61,7 +65,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     recovery.checked();
     progress.sync(current.beginnerReceipt);upload.sync(current.beginnerReceipt);
     $('beginner-project').textContent=current.root.split(/[\\/]/).filter(Boolean).pop()||say('我的项目','My project');
-    $('beginner-state').textContent=current.changes.length?say('有 '+current.changes.length+' 个文件尚未提交','You have '+current.changes.length+' unsubmitted files'):say('电脑里的修改已保存，没有待提交文件','No unsubmitted files on this computer');
+    $('beginner-state').textContent=current.changes.length?say('有 '+current.changes.length+' 个文件尚未提交','You have '+current.changes.length+' unsubmitted files'):current.outgoing?.count>0?say('没有待提交文件，另有 '+current.outgoing.count+' 条提交尚未推送','No unsubmitted files; '+current.outgoing.count+' commits have not been pushed'):say('电脑里的修改已保存，没有待提交文件','No unsubmitted files on this computer');
     if(renderedRoot!==current.root) {filter.reset();selected.clear();clearIssues();rendered='';$('beginner-summary').value='';$('beginner-manual').checked=false;$('beginner-sheet').hidden=true;for(const box of document.querySelectorAll('#beginner-files input'))box.checked=false;}
     if(rendered!==current.fingerprint) {
       $('beginner-manual').checked=false;
@@ -91,6 +95,7 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     update();
   }
   function open(next) {
+    if(next==='update')recovery.forUpdate();
     if(next!=='submit'&&issueLoading)clearIssues();
     mode=next;$('beginner-manual').checked=false;$('beginner-sheet').hidden=false;$('beginner-confirmation').hidden=false;$('beginner-confirm').hidden=next==='view';$('beginner-plan').hidden=next==='view';
     $('beginner-sheet-title').textContent=next==='update'?say('更新到团队最新内容','Get team updates'):say('这次改了什么？','What changed?');
@@ -189,5 +194,5 @@ export function mountBeginner({state,ready,isBusy,call,refresh,perform,reviewedC
     $('beginner-files').replaceChildren();$('beginner-summary').value='';
     $('beginner-manual').checked=false;$('beginner-sheet').hidden=true;update();
   }
-  update();return {render,update,error,invalidate};
+  update();return {render,update,error,invalidate,assistStash:entry=>recovery.assistStash(entry)};
 }

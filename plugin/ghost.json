@@ -2,9 +2,9 @@
   "schemaVersion": 3,
   "id": "jixin-make-a-wish",
   "name": "极心许愿",
-  "description": "基础Git操作保留项目hooks与分支门禁；AI诊断分析问题与建议，高级工作流创建独立任务。",
+  "description": "基础Git操作保留项目hooks与分支门禁；AI诊断分析问题与建议，高级工作流与冲突处理复用项目任务。",
   "whenToUse": "开始实验性工作、功能开发、工具开发、提交 PR 或整理分支时使用工作流快捷面板。",
-  "version": "0.2.26",
+  "version": "0.2.31",
   "minCindyVersion": "0.1.109",
   "entry": "main.js",
   "launch": "resident",
@@ -12,7 +12,7 @@
   "tools": [
     {
       "name": "get_workflows",
-      "description": "显示兼容聊天绑定卡。推荐直接在插件配置选择项目根目录，无需调用工具或绑定聊天即可从面板启动独立任务。",
+      "description": "显示兼容聊天绑定卡。推荐直接在插件配置选择项目根目录，无需调用工具或绑定聊天即可从面板在项目处理任务中工作。",
       "parameters": {
         "type": "object",
         "properties": {},
@@ -53,7 +53,7 @@
     },
     {
       "name": "assist_update_conflict",
-      "description": "在当前已配置项目中真实创建AI冲突处理任务，或检查该任务结果。start仅在用户要求AI处理时调用；requestId保持稳定，回执不确定不要换ID重发。修复中的选择在新任务里回答；不会自动提交或上传。",
+      "description": "在当前已配置项目的固定处理任务中发起AI冲突处理，或检查结果。首次创建、后续复用该项目任务。start仅在用户要求协助且当前任务尚未处理此项目冲突时调用；已经在项目处理任务中就直接继续，避免向自己再次派发。requestId保持稳定，回执不确定不要换ID重发。不会自动提交或上传。",
       "parameters": {
         "type": "object",
         "properties": {

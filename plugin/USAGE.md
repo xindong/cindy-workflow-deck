@@ -4,15 +4,27 @@
 
 ## 准备项目
 
-项目自行提供非空、可读普通文件：实验用 _S/experiment.md，功能用 _S/feature.md，工具用 _S/tooling.md，合并用 _E/merge.md。PR 需 xd-pr-review/SKILL.md。插件检查项目 .agents/skills、.claude/skills、.cindy/skills，以及用户 .agents/skills、.claude/skills、.codex/skills 中的该技能。未确认仅代表这些路径没有可用文件，不代表所有宿主技能不存在。符号链接不作为可用流程。缺少哪项只禁用对应按钮；插件不捆绑、创建或执行流程正文，流程由新任务的 AI 读取。
+项目自行提供非空、可读普通文件：实验用 _S/experiment.md，功能用 _S/feature.md，工具用 _S/tooling.md，合并用 _E/merge.md。PR 需 xd-pr-review/SKILL.md。插件检查项目 .agents/skills、.claude/skills、.cindy/skills，以及用户 .agents/skills、.claude/skills、.codex/skills 中的该技能。未确认仅代表这些路径没有可用文件，不代表所有宿主技能不存在。符号链接不作为可用流程。缺少哪项只禁用对应按钮；插件不捆绑、创建或执行流程正文，流程由处理任务中的 AI 读取。
 
 ## 选择项目与启动
 
-在插件配置中添加项目，点击“选择项目目录”亲选根目录并保存；面板自动发现指令并启用可用按钮。无需发送工具命令或点聊天卡，切换聊天也不改变项目。每次点击创建新的独立任务，使用唯一sessionKey，不复制聊天历史。模型与权限由Cindy插件任务设置管理。
+在插件配置中添加项目，点击“选择项目目录”亲选根目录并保存；面板自动发现指令并启用可用按钮。无需发送工具命令或点聊天卡，切换聊天也不改变项目。同一执行项目首次建立一个“极心许愿 · 项目处理”任务，后续冲突处理、UE 更新和高级工作流复用它；不同执行目录分开。每次请求重新核对实际状态，不重做旧操作。模型与权限由Cindy插件任务设置管理。
 
-直接目录派发使用Host的agent.errand能力，安装更新会展示新增权限。只允许一个此类任务运行，发起间隔至少10秒；面板运行中每5秒查询状态，完成后恢复按钮。回执不确定不会重发；先核对任务列表，再用“解除阻塞（不重发）”允许后续新任务。旧任务的未核实状态仍保留。
+直接目录派发使用Host的agent.errand能力，安装更新会展示新增权限。只允许一个此类任务运行，发起间隔至少10秒；面板运行中每5秒查询状态，完成后恢复按钮。回执不确定不会重发；先核对任务列表，再用“解除阻塞（不重发）”允许后续新请求。旧任务的未核实状态仍保留。
 
 根目录须经宿主选择器亲选；手填路径或失效授权请重新选择。Host原生插件任务目录覆盖优先，须与当前项目一致；AI在操作前核对实际目录，不一致必须停止。配置不授予完全访问权限，不创建或执行项目脚本。旧聊天绑定卡仅兼容未配置项目，不是正常使用的前置条件。
+
+## 分支与 Stash 暂存记录
+
+项目名旁显示当前执行项目的分支；游离状态显示提交号。“重新检查”及 Git 操作后的刷新同步分支。“查看暂存记录”列出最近100条 Stash，选择记录后显示文件、修改类型及保存来源（工作区、暂存区、未跟踪）。对比使用记录最终工作区版本，可与当前本地工作区或服务器最新版本逐文件对比。线上目标优先当前分支的 origin 跟踪分支，其次服务器同名分支，最后服务器默认分支；每次联网获取，显示目标分支、提交号及时间，失败不以旧缓存代替。查看不应用或删除记录，不改工作区、暂存区或当前分支；线上对比会更新远端缓存。结果在当前界面显示，不新增任务或窗口。二进制、Git LFS 或超过1 MiB的文件仅显示摘要（LFS可显示指针元数据，不下载资源）；链接、目录、子模块及超过2000个文件的记录请用项目专业工具查看。
+
+选中 Stash 后可点“取回整条记录到本地…”：隔离副本预检通过后，确认全部文件及项目要求，再备份并取回保存的工作区和暂存状态。已有文件或暂存内容不能安全合并时停止，原项目不变；不切分支、不提交上传，原记录保留。预检会写临时文件及 Git 快照对象，但不改变原工作区、索引或 stash 引用。实际取回中断或回执不确定时先检查，核对文件、暂存区、备份且完成 Git 冲突处理后，显式确认解除限制，不重放旧请求。
+
+## Stash 冲突协助与未推送状态
+
+取回发生冲突时，可点“协助解决冲突并取回…”，在同一项目任务里按准确的 Stash 标识处理。文本优先合并，二进制和语义取舍先询问；任务需完整取回所有记录文件并核对原有修改及暂存状态，保留原 Stash。完成后点“检查取回处理结果”并核对确认，不要再次整条取回来重放 apply。AI 结束不等于取回完成，人工确认后才解除 AI 处理保护；实际取回恢复卡仍待核对时再完成其确认。独立应用请负责人协助。
+
+项目状态还显示“已提交、未推送”的数量，点击可查看提交清单。依据本机上次获取的远端记录；需要最新状态请先获取远端再检查，不自动推送。即使没有待提交文件，本地尚未推送的提交也会单独提示；缺少有效远端记录则显示待核对。
 
 ## 日志与恢复
 
@@ -22,7 +34,11 @@ AI 使用 report_progress 回报实际步骤、输出摘要、阻塞或完成；
 
 ## English quick start
 
-Select the project root with Choose directory in plugin settings and save. Available workflow buttons activate automatically; no chat command or card binding is needed. Each click creates an independent task with a unique sessionKey. Model and permissions come from Cindy plugin task settings. Direct launch uses agent.errand, which is disclosed during installation. Only one workflow runs at a time, with at least 10 seconds between launches; the panel queries running jobs every five seconds. After checking an uncertain task in the task list, unlock explicitly without resending it. Keep any native task directory override consistent with the selected root; tasks must stop on a mismatch.
+For stash conflicts, Resolve conflicts and restore sends the verified fixed stash id to the same project task. AI must back up, ask about choices, merge text and complete the entire stash restore, including untracked files and index state. Checking never reapplies the stash; user verification is required before releasing the repair reservation. Standalone AI repair remains unavailable. Committed, not pushed shows cached outgoing counts and a clickable commit list even when the worktree is clean; it never implies a live server check or pushes automatically.
+
+The project heading shows the current branch (or detached commit). View stashes lists saved entries and their files, with in-app comparisons against the current working tree or freshly fetched origin upstream/same-name/default branch. Viewing and comparing leave local files and the index unchanged; online comparison updates remote caches. Binary, LFS and files over 1 MiB show summaries; LFS assets are not downloaded. Select a stash to preflight restoring it in an isolated copy, then review its file list and confirm. Local files and the index are backed up before applying the whole stash with its staged state. The original stash is kept; no branch switch, commit or push. Conflicts stop preflight without altering the source project. Uncertain actual restores require checking and explicit recovery acknowledgement and never replay automatically. No task or preview window is created.
+
+Select the project root with Choose directory in plugin settings and save. Available workflow buttons activate automatically; no chat command or card binding is needed. Actions for the same execution directory reuse one project task with a stable sessionKey. Each operation has its own request id; history is reference only and old operations are never replayed. Model and permissions come from Cindy plugin task settings. Direct launch uses agent.errand, which is disclosed during installation. Only one workflow runs at a time, with at least 10 seconds between launches; the panel queries running jobs every five seconds. After checking an uncertain task in the task list, unlock explicitly without resending it. Keep any native task directory override consistent with the selected root; tasks must stop on a mismatch.
 
 Progress is explicitly reported by AI through report_progress, not a mirror of full terminal output. AI completion and Host turn end are separate. Logs retain a bounded tail. If a receipt is uncertain, check the task list before clicking again. Upgrade Cindy for a missing or explicitly unsupported interface; permission denial and network/storage failures require their own remedies. The Node worker has system-account privileges; its fixed-path read checks are not an OS sandbox.
 
