@@ -1,5 +1,5 @@
 import {errorHelp} from './error-help.js';
-export function mountStashRestore({state,ready,isBusy,call,perform,reviewedCall,refresh,canRefresh=ready,english=false}) {
+export function mountStashRestore({state,ready,isBusy,call,perform,reviewedCall,refresh,onStashConflict,canRefresh=ready,english=false}) {
   const $=id=>document.getElementById(id),say=(zh,en)=>english?en:zh,node=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
   const restore=node('button',say('取回整条记录到本地…','Restore this stash locally…'));restore.id='stash-restore';restore.type='button';restore.hidden=true;$('stash-file-title').after(restore);
   const dialog=node('dialog');dialog.id='stash-restore-dialog';dialog.className='file-dialog';
@@ -7,13 +7,15 @@ export function mountStashRestore({state,ready,isBusy,call,perform,reviewedCall,
   const label=node('label');label.className='check';const checked=node('input');checked.type='checkbox';checked.id='stash-restore-rules';label.append(checked,node('span',say('我已核对项目规则，完成取回所需的人工前提。','I reviewed project rules and completed required prerequisites.')));
   const actions=node('div');actions.className='row';const confirm=node('button',say('确认取回，保留原记录','Restore and keep the stash')),cancel=node('button',say('取消','Cancel'));confirm.id='stash-restore-confirm';cancel.id='stash-restore-cancel';confirm.type=cancel.type='button';actions.append(confirm,cancel);dialog.append(title,help,list,rules,label,actions);document.body.append(dialog);
   const status=node('p');status.id='stash-restore-status';status.setAttribute('role','status');restore.after(status);
+  const assist=node('button',say('协助解决冲突并取回…','Resolve conflicts and restore…'));assist.id='stash-conflict-assist';assist.type='button';assist.hidden=true;status.after(assist);
   const details=node('details'),detailsTitle=node('summary',say('操作详情','Technical details')),detailBody=node('pre');details.hidden=true;details.append(detailsTitle,detailBody);status.after(details);
   const recovery=node('section');recovery.className='beginner-sheet';recovery.id='stash-restore-recovery';recovery.hidden=true;
   const recoveryTitle=node('h3',say('核对上次暂存取回','Verify the previous stash restore')),recoveryText=node('p'),checkResult=node('button',say('检查取回结果','Check restore result')),ackLabel=node('label'),ackCheck=node('input'),ack=node('button',say('确认已恢复，解除操作限制','Confirm recovery and unlock'));
   checkResult.id='stash-restore-check';ack.id='stash-restore-acknowledge';ackCheck.type='checkbox';ackCheck.id='stash-restore-verified';ackLabel.className='check';ackLabel.append(ackCheck,node('span',say('已核对实际文件、暂存区及备份，并完成项目要求。','I verified actual files, the index and backups, and met project requirements.')));checkResult.type=ack.type='button';recovery.append(recoveryTitle,recoveryText,checkResult,ackLabel,ack);$('beginner-message').before(recovery);
-  let entry,pending,generation=0,uncertain=false,operation='',recordKey='';
+  let entry,pending,generation=0,uncertain=false,operation='',recordKey='',conflicted='';
   const active=(n,root)=>n===generation&&ready()&&state()?.root===root;
-  const report=error=>{const h=errorHelp(error,english);status.textContent=h.message;detailBody.textContent=h.detail;details.hidden=!h.detail;};
+  const report=error=>{const h=errorHelp(error,english);status.textContent=h.message;detailBody.textContent=h.detail;details.hidden=!h.detail;if(error.code==='STASH_RESTORE_CONFLICT'&&entry){conflicted=entry.id;update();}};
+  assist.onclick=()=>{if(entry&&!isBusy())onStashConflict?.(entry);};
   const clear=()=>{pending=undefined;dialog.close();};
   cancel.onclick=clear;dialog.addEventListener('cancel',()=>{pending=undefined;});checked.onchange=()=>{confirm.disabled=!!pending?.requiresRules&&!checked.checked;};
   restore.onclick=()=>{
@@ -64,10 +66,11 @@ export function mountStashRestore({state,ready,isBusy,call,perform,reviewedCall,
     const current=state(),record=current?.stashRestoreReceipt,blocked=record&&!['restored','acknowledged'].includes(record.state),key=record?.id+':'+record?.state+':'+current?.fingerprint;
     if(key!==recordKey){ackCheck.checked=false;recordKey=key;}
     restore.disabled=!ready()||isBusy()||uncertain||blocked||!!current?.aiRepair||current?.operationLocked||current?.pendingGit||!current?.hooksReady||current?.incomplete;
+    assist.hidden=!entry||!(conflicted===entry.id||blocked&&record.stashId===entry.id);assist.disabled=!onStashConflict||!ready()||isBusy()||!!current?.aiRepair||current?.operationLocked;assist.title=onStashConflict?'':say('AI 冲突处理请在 Cindy 插件中使用；独立应用可由负责人合并后检查。','Use the Cindy plugin for AI conflict repair; in standalone, ask the owner to merge and check.');
     recovery.hidden=!blocked&&!uncertain;
     recoveryText.textContent=(record?.message||say('上次取回结果待核对，请先检查，不要再次取回。','The last restore needs verification. Check before restoring again.'))+(record?.backup?'\n'+say('备份：','Backup: ')+record.backup:'');
     checkResult.disabled=isBusy()||!canRefresh();ackLabel.hidden=ack.hidden=!blocked;ackCheck.disabled=isBusy();
     ack.disabled=!ready()||isBusy()||!ackCheck.checked||!!current?.aiRepair||current?.operationLocked||current?.pendingGit||!current?.hooksReady||current?.incomplete;
   }
-  return {select:selected=>{entry=selected;restore.hidden=false;status.textContent='';details.hidden=true;update();},clear:()=>{entry=undefined;restore.hidden=true;clear();},update,invalidate:()=>{generation++;entry=undefined;restore.hidden=true;clear();uncertain=false;status.textContent='';details.hidden=true;recovery.hidden=true;}};
+  return {select:selected=>{entry=selected;restore.hidden=false;status.textContent='';details.hidden=true;update();},clear:()=>{entry=undefined;restore.hidden=true;assist.hidden=true;clear();},update,invalidate:()=>{generation++;entry=undefined;conflicted='';restore.hidden=assist.hidden=true;clear();uncertain=false;status.textContent='';details.hidden=true;recovery.hidden=true;}};
 }

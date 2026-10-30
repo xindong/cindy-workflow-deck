@@ -40,3 +40,6 @@
 .stash-file>span { overflow-wrap:anywhere; }
 #stash-diff { max-height:340px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
 #stash-diff-info { white-space:pre-wrap; }
+#outgoing-summary { font-size:12px; margin:6px 0; max-width:100%; text-align:left; white-space:normal; }
+#outgoing-panel { flex-shrink:0; }
+#outgoing-commits article { padding:8px 0; overflow-wrap:anywhere; border-bottom:1px solid var(--border-default,#d7d7d4); }
