@@ -4,13 +4,13 @@
 
 ## 准备项目
 
-项目自行提供非空、可读普通文件：实验用 _S/experiment.md，功能用 _S/feature.md，工具用 _S/tooling.md，合并用 _E/merge.md。PR 需 xd-pr-review/SKILL.md。插件检查项目 .agents/skills、.claude/skills、.cindy/skills，以及用户 .agents/skills、.claude/skills、.codex/skills 中的该技能。未确认仅代表这些路径没有可用文件，不代表所有宿主技能不存在。符号链接不作为可用流程。缺少哪项只禁用对应按钮；插件不捆绑、创建或执行流程正文，流程由新任务的 AI 读取。
+项目自行提供非空、可读普通文件：实验用 _S/experiment.md，功能用 _S/feature.md，工具用 _S/tooling.md，合并用 _E/merge.md。PR 需 xd-pr-review/SKILL.md。插件检查项目 .agents/skills、.claude/skills、.cindy/skills，以及用户 .agents/skills、.claude/skills、.codex/skills 中的该技能。未确认仅代表这些路径没有可用文件，不代表所有宿主技能不存在。符号链接不作为可用流程。缺少哪项只禁用对应按钮；插件不捆绑、创建或执行流程正文，流程由处理任务中的 AI 读取。
 
 ## 选择项目与启动
 
-在插件配置中添加项目，点击“选择项目目录”亲选根目录并保存；面板自动发现指令并启用可用按钮。无需发送工具命令或点聊天卡，切换聊天也不改变项目。每次点击创建新的独立任务，使用唯一sessionKey，不复制聊天历史。模型与权限由Cindy插件任务设置管理。
+在插件配置中添加项目，点击“选择项目目录”亲选根目录并保存；面板自动发现指令并启用可用按钮。无需发送工具命令或点聊天卡，切换聊天也不改变项目。同一执行项目首次建立一个“极心许愿 · 项目处理”任务，后续冲突处理、UE 更新和高级工作流复用它；不同执行目录分开。每次请求重新核对实际状态，不重做旧操作。模型与权限由Cindy插件任务设置管理。
 
-直接目录派发使用Host的agent.errand能力，安装更新会展示新增权限。只允许一个此类任务运行，发起间隔至少10秒；面板运行中每5秒查询状态，完成后恢复按钮。回执不确定不会重发；先核对任务列表，再用“解除阻塞（不重发）”允许后续新任务。旧任务的未核实状态仍保留。
+直接目录派发使用Host的agent.errand能力，安装更新会展示新增权限。只允许一个此类任务运行，发起间隔至少10秒；面板运行中每5秒查询状态，完成后恢复按钮。回执不确定不会重发；先核对任务列表，再用“解除阻塞（不重发）”允许后续新请求。旧任务的未核实状态仍保留。
 
 根目录须经宿主选择器亲选；手填路径或失效授权请重新选择。Host原生插件任务目录覆盖优先，须与当前项目一致；AI在操作前核对实际目录，不一致必须停止。配置不授予完全访问权限，不创建或执行项目脚本。旧聊天绑定卡仅兼容未配置项目，不是正常使用的前置条件。
 
@@ -22,7 +22,7 @@ AI 使用 report_progress 回报实际步骤、输出摘要、阻塞或完成；
 
 ## English quick start
 
-Select the project root with Choose directory in plugin settings and save. Available workflow buttons activate automatically; no chat command or card binding is needed. Each click creates an independent task with a unique sessionKey. Model and permissions come from Cindy plugin task settings. Direct launch uses agent.errand, which is disclosed during installation. Only one workflow runs at a time, with at least 10 seconds between launches; the panel queries running jobs every five seconds. After checking an uncertain task in the task list, unlock explicitly without resending it. Keep any native task directory override consistent with the selected root; tasks must stop on a mismatch.
+Select the project root with Choose directory in plugin settings and save. Available workflow buttons activate automatically; no chat command or card binding is needed. Actions for the same execution directory reuse one project task with a stable sessionKey. Each operation has its own request id; history is reference only and old operations are never replayed. Model and permissions come from Cindy plugin task settings. Direct launch uses agent.errand, which is disclosed during installation. Only one workflow runs at a time, with at least 10 seconds between launches; the panel queries running jobs every five seconds. After checking an uncertain task in the task list, unlock explicitly without resending it. Keep any native task directory override consistent with the selected root; tasks must stop on a mismatch.
 
 Progress is explicitly reported by AI through report_progress, not a mirror of full terminal output. AI completion and Host turn end are separate. Logs retain a bounded tail. If a receipt is uncertain, check the task list before clicking again. Upgrade Cindy for a missing or explicitly unsupported interface; permission denial and network/storage failures require their own remedies. The Node worker has system-account privileges; its fixed-path read checks are not an OS sandbox.
 

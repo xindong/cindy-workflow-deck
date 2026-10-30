@@ -1,6 +1,7 @@
 import { configurationState } from './core/project-config.mjs';
 import { WORKFLOWS, ADVANCED_ACTIONS, buildPrompt, workflowById } from './workflows.js';
 import { isUnsupported } from './host-compat.js';
+import {projectTaskKey,PROJECT_TASK_TITLE,PROJECT_TASK_CONTEXT} from './project-task.js';
 
 // Host authorizes workingDir from its picker ledger; foreground chat is irrelevant.
 export function createProjectSidebar({ store, agent, inspect, changed = () => {}, now = () => Date.now() }) {
@@ -100,8 +101,9 @@ export function createProjectSidebar({ store, agent, inspect, changed = () => {}
       const scope = workflowId === 'ue-update'
         ? '流程文件位置仅提供指令，不作为更新目标；UE 引擎目标按专用流程在预检、确认后确定。'
         : '流程文件仅提供指令；即使位于其它目录，也不要切换到流程目录执行 Git 或修改该目录的项目。';
-      const prompt = directoryGuard + scope + String.fromCharCode(10,10) + buildPrompt(workflowId, goal, workflows[workflowId].source);
-      const record = { mode: 'project', state: 'uncertain', workflowId, projectId: selected.id, directory: selected.directory };
+      const prompt = PROJECT_TASK_CONTEXT + '\n\n' + directoryGuard + scope + String.fromCharCode(10,10) + buildPrompt(workflowId, goal, workflows[workflowId].source);
+      const sessionKey=await projectTaskKey(selected.directory);
+      const record = { mode: 'project', state: 'uncertain', workflowId, projectId: selected.id, directory: selected.directory, sessionKey };
       await writeReceipt(key, record);
       const latest = configurationState(await store.read());
       if (latest.revision !== selectedRevision) {
@@ -110,7 +112,7 @@ export function createProjectSidebar({ store, agent, inspect, changed = () => {}
       busy = true; dispatchError = ''; nextLaunchAt = now() + 10000; notify();
       let result;
       try {
-        const reply = await agent.errand({ task: prompt, title: workflowById(workflowId).label, workingDir: selected.directory, sessionKey: key });
+        const reply = await agent.errand({ task: prompt, title: PROJECT_TASK_TITLE, workingDir: selected.directory, sessionKey });
         result = reply?.ok === true && typeof reply.jobId === 'string' && reply.jobId
           ? { ...record, state: 'accepted', jobId: reply.jobId, jobStatus: 'running', ...(reply.sessionId ? { sessionId: reply.sessionId } : {}) }
           : reply?.ok === false ? { ...record, state: 'rejected', code: reply.errorCode || 'HOST_REJECTED' }

@@ -26,3 +26,10 @@ test('storage failure never acknowledges report as recorded',async()=>{
   const {store}=fixture();store.write=async()=>{throw new Error('disk failed');};const log=createExecutionLog({store});
   await assert.rejects(log.report({session_id:'own'},{status:'step',title:'Step',detail:'Done'},'x'),/disk failed/);
 });
+
+test('repeated workflows in one task show one log entry with the latest workflow label',async()=>{
+ const {store,log}=fixture();
+ await store.write({sidebarReceipts:{a:{state:'accepted',sessionId:'own',workflowId:'feature'},b:{state:'accepted',sessionId:'own',workflowId:'tooling'}}});
+ await log.report({session_id:'own'},{status:'step',title:'Continued',detail:'Current request'},'continued');
+ const rows=await log.list();assert.equal(rows.length,1);assert.equal(rows[0].workflowId,'tooling');assert.equal(rows[0].entries.length,1);
+});

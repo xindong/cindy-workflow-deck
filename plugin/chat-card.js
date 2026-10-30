@@ -1,7 +1,7 @@
 import { WORKFLOWS, buildPrompt, workflowById } from './workflows.js';
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export function workflowCard(english = false) {
-  return '<style>.deck{padding:14px;color:var(--text-primary,#262626);font:13px system-ui}.deck-actions{display:flex;flex-wrap:wrap;gap:8px}.deck button{padding:9px 12px;border:1px solid var(--border-default,#ddd);border-radius:24px;background:var(--surface,#f8f8f6);color:inherit}.deck p{line-height:1.6}</style><div class="deck"><h3>' + (english ? 'Start a workflow' : '开始一项工作') + '</h3><p>' + (english ? 'Each click creates a new task using this chat’s directory and model. Chat history is not copied. Permissions follow Cindy.' : '每次点击新建独立任务，继承这张卡片所属聊天的目录与模型，不复制聊天记录；权限由 Cindy 管理。') + '</p><div class="deck-actions">' + WORKFLOWS.map(flow => '<button data-ghost-action="start:' + flow.id + '" data-ghost-prompt="' + (english ? 'Work goal (optional)' : '补充工作目标（可选）') + '" title="' + escape(flow.source) + '">' + escape(english ? flow.en : flow.label) + '</button>').join('') + '</div></div>';
+  return '<style>.deck{padding:14px;color:var(--text-primary,#262626);font:13px system-ui}.deck-actions{display:flex;flex-wrap:wrap;gap:8px}.deck button{padding:9px 12px;border:1px solid var(--border-default,#ddd);border-radius:24px;background:var(--surface,#f8f8f6);color:inherit}.deck p{line-height:1.6}</style><div class="deck"><h3>' + (english ? 'Start a workflow' : '开始一项工作') + '</h3><p>' + (english ? 'Continue this card’s chat using its directory, model and permissions. Configure a project to use a shared project task.' : '在这张卡片所属聊天中继续，沿用该聊天的目录、模型与权限。配置项目后可使用固定的项目处理任务。') + '</p><div class="deck-actions">' + WORKFLOWS.map(flow => '<button data-ghost-action="start:' + flow.id + '" data-ghost-prompt="' + (english ? 'Work goal (optional)' : '补充工作目标（可选）') + '" title="' + escape(flow.source) + '">' + escape(english ? flow.en : flow.label) + '</button>').join('') + '</div></div>';
 }
 export function createCardLauncher({ agent, store }) {
   let queue = Promise.resolve();
@@ -27,7 +27,7 @@ export function createCardLauncher({ agent, store }) {
       await store.write({ cardReceipts: receipts });
       let result;
       try {
-        const reply = await agent.run({ mode: 'new', title: workflowById(id).label,
+        const reply = await agent.run({ mode: 'continue',
           promptTemplate: '{{user_message}}', userMessage: text,
           event: { actionId: message.actionId, callId: message.callId },
           userActionToken: message.userActionToken });
@@ -45,7 +45,7 @@ export function createCardLauncher({ agent, store }) {
 }
 export function receiptCard(result, english = false) {
   const label = result.state === 'accepted'
-    ? (english ? 'New task accepted: ' : '新任务已受理：') + result.sessionId
+    ? (english ? 'Request accepted: ' : '处理请求已受理：') + result.sessionId
     : result.state === 'rejected' ? (english ? 'Not accepted. Check the code and Cindy permissions; journal capacity requires plugin support. ' : '未受理，请核对错误码及 Cindy 权限提示；记录容量不足时需修复插件记录。') + (result.code || '')
     : (english ? 'Delivery is unverified. Check the task list before clicking again.' : '派发结果待核实，请先检查任务列表，勿重复点击。');
   return '<div style="padding:14px;font:13px system-ui;overflow-wrap:anywhere">' + escape(label) + '</div>';

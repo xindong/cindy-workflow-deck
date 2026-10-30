@@ -3,6 +3,7 @@ const settings=new URLSearchParams(location.search),dark=settings.get('theme')==
 for(const [name,value]of Object.entries(dark?{'--panel-bg':'#1f1f1e','--surface':'#1f1f1e','--surface-elevated':'#2c2c2a','--surface-chip':'#3c3c3a','--border-default':'#3c3c3a','--text-primary':'#d4d4d4','--text-secondary':'#a3a3a3'}:{'--panel-bg':'#f8f8f6','--surface':'#f8f8f6','--surface-elevated':'#fff','--surface-chip':'#e5e5e5','--border-default':'#d7d7d4','--text-primary':'#262626','--text-secondary':'#737373'}))document.documentElement.style.setProperty(name,value);
 document.documentElement.style.colorScheme=dark?'dark':'light';
 const calls={cards:[],results:[],agentRuns:[],inspections:[],creates:[],errands:[],inferences:[]},options={files:'all',failNode:false,deny:false,lose:false,jobStatus:'running'};
+const errandRooms=JSON.parse(localStorage.getItem('test-only-errand-rooms')||'{}'),errandJobs={};
 let handler,click=0,offset=0;const nativeNow=Date.now;Date.now=()=>nativeNow()+offset;
 const context={session_id:'source-chat',workdir:'/preview/selected-project',workdir_is_local:true,workdir_is_read_only:false};
 const cards=document.createElement('div');cards.id='test-cards';cards.style.cssText='position:fixed;top:0;right:0;max-width:240px;max-height:190px;overflow:auto;overflow-wrap:anywhere;z-index:100';document.body.append(cards);
@@ -31,9 +32,9 @@ globalThis.cindy={
    return[id,{ok:present,reason:!file?'not_configured':id==='pr'?'skill_unverified':'missing',source:file?(file.startsWith('/')?file:(req.params?.project?.workflowDirectory||req.params?.dir||context.workdir)+'/'+file):''}];
   }))}};
  }},
- agent:{async errand(req){calls.errands.push(req);if(options.lose)throw new Error('Lost receipt');if(options.deny)return{ok:false,errorCode:'PERMISSION_DENIED'};return{ok:true,jobId:'direct-'+calls.errands.length};},
- async queryErrand({jobId}){return options.expired?{ok:false,errorCode:'JOB_NOT_FOUND'}:{ok:true,jobId,status:options.jobStatus,sessionId:'task-'+jobId};},
- async run(req){calls.agentRuns.push(req);if(options.lose)throw new Error('Lost receipt');if(options.deny)return{ok:false,errorCode:'PERMISSION_DENIED'};const sessionId='preview-task-'+calls.agentRuns.length;if(options.autoSwitch)handler({type:'event',name:'did-session-switched',data:{sessionId,workdir:context.workdir}});return{ok:true,sessionId};}},
+ agent:{async errand(req){calls.errands.push(req);if(options.lose)throw new Error('Lost receipt');if(options.deny)return{ok:false,errorCode:'PERMISSION_DENIED'};const jobId='direct-'+calls.errands.length,sessionId=errandRooms[req.sessionKey]||('task-direct-'+(Object.keys(errandRooms).length+1));errandRooms[req.sessionKey]=sessionId;localStorage.setItem('test-only-errand-rooms',JSON.stringify(errandRooms));errandJobs[jobId]=sessionId;return{ok:true,jobId,sessionId};},
+ async queryErrand({jobId}){return options.expired?{ok:false,errorCode:'JOB_NOT_FOUND'}:{ok:true,jobId,status:options.jobStatus,...(errandJobs[jobId]?{sessionId:errandJobs[jobId]}:{})};},
+ async run(req){calls.agentRuns.push(req);if(options.lose)throw new Error('Lost receipt');if(options.deny)return{ok:false,errorCode:'PERMISSION_DENIED'};const sessionId=req.mode==='continue'?(req.sessionId||context.session_id):'preview-task-'+calls.agentRuns.length;if(options.autoSwitch)handler({type:'event',name:'did-session-switched',data:{sessionId,workdir:context.workdir}});return{ok:true,sessionId};}},
  tasks:{async capabilities(){return{operations:['getRun']};},async getRun(){return{status:'running'};}},
 };
 cards.addEventListener('click',event=>{const button=event.target.closest('[data-ghost-action]');if(!button)return;handler({type:'card-action',actionId:button.dataset.ghostAction,callId:'source-card',spawnCallId:'binding-result-'+(++click),sessionId:context.session_id,userActionToken:'test-ticket-'+click});});

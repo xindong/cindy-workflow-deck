@@ -20,10 +20,10 @@ export function createUpdateRecovery({state,ready,isBusy,isUpdating=()=>false,ca
   const repairAck=node('button',say('确认任务已结束，解除 AI 处理限制','Confirm task ended and release AI restriction'));repairAck.id='conflict-acknowledge';repairAck.type='button';
   const dialog=node('dialog');dialog.id='conflict-dialog';
   const heading=node('h3',say('AI 协助处理冲突','AI-assisted conflict repair'));
-  const info=node('p',say('在任务列表中交互处理，可能产生模型费用。遇到保留哪方、覆盖等选择，AI 会先询问你。','An interactive task may incur model costs. AI will ask before choosing sides or overwriting changes.'));
+  const info=node('p',say('同一项目复用一个处理任务，在任务列表中交互，可能产生模型费用。遇到保留哪方、覆盖等选择，AI 会先询问你。','Actions for this project reuse one task and may incur model costs. AI will ask before choosing sides or overwriting changes.'));
   const strategyLabel=node('label',say('处理方式','Approach')),strategy=node('select');strategy.id='conflict-strategy';strategy.append(new Option(say('逐项询问我（推荐）','Ask me at each decision (recommended)'),'ask'),new Option(say('我先说明处理要求','I will provide instructions'),'instructions'));strategyLabel.append(strategy);
   const instructionsLabel=node('label',say('补充说明（可选）','Instructions (optional)')),instructions=node('textarea');instructions.id='conflict-instructions';instructions.rows=3;instructions.maxLength=1000;instructions.placeholder=say('例如：保留我的美术文件，其它冲突逐项询问。','For example: keep my art files; ask about other conflicts.');instructionsLabel.append(instructions);
-  const send=node('button',say('确认，创建处理任务','Create repair task')),cancel=node('button',say('取消','Cancel'));send.id='conflict-send';cancel.id='conflict-cancel';
+  const send=node('button',say('确认，开始处理','Start repair')),cancel=node('button',say('取消','Cancel'));send.id='conflict-send';cancel.id='conflict-cancel';
   dialog.append(heading,info,strategyLabel,instructionsLabel,send,cancel);
   for(const button of [check,retry,assist,resume,acknowledge,send,cancel])button.type='button';
   box.append(title,help,actions,status,repairLabel,repairAck,label,acknowledge,details,dialog);document.getElementById('update-progress').after(box);
@@ -33,7 +33,7 @@ export function createUpdateRecovery({state,ready,isBusy,isUpdating=()=>false,ca
     if(record&&!['running','uncertain','done','failed','rejected','acknowledged'].includes(record.state))throw new Error(say('处理任务状态暂不可读，请到任务列表核对。','Repair status unavailable; check the task list.'));
     if(record?.id!==repairRecord?.id||record?.state!==repairRecord?.state)repairConfirm.checked=false;
     repairRecord=record;
-    status.textContent=!record?'':record.state==='acknowledged'?say('已记录人工核对，旧任务不会重放；请重新检查项目后继续。','Manual verification recorded; the old task will not replay. Check the project to continue.'):record.unverified?say('处理结果待核对，请到任务列表查看。','Repair result unverified; check the task list.'):record.state==='running'?say('处理任务已创建，请到任务列表回答 AI 的问题；完成后点击“处理后检查并继续”。','Repair task created. Answer AI questions in the task list, then check and continue.'):record.state==='done'?say('AI 已结束本次处理，请检查实际项目后继续。','AI finished this attempt. Verify the project before continuing.'):record.state==='rejected'?say('任务未创建，请检查插件的任务模型和权限设置后再试。','Task rejected. Check plugin model and permissions before retrying.'):say('处理结果待核对，请到任务列表查看；未重复创建任务。','Repair is unverified. Check the task list; no duplicate was created.');
+    status.textContent=!record?'':record.state==='acknowledged'?say('已记录人工核对，旧任务不会重放；请重新检查项目后继续。','Manual verification recorded; the old task will not replay. Check the project to continue.'):record.unverified?say('处理结果待核对，请到任务列表查看。','Repair result unverified; check the task list.'):record.state==='running'?say('处理请求已受理，请在同一项目处理任务中回答 AI；完成后点击“处理后检查并继续”。','Repair accepted. Answer AI in the same project task, then check and continue.'):record.state==='done'?say('AI 已结束本次处理，请检查实际项目后继续。','AI finished this attempt. Verify the project before continuing.'):record.state==='rejected'?say('本次处理未启动，请检查插件的任务模型和权限设置后再试。','Request rejected. Check plugin model and permissions before retrying.'):say('处理结果待核对，请到任务列表查看；未重复创建任务。','Repair is unverified. Check the task list; no duplicate was created.');
   }
   function render() {
     const current=state(),record=current?.beginnerReceipt;

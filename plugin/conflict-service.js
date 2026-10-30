@@ -1,4 +1,5 @@
 import {configurationState,directoryKey} from './core/project-config.mjs';
+import {projectTaskKey,PROJECT_TASK_TITLE,PROJECT_TASK_CONTEXT} from './project-task.js';
 // A transport retry only reads the durable receipt. Unknown dispatches are never replayed.
 export function createConflictService({store,agent,git}) {
   let queue=Promise.resolve();
@@ -44,6 +45,7 @@ export function createConflictService({store,agent,git}) {
     const latest=configurationState(await store.read());
     if(latest.revision!==current.revision)fail('CONFIG_CONFLICT','项目配置已变化，请重新检查。');
     const task=[
+      PROJECT_TASK_CONTEXT,
       '用户请求协助解决项目更新冲突。用户亲选执行项目根目录（JSON）：'+JSON.stringify(project.directory),
       '首先核对实际 cwd 与该项目相同（允许真实路径规范化），不一致立即停止并引导用户修正插件任务目录。流程目录不是执行目录。',
       '读取并遵守项目 AGENTS、贡献规则和 hooks。先只读检查工作树、暂存区、未完成 Git 操作、远端分叉、jixin-beginner.json 回执和已有备份；预检冲突可能只存在于隔离演练，不要假定正在 merge。不要删除操作锁、改写工具回执或解锁，不要重放不确定的 stash/merge/push/PR。',
@@ -56,7 +58,7 @@ export function createConflictService({store,agent,git}) {
       '处理前保存可恢复备份。只执行用户确认的修复；未获用户确认时不提交、上传或创建 PR。如果恢复未完成的 merge/rebase 必须生成提交，先说明并用选择框请求用户决定，保留项目 hooks；不自行上传或创建 PR。完成后按项目要求验证，简短报告已处理/仍待用户决定及备份位置。引导用户返回插件点击“处理后检查并继续”；不要宣称工具更新/上传已经完成。'
     ].join('\n');
     if(record)await store.update(latest=>({conflictRepairHistory:{...latest.conflictRepairHistory,[record.id]:record}}));
-    record={id:params.operationId,directory:project.directory,state:'uncertain'};await save(record);
+    record={id:params.operationId,directory:project.directory,state:'uncertain',sessionKey:await projectTaskKey(project.directory)};await save(record);
     // Reserve while holding the worker's shared write lock before dispatch. A lost
     // response stays uncertain, blocks writes after restart, and is never replayed.
     try {await git(project.directory,{action:'conflict-reserve',operationId:record.id});}
@@ -67,7 +69,7 @@ export function createConflictService({store,agent,git}) {
     const beforeDispatch=configurationState(await store.read());
     if(beforeDispatch.revision!==current.revision){record={...record,state:'rejected',code:'CONFIG_CONFLICT'};await save(record);await release(record);return record;}
     let reply;
-    try {reply=await agent.errand({task,title:'协助处理更新冲突',workingDir:project.directory,sessionKey:'conflict-'+params.operationId,...(source.callId?{callId:source.callId}:{})});}
+    try {reply=await agent.errand({task,title:PROJECT_TASK_TITLE,workingDir:project.directory,sessionKey:record.sessionKey,...(source.callId?{callId:source.callId}:{})});}
     catch {return record;}
     if(reply?.ok===true&&reply.jobId)record={...record,state:'running',jobId:reply.jobId,...(reply.sessionId?{sessionId:reply.sessionId}:{})};
     else if(reply?.ok===false)record={...record,state:'rejected',code:reply.errorCode||'HOST_REJECTED'};

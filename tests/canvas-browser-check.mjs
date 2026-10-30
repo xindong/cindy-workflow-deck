@@ -10,12 +10,12 @@ const browser=await chromium.launch({headless:true,...(process.env.WORKFLOW_BROW
 const errors=[];page.on('pageerror',e=>errors.push(e.message));const artifacts=resolve(import.meta.dirname,'../artifacts');
 const tool=id=>page.locator('[data-workflow="'+id+'"]');
 async function report(status,title,detail,id='report-'+Date.now()) {
- await page.evaluate(({status,title,detail,id})=>mockHost.deliver({type:'tool-call',tool:'report_progress',callId:id,args:{session_context:{session_id:'preview-task-1'},status,title,detail}}),{status,title,detail,id});
+ await page.evaluate(({status,title,detail,id})=>mockHost.deliver({type:'tool-call',tool:'report_progress',callId:id,args:{session_context:{session_id:'source-chat'},status,title,detail}}),{status,title,detail,id});
  await page.locator('.log-entry h2').filter({hasText:title}).waitFor();
 }
 try {
  await page.goto(base+'/panel.html');await page.locator('#advanced-mode').press('Enter');await page.locator('#source-card button').waitFor();
- assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),5);
+ assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),6);
  await tool('feature').hover();assert.ok((await page.locator('#tip-reason').textContent()).includes('尚未绑定'));
  await page.keyboard.press('Escape');await page.locator('#source-card button').click();await page.locator('#binding-result-1').waitFor();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
  assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns.length),0);
@@ -33,14 +33,14 @@ try {
  await page.locator('main').screenshot({path:resolve(artifacts,'workflow-canvas-empty-light.png')});
  await page.locator('#details-toggle').click();await page.locator('#goal').fill('实现日志区');await page.locator('#details-toggle').click();
  await page.evaluate(()=>mockHost.options.autoSwitch=true);
- await tool('feature').click();await page.getByText('新任务已受理：preview-task-1',{exact:true}).waitFor();
+ await tool('feature').click();await page.getByText('处理请求已受理：source-chat',{exact:true}).waitFor();
  await page.getByText('任务已受理，等待执行回报',{exact:true}).waitFor();
- assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns[0].mode),'new');
+ assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns[0].mode),'continue');
  assert.ok(await page.evaluate(()=>mockHost.calls.agentRuns[0].userMessage.includes('report_progress')));
  await report('step','已核对项目与分支','读取 AGENTS.md 与功能流程，保留现有改动。','r1');
  await report('output','验证通过','npm test: 42 passed; 0 failed。','r2');
  await report('completed','本次工作已交付','已完成界面调整与日志回传；等待实际编辑器验收。','r3');
- await page.evaluate(()=>mockHost.deliver({type:'event',name:'did-turn-end',seq:99,data:{sessionId:'preview-task-1',endReason:'completed'}}));
+ await page.evaluate(()=>mockHost.deliver({type:'event',name:'did-turn-end',seq:99,data:{sessionId:'source-chat',endReason:'completed'}}));
  await page.locator('.log-entry h2').filter({hasText:'本轮结束'}).waitFor();
  // Check the real panel timer after foreground focus changes to the child task.
  await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor({timeout:15000});
@@ -55,23 +55,23 @@ try {
  await tool('feature').hover();const tip=await page.locator('#tooltip').boundingBox();assert.ok(tip.x>=0&&tip.x+tip.width<=280);
  await page.keyboard.press('Escape');await page.locator('main').screenshot({path:resolve(artifacts,'workflow-canvas-log-narrow.png')});
  await report('output','安全文本','<img src=x onerror=alert(1)>','r4');assert.equal(await page.locator('#execution-log img').count(),0);
- await tool('tooling').click();await page.getByText('新任务已受理：preview-task-2',{exact:true}).waitFor();
+ await tool('tooling').click();await page.getByText('处理请求已受理：source-chat',{exact:true}).waitFor();
  assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns.length),2);
  assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns[1].sessionId),'source-chat');
- await page.locator('#task-select').selectOption('preview-task-1');assert.equal(await page.locator('.log-entry').count(),5);
- await page.reload();await page.locator('#advanced-mode').press('Enter');await page.locator('#task-select').waitFor();await page.locator('#task-select').selectOption('preview-task-1');await page.locator('.log-entry').nth(4).waitFor();assert.equal(await page.locator('.log-entry').count(),5);
+ await page.locator('#task-select').selectOption('source-chat');assert.equal(await page.locator('.log-entry').count(),5);
+ await page.reload();await page.locator('#advanced-mode').press('Enter');await page.locator('#task-select').waitFor();await page.locator('#task-select').selectOption('source-chat');await page.locator('.log-entry').nth(4).waitFor();assert.equal(await page.locator('.log-entry').count(),5);
  await page.locator('#source-card button').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
  await page.evaluate(()=>mockHost.deliver({type:'event',name:'did-session-switched',data:{sessionId:'unrelated',workdir:mockHost.context.workdir}}));
- assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),5);
+ assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),6);
  await page.evaluate(()=>mockHost.deliver({type:'event',name:'did-session-switched',data:{sessionId:mockHost.context.session_id,workdir:mockHost.context.workdir}}));
  await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
  await page.evaluate(()=>{globalThis.savedNodeRequest=cindy.node.request;cindy.node.request=undefined;});
- await page.locator('#refresh').click();await page.locator('#summary').filter({hasText:'当前 Cindy 缺少所需插件接口，请升级 Cindy 后再试。'}).waitFor();
- assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),5);
+ await page.locator('#refresh').click();await page.locator('#summary').filter({hasText:'当前 Cindy 缺少所需插件接口，请升级 Cindy 后再试。'}).waitFor({state:'attached'});
+ assert.equal(await page.locator('.tool[aria-disabled="true"]').count(),6);
  await tool('feature').hover();assert.ok((await page.locator('#tip-reason').textContent()).includes('升级 Cindy'));await page.keyboard.press('Escape');
  await page.evaluate(()=>cindy.node.request=globalThis.savedNodeRequest);await page.locator('#refresh').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
  await page.evaluate(()=>{globalThis.savedAgentRun=cindy.agent.run;cindy.agent.run=undefined;});
- await page.locator('#refresh').click();await page.locator('#summary').filter({hasText:'当前 Cindy 缺少所需插件接口，请升级 Cindy 后再试。'}).waitFor();
+ await page.locator('#refresh').click();await page.locator('#summary').filter({hasText:'当前 Cindy 缺少所需插件接口，请升级 Cindy 后再试。'}).waitFor({state:'attached'});
  assert.equal(await page.evaluate(()=>mockHost.calls.agentRuns.length),0);
  await page.locator('#details-toggle').click();await page.locator('#usage-title').click();
  assert.ok((await page.locator('#usage-text').textContent()).includes('不是完整终端输出'));
@@ -79,5 +79,5 @@ try {
  await page.evaluate(()=>cindy.agent.run=globalThis.savedAgentRun);await page.locator('#refresh').click();await page.locator('.tool[aria-disabled="false"]').nth(4).waitFor();
  await page.route('**/app-context',route=>route.fulfill({json:{context:{locale:'ja'}}}));await page.reload();await page.locator('#advanced-mode').press('Enter');await page.getByText('Execution log',{exact:true}).waitFor();
  await page.locator('#details-toggle').click();await page.locator('#usage-title').click();assert.ok((await page.locator('#usage-text').textContent()).includes('not full terminal output'));
- assert.deepEqual(errors,[]);console.log('Canvas browser checks passed: foreground child switch before receipt, cooldown auto-unlock, second workflow launch from original source, unrelated chat disabled, bottom toolbar, logs, persisted reload, replay, safe text, 280px, light/dark, locale. Screenshots are simulated Host data.');
+ assert.deepEqual(errors,[]);console.log('Canvas browser checks passed: continued source chat before receipt, cooldown auto-unlock, second workflow launch from original source, unrelated chat disabled, bottom toolbar, logs, persisted reload, replay, safe text, 280px, light/dark, locale. Screenshots are simulated Host data.');
 } finally {await browser.close();server.kill();await once(server,'exit');}

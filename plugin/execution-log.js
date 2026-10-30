@@ -4,7 +4,9 @@ export function createExecutionLog({ store, changed = () => {}, now = () => Date
   const serial = work => { const next = queue.then(work); queue = next.catch(() => {}); return next; };
   async function list() {
     const data = await store.read();
-    return Object.values(data.sidebarReceipts || {}).filter(r => r.state === 'accepted' && r.sessionId)
+    const sessions=new Map();
+    for(const record of Object.values(data.sidebarReceipts||{}))if(record.state==='accepted'&&record.sessionId){sessions.delete(record.sessionId);sessions.set(record.sessionId,record);}
+    return [...sessions.values()]
       .map(r => ({ sessionId: r.sessionId, workflowId: r.workflowId, sourceSessionId: r.sourceSessionId, entries: (data.executionLogs || {})[r.sessionId] || [] })).slice(-30).reverse();
   }
   function append(sessionId, entry, eventId) { return serial(async () => {
