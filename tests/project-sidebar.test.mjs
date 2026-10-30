@@ -82,5 +82,5 @@ test('UE update is optional, checks file again on launch, and uses durable real 
  await f.sidebar.launch('ue-update-request-0003','ue-update','p');assert.equal(f.calls.length,1);
  const call=f.calls[0];assert.equal(call.workingDir,'/project');assert.equal(call.title,'极心许愿 · 项目处理');
  assert.ok(call.task.includes('/flows/UPDATE_UE5.md'));
- for(const part of ['仅授权先做更新前检查','空间需求待确认','相同磁盘合并计算','暂无法可靠估计','请求明确确认','禁止 fetch/pull','请求用户手动选择引擎根目录','保持同一任务等待用户答复','校验通过后在同一任务继续','用户选目录只确定预检目标，不等于确认更新'])assert.ok(call.task.includes(part),part);
+ for(const part of ['仅授权先做更新前检查','不要求用户手输更新容量','相同磁盘合并计算','满足流程空间要求，实际增量未知','不再因缺少发布清单或精确容量上限卡住','在可安全停下的阶段边界重查剩余空间','暂无法可靠估计','请求明确确认','禁止 fetch/pull','请求用户手动选择引擎根目录','保持同一任务等待用户答复','校验通过后在同一任务继续','用户选目录只确定预检目标，不等于确认更新'])assert.ok(call.task.includes(part),part);
 });
