@@ -39,7 +39,7 @@ try {
  assert.equal(aiCalls.length,0);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await page.screenshot({path:join(out,'320暗色-冲突处理选择.png'),fullPage:true});
  await page.locator('#conflict-cancel').click();assert.equal(aiCalls.length,0);
- await page.locator('#conflict-assist').click();await page.locator('#conflict-send').click();await page.locator('#conflict-status').filter({hasText:'任务已创建'}).waitFor();assert.equal(aiCalls.length,1);assert.equal(aiCalls[0].workingDir,project);assert.match(aiCalls[0].task,/美术资源先询问我/);
+ await page.locator('#conflict-assist').click();await page.locator('#conflict-send').click();await page.locator('#conflict-status').filter({hasText:'处理请求已受理'}).waitFor();assert.equal(aiCalls.length,1);assert.equal(aiCalls[0].workingDir,project);assert.match(aiCalls[0].task,/美术资源先询问我/);
  await page.locator('#beginner-update:not(:disabled)').waitFor();await page.locator('#beginner-update').click();assert.equal(await page.locator('#beginner-confirm').isDisabled(),true);
  assert.equal(await page.locator('#conflict-acknowledge').isDisabled(),true);taskState='done';
  const before=calls.filter(c=>c==='beginner-update').length;

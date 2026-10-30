@@ -17,12 +17,12 @@ test('saved root enables five workflows without any chat or launch, and survives
   const fresh=createProjectSidebar({store:f.store,agent:f.agent,inspect:async()=>({workflows:workflows()})});
   assert.equal((await fresh.refresh()).state,'ready');assert.equal(f.calls.length,0);
 });
-test('each click uses a unique session key and selected root, without source chat id or call token',async()=>{
+test('each request reuses the project room and selected root, without source chat id or call token',async()=>{
   const f=fixture();await f.sidebar.refresh();
   const first=await f.sidebar.launch('project-request-00001','feature','p','goal');assert.equal(first.state,'accepted');
   await f.sidebar.launch('project-request-00001','feature','p');assert.equal(f.calls.length,1);
   f.options.status='done';await f.sidebar.refresh();f.tick();await f.sidebar.launch('project-request-00002','tooling','p');
-  assert.equal(f.calls.length,2);assert.notEqual(f.calls[0].sessionKey,f.calls[1].sessionKey);
+  assert.equal(f.calls.length,2);assert.equal(f.calls[0].sessionKey,f.calls[1].sessionKey);
   for(const call of f.calls){assert.equal(call.workingDir,'/project');assert.equal(call.sessionId,undefined);assert.equal(call.userActionToken,undefined);assert.ok(call.task.includes('AGENTS.md'));assert.ok(call.task.includes('/project/_S/'));}
 });
 test('running jobs block concurrency and inspection refresh updates authoritative task session receipts',async()=>{
@@ -80,7 +80,7 @@ test('UE update is optional, checks file again on launch, and uses durable real 
  f.options.ue={ok:true,source:'/flows/UPDATE_UE5.md'};
  const reply=await f.sidebar.launch('ue-update-request-0003','ue-update','p','直接更新');assert.equal(reply.state,'accepted');
  await f.sidebar.launch('ue-update-request-0003','ue-update','p');assert.equal(f.calls.length,1);
- const call=f.calls[0];assert.equal(call.workingDir,'/project');assert.equal(call.title,'更新 UE 引擎');
+ const call=f.calls[0];assert.equal(call.workingDir,'/project');assert.equal(call.title,'极心许愿 · 项目处理');
  assert.ok(call.task.includes('/flows/UPDATE_UE5.md'));
  for(const part of ['仅授权先做更新前检查','空间需求待确认','相同磁盘合并计算','暂无法可靠估计','请求明确确认','禁止 fetch/pull','请求用户手动选择引擎根目录','保持同一任务等待用户答复','校验通过后在同一任务继续','用户选目录只确定预检目标，不等于确认更新'])assert.ok(call.task.includes(part),part);
 });

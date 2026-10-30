@@ -6,7 +6,7 @@ const server=spawn('python3',['tests/serve-preview.py'],{stdio:['ignore','pipe',
 let browser;
 try {
  const base=await new Promise((yes,no)=>{server.stdout.once('data',b=>yes(b.toString().trim()));server.once('error',no);});
- browser=await chromium.launch({headless:true});
+ browser=await chromium.launch({headless:true,...(process.env.JIXIN_BROWSER_EXECUTABLE?{executablePath:process.env.JIXIN_BROWSER_EXECUTABLE}:{})});
  await mkdir('artifacts',{recursive:true});
  for(const lang of ['zh-CN','en']) {
   const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));

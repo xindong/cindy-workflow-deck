@@ -16,14 +16,14 @@ test('five cards declare actions and prompts without scripts; English supported'
   assert.ok(workflowCard(true).includes('Start an experiment'));
   assert.ok(!receiptCard({ state: 'accepted', sessionId: '<script>' }).includes('<script>'));
 });
-test('each click starts new, inherits through host ticket only and never copies source history', async () => {
+test('each legacy card click continues its source chat through the host ticket', async () => {
   const f=fixture(), launch=f.launcher();
   for (const id of ['experiment','feature','tooling','pr','merge']) assert.equal((await launch(message(id,id))).state, 'accepted');
   assert.equal(f.calls.length,5);
   for (const call of f.calls) {
-    assert.equal(call.mode,'new'); assert.equal(call.promptTemplate,'{{user_message}}');
+    assert.equal(call.mode,'continue'); assert.equal(call.promptTemplate,'{{user_message}}');
     assert.ok(call.userMessage.includes('目标 {{user_message}}'));
-    assert.deepEqual(Object.keys(call).sort(),['event','mode','promptTemplate','title','userActionToken','userMessage']);
+    assert.deepEqual(Object.keys(call).sort(),['event','mode','promptTemplate','userActionToken','userMessage']);
     assert.ok(!JSON.stringify(f.read()).includes('private-ticket'));
   }
 });

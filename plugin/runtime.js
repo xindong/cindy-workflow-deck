@@ -62,7 +62,7 @@ function bindingCard(nonce, directory, english) {
   return '<div style="padding:14px;font:13px system-ui;color:var(--text-primary,#262626)"><p>' +
     (english ? 'Bind the small sidebar toolbar to this chat project:' : '将侧边小工具栏绑定到这个聊天项目：') + '</p><p>' + escape(directory) +
     '</p><button data-ghost-action="bind:' + nonce + '">' + (english ? 'Bind toolbar' : '绑定工具栏') + '</button><p>' +
-    (english ? 'Binding only checks workflow files. Then use the sidebar buttons; each click creates a new task. Rebind after restarting Cindy.' : '绑定只检查流程文件，不启动任务。之后在侧边面板点击按钮，各自新建任务；Cindy 重启后需重新绑定。') + '</p></div>';
+    (english ? 'Binding only checks workflow files. Sidebar actions continue this chat. Rebind after restarting Cindy.' : '绑定只检查流程文件，不启动任务。之后在侧边面板点击按钮，在原聊天中继续；Cindy 重启后需重新绑定。') + '</p></div>';
 }
 async function englishLocale() {
   try { const r = await fetch('/app-context'); const data = await r.json(); return !(data.context?.locale || 'en').startsWith('zh'); }

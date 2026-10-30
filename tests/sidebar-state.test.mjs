@@ -26,13 +26,13 @@ test('read-only source and failed inspection fail closed without pretending file
  f.options.inspectHook=async()=>{throw new Error('disk unavailable');};await f.sidebar.bind(ctx('other'));
  assert.equal(f.sidebar.view().state,'check_failed');assert.equal(f.sidebar.view().workflows.feature.enabled,false);
 });
-test('each sidebar click requests a new task in the Host-associated source with no path/model override',async()=>{
+test('each legacy bound click continues its Host-associated source with no path/model override',async()=>{
  const f=fixture();await f.sidebar.bind(ctx());
  for(const [index,id]of ['experiment','feature','tooling','pr','merge'].entries()){
   const receipt=await f.sidebar.launch('request-key-0000'+index,id,'source','goal');assert.equal(receipt.state,'accepted');f.tick();
  }
  assert.equal(f.calls.length,5);
- for(const args of f.calls){assert.equal(args.mode,'new');assert.equal(args.trigger,'background');assert.equal(args.sessionId,'source');assert.equal(args.promptTemplate,'{{user_message}}');assert.equal(args.workingDir,undefined);assert.equal(args.route,undefined);assert.ok(args.userMessage.includes('goal'));}
+ for(const args of f.calls){assert.equal(args.mode,'continue');assert.equal(args.trigger,'background');assert.equal(args.sessionId,'source');assert.equal(args.promptTemplate,'{{user_message}}');assert.equal(args.workingDir,undefined);assert.equal(args.route,undefined);assert.ok(args.userMessage.includes('goal'));}
 });
 test('duplicate request is read-only and cooldown limits new requests',async()=>{
  const f=fixture();await f.sidebar.bind(ctx());const a=await f.sidebar.launch('same-request-key-1','feature','source');

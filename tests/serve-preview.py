@@ -34,7 +34,8 @@ class Handler(BaseHTTPRequestHandler):
         data = target.read_bytes()
         if path == '/panel.html':
             data = data.replace(b'<script type="module" src="panel.js">', b'<script type="module" src="/test-host.js"></script><script type="module" src="panel.js">')
-        return self.reply(200, data, mimetypes.guess_type(str(target))[0] or 'application/octet-stream')
+        content_type = {'.js': 'text/javascript', '.mjs': 'text/javascript', '.html': 'text/html', '.css': 'text/css'}.get(target.suffix)
+        return self.reply(200, data, content_type or mimetypes.guess_type(str(target))[0] or 'application/octet-stream')
 
     def do_PUT(self):
         global JOURNAL

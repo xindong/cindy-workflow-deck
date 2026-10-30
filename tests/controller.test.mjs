@@ -43,7 +43,7 @@ test('all five workflow prompts refer to the exact requested file or Skill', () 
   for (const flow of WORKFLOWS) {
     const prompt = buildPrompt(flow.id, '实现新的背包筛选');
     assert.ok(prompt.includes(flow.source));
-    assert.ok(prompt.includes('全新的独立任务'));
+    assert.ok(prompt.includes('本次工作请求'));
     assert.ok(prompt.includes('实现新的背包筛选'));
     assert.ok(prompt.includes('停止'));
     assert.ok(prompt.includes('\n\n'));

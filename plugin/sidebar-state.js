@@ -89,8 +89,8 @@ export function createSidebar({ inspect, agent, store, now = () => Date.now(), c
       busy = true; nextLaunchAt = now() + 10000; notify();
       let result;
       try {
-        const receipt = await agent.run({ mode: 'new', trigger: 'background', sessionId: source,
-          title: workflowById(workflowId).label, promptTemplate: '{{user_message}}', userMessage: text,
+        const receipt = await agent.run({ mode: 'continue', trigger: 'background', sessionId: source,
+          promptTemplate: '{{user_message}}', userMessage: text,
           event: { workflowId, source: 'sidebar-user-click' } });
         result = receipt?.ok === true && typeof receipt.sessionId === 'string' && receipt.sessionId
           ? { state: 'accepted', sessionId: receipt.sessionId, sourceSessionId: source, workflowId }
