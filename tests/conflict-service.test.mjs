@@ -16,13 +16,15 @@ function fixture() {
 
 test('stash conflict dispatch names the fixed entry, asks to merge and complete restore, and stays reserved until explicit verification',async()=>{
  const f=fixture(),sha='a'.repeat(40),gitCalls=[];
- const git=async(dir,p)=>{gitCalls.push(p);return p.action==='stash-files'?{entry:{id:sha,ref:'stash@{0}'},files:[{path:'notes.md'}]}:{operationLocked:false};};
+ const git=async(dir,p)=>{gitCalls.push(p);return p.action==='stash-files'?{entry:{id:sha,ref:'stash@{0}'},files:[{path:'notes.md'}]}:{operationLocked:false,fingerprint:'merged'};};
  const service=createConflictService({store:f.store,agent:f.agent,git});
  const result=await service('conflict-start',{...f.params,kind:'stash',stashId:sha});assert.equal(result.kind,'stash');assert.equal(result.stashId,sha);const task=f.calls[0].task;for(const text of ['完成这条记录的取回','固定提交标识','第三父提交','文本冲突优先','禁止再次整条 apply','保留原 Stash','不改写或解除工具回执'])assert.ok(task.includes(text),text);
  await assert.rejects(service('conflict-start',{...f.params,operationId:randomUUID()}),{code:'AI_REPAIR_PENDING'});
  const before=gitCalls.filter(p=>p.action==='conflict-release').length;assert.equal((await service('conflict-read',f.params)).state,'done');assert.equal(gitCalls.filter(p=>p.action==='conflict-release').length,before);
  await assert.rejects(service('conflict-start',{...f.params,operationId:randomUUID()}),{code:'AI_REPAIR_PENDING'});
  await assert.rejects(service('conflict-acknowledge',{...f.params,recordId:result.id,confirmed:true}),{code:'RULE_REVIEW_REQUIRED'});
+ await assert.rejects(service('conflict-acknowledge',{...f.params,recordId:result.id,confirmed:true,stashRestored:true}),{code:'TESTS_UNVERIFIED'});
+ await service('conflict-tests-report',{recordId:result.id,status:'passed',summary:'项目测试通过',checks:[{command:'node --test',exitCode:0,result:'1 passed'}]},{sessionContext:{session_id:'session'}});
  assert.equal((await service('conflict-acknowledge',{...f.params,recordId:result.id,confirmed:true,stashRestored:true})).state,'acknowledged');assert.equal(f.calls.length,1);
 });
 

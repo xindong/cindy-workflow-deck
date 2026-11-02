@@ -107,6 +107,16 @@ channel.onmessage = ({ data }) => {
   void promise.then(reply => channel.postMessage(reply));
 };
 export function handleHostMessage(message) {
+  if(message.type==='tool-call'&&message.tool==='report_conflict_tests') {
+    void (async()=>{
+      try {
+        const result=await conflict('conflict-tests-report',message.args||{},{sessionContext:message.args?.session_context});
+        await cindy.send({type:'tool-result',callId:message.callId,ok:true,result});
+      } catch(error) {
+        await cindy.send({type:'tool-result',callId:message.callId,ok:false,errorCode:error.code||'STORAGE_UNAVAILABLE',message:error.message||'测试回报未保存，请核对原处理任务后重试。'});
+      }
+    })();return;
+  }
   if(message.type==='tool-call'&&['assist_update_conflict','diagnose_issue'].includes(message.tool)) {
     void (async()=>{
       try {

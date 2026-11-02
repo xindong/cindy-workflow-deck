@@ -33,6 +33,7 @@ export function errorHelp(error={},english=false) {
    RULE_SYMLINK:['项目规则指向了外部链接，无法安全核对。请让项目负责人确认规则文件的位置。','A project rule uses a symbolic link. Ask the owner to verify its location.'],
    STALE_REVIEW:['文件或项目规则刚刚发生变化。请点“重新检查”，核对后再选择操作。','Files or project rules changed. Check again and review before continuing.'],
    CONFIG_CONFLICT:['项目配置已在另一处改变。请重新加载配置，确认当前项目后再操作。','Project settings changed elsewhere. Reload and review the selected project.'],
+   TESTS_UNVERIFIED:['合并后的项目测试尚未通过。请回原项目处理任务查看原因并继续验证；不要重复取回。','Post-merge project tests have not passed. Continue verification in the same project task; do not repeat the restore.'],
    RESPONSE_UNCONFIRMED:['还没收到操作的最终结果。请先点“重新检查”核对；不要再次更新或提交。','The final result has not been confirmed. Check the actual state before repeating an update or submission.'],
    OPERATION_LOCKED:['项目有正在进行或尚未核对的操作，暂时不能还原。请先重新检查状态；如果仍提示待核对，请联系项目负责人处理，不要删除操作记录或备份。','An operation is running or needs verification. Check the state first; if it remains pending, ask the project owner to verify it. Keep operation records and backups.'],
    REVERT_UNCONFIRMED:['还原已停止，部分文件可能已经还原。请先重新检查结果，并与项目负责人核对文件、暂存内容及备份；不要再次还原同一批文件。','Restore stopped and some files may already be restored. Check the result and verify files, staged contents and backups with the project owner before any new restore.'],
