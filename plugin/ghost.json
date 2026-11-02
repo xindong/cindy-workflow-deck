@@ -4,12 +4,79 @@
   "name": "极心许愿",
   "description": "基础Git操作保留项目hooks与分支门禁；AI诊断分析问题与建议，高级工作流与冲突处理复用项目任务。",
   "whenToUse": "开始实验性工作、功能开发、工具开发、提交 PR 或整理分支时使用工作流快捷面板。",
-  "version": "0.2.31",
+  "version": "0.2.32",
   "minCindyVersion": "0.1.109",
   "entry": "main.js",
   "launch": "resident",
   "command": "jixin-make-a-wish",
   "tools": [
+    {
+      "name": "report_conflict_tests",
+      "description": "在原项目冲突处理任务中记录实际项目测试。最终合并恢复后自动运行项目规定测试，再回报实际命令、退出码和摘要；未执行、失败或中断不能 passed。此工具仅记录，不执行命令。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 60
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "passed",
+              "failed",
+              "unavailable"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1200
+          },
+          "checks": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "exitCode": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "result": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "command",
+                "exitCode",
+                "result"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "recordId",
+          "status",
+          "summary",
+          "checks"
+        ],
+        "additionalProperties": false
+      }
+    },
     {
       "name": "get_workflows",
       "description": "显示兼容聊天绑定卡。推荐直接在插件配置选择项目根目录，无需调用工具或绑定聊天即可从面板在项目处理任务中工作。",

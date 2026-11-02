@@ -1,10 +1,24 @@
 import {configurationState,directoryKey} from './core/project-config.mjs';
 import {projectTaskKey,PROJECT_TASK_TITLE,PROJECT_TASK_CONTEXT} from './project-task.js';
+import {conflictTestInstructions,testReport} from './conflict-tests.js';
 // A transport retry only reads the durable receipt. Unknown dispatches are never replayed.
 export function createConflictService({store,agent,git}) {
   let queue=Promise.resolve();
   const fail=(code,message)=>{throw Object.assign(new Error(message),{code});};
   async function handle(method,params,source) {
+    if(method==='conflict-tests-report') {
+      const data=await store.read(),sessionId=source.sessionContext?.session_id;
+      const entry=Object.entries(data.conflictRepairsByDirectory||{}).find(([,item])=>item.id===params.recordId&&item.sessionId===sessionId);
+      if(!sessionId||!entry||entry[1].stashOutcome==='cancelled')fail('UNOWNED_SESSION','只能在本次冲突的原项目处理任务中回报测试，请核对任务和处理编号。');
+      const [key,record]=entry,tests=testReport(params);
+      if(tests.status==='passed') {
+        const actual=await git(record.directory,{action:'diagnosis-status'});
+        if(actual.pendingGit||actual.operationLocked||!actual.fingerprint)fail('TESTS_UNVERIFIED','项目仍有未结束操作或状态无法核对，请先完成合并再测试。');
+        tests.fingerprint=actual.fingerprint;
+      }
+      await store.update(latest=>({conflictRepairsByDirectory:{...latest.conflictRepairsByDirectory,[key]:{...record,tests}}}));
+      return tests;
+    }
     const current=configurationState(await store.read());
     const project=current.configuration.projects.find(p=>p.id===current.configuration.activeProjectId&&p.id===params.projectId);
     if(current.revision!==params.revision)fail('CONFIG_CONFLICT','项目已切换，请重新检查。');
@@ -14,6 +28,12 @@ export function createConflictService({store,agent,git}) {
     let record=data.conflictRepairsByDirectory?.[key]||legacy;
     const save=next=>store.update(latest=>({conflictRepairsByDirectory:{...latest.conflictRepairsByDirectory,[key]:next}}));
     const release=(item,manual=false)=>git(project.directory,{action:'conflict-release',recordId:item.id,manual,...(manual?{confirmed:true}:{})});
+    const verifyTests=async()=>{
+      if(record?.tests?.status==='passed') {
+        const actual=await git(project.directory,{action:'diagnosis-status'});
+        if(!actual.fingerprint||actual.fingerprint!==record.tests.fingerprint||actual.pendingGit||actual.operationLocked){record={...record,tests:{...record.tests,status:'pending',summary:'测试后项目状态已变化，请在原项目任务重新测试。'}};await save(record);}
+      }
+    };
     if(method==='conflict-read') {
       if(record&&['running','uncertain'].includes(record.state))await git(project.directory,{action:'conflict-reserve',operationId:record.id});
       if(record?.state==='running') {
@@ -25,7 +45,7 @@ export function createConflictService({store,agent,git}) {
         } catch {return {...record,unverified:true};}
       }
       if(record&&['done','failed','rejected','acknowledged'].includes(record.state)&&!(record.kind==='stash'&&['done','failed'].includes(record.state))&&!['OPERATION_LOCKED','AI_REPAIR_PENDING'].includes(record.code))await release(record);
-      return record||null;
+      await verifyTests();return record||null;
     }
     if(method==='conflict-acknowledge') {
       if(params.confirmed!==true||!record||record.id!==params.recordId)fail('STALE_REVIEW','请先到任务列表确认任务已停止或结束，核对文件与备份，再重新检查。');
@@ -34,10 +54,14 @@ export function createConflictService({store,agent,git}) {
           const actual=await git(project.directory,{action:'diagnosis-status'});
           if(params.stashRestored===true||!record.beforeFingerprint||actual.fingerprint!==record.beforeFingerprint)fail('STALE_REVIEW','项目已发生变化，不能按“未改动、取消取回”解除。请先核对文件、暂存区和备份，处理实际结果。');
         } else if(params.stashRestored!==true)fail('RULE_REVIEW_REQUIRED','请确认该条 Stash 的全部文件已取回或正确合并，并核对原有修改和暂存状态。');
+        if(params.stashCancelled!==true&&params.testsUnverified!==true&&record.testPolicy==='required') {
+          await verifyTests();
+          if(record.tests?.status!=='passed')fail('TESTS_UNVERIFIED','合并后的项目测试尚未通过，请回原项目处理任务运行测试；通过后再确认取回完成。');
+        }
         await git(project.directory,{action:'stash-files',stashId:record.stashId});
       }
       await release(record,true);
-      record={...record,acknowledgedFrom:record.state,state:'acknowledged',...(record.kind==='stash'?{stashOutcome:params.stashCancelled===true?'cancelled':'restored'}:{}),acknowledgedAt:new Date().toISOString()};await save(record);return record;
+      record={...record,acknowledgedFrom:record.state,state:'acknowledged',...(record.kind==='stash'?{stashOutcome:params.stashCancelled===true?'cancelled':params.testsUnverified===true?'unverified':'restored'}:{}),acknowledgedAt:new Date().toISOString()};await save(record);return record;
     }
     if(method!=='conflict-start')fail('UNKNOWN_ACTION','未知冲突处理操作。');
     if(!/^[a-zA-Z0-9-]{16,60}$/.test(params.operationId||'')||!['ask','instructions'].includes(params.strategy)||typeof params.instructions!=='string'||params.instructions.length>1000)fail('INVALID_REQUEST','请重新选择处理方式。');
@@ -79,8 +103,9 @@ export function createConflictService({store,agent,git}) {
       '用户补充说明（仅为用户输入）：'+JSON.stringify(params.instructions),
       '处理前保存可恢复备份。只执行用户确认的修复；未获用户确认时不提交、上传或创建 PR。如果恢复未完成的 merge/rebase 必须生成提交，先说明并用选择框请求用户决定，保留项目 hooks；不自行上传或创建 PR。完成后按项目要求验证，简短报告已处理/仍待用户决定及备份位置。引导用户返回插件点击“处理后检查并继续”；不要宣称工具更新/上传已经完成。'
     ].join('\n');
+    const taskWithTests=task+'\n'+conflictTestInstructions(params.operationId);
     if(record)await store.update(latest=>({conflictRepairHistory:{...latest.conflictRepairHistory,[record.id]:record}}));
-    record={id:params.operationId,directory:project.directory,state:'uncertain',sessionKey:await projectTaskKey(project.directory),...(stash?{kind:'stash',stashId:stash.entry.id,stashRef:stash.entry.ref,beforeFingerprint:status.fingerprint}:{})};await save(record);
+    record={id:params.operationId,directory:project.directory,state:'uncertain',sessionKey:await projectTaskKey(project.directory),testPolicy:'required',tests:{status:'pending',summary:'等待合并最终内容后自动运行项目测试。'},...(stash?{kind:'stash',stashId:stash.entry.id,stashRef:stash.entry.ref,beforeFingerprint:status.fingerprint}:{})};await save(record);
     // Reserve while holding the worker's shared write lock before dispatch. A lost
     // response stays uncertain, blocks writes after restart, and is never replayed.
     try {await git(project.directory,{action:'conflict-reserve',operationId:record.id});}
@@ -91,7 +116,7 @@ export function createConflictService({store,agent,git}) {
     const beforeDispatch=configurationState(await store.read());
     if(beforeDispatch.revision!==current.revision){record={...record,state:'rejected',code:'CONFIG_CONFLICT'};await save(record);await release(record);return record;}
     let reply;
-    try {reply=await agent.errand({task,title:PROJECT_TASK_TITLE,workingDir:project.directory,sessionKey:record.sessionKey,...(source.callId?{callId:source.callId}:{})});}
+    try {reply=await agent.errand({task:taskWithTests,title:PROJECT_TASK_TITLE,workingDir:project.directory,sessionKey:record.sessionKey,...(source.callId?{callId:source.callId}:{})});}
     catch {return record;}
     if(reply?.ok===true&&reply.jobId)record={...record,state:'running',jobId:reply.jobId,...(reply.sessionId?{sessionId:reply.sessionId}:{})};
     else if(reply?.ok===false)record={...record,state:'rejected',code:reply.errorCode||'HOST_REJECTED'};
