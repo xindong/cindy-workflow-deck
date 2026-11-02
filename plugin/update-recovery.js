@@ -23,11 +23,12 @@ export function createUpdateRecovery({state,ready,isBusy,isUpdating=()=>false,ca
   const dispositionLabel=node('label',say('确认处理结果','Confirm outcome')),disposition=node('select');disposition.id='stash-repair-disposition';disposition.append(new Option(say('本条已完整取回或合并，测试通过','Fully restored or merged; tests passed'),'restored'),new Option(say('本地未改动，取消本次取回','Local state unchanged; cancel restore'),'cancelled'),new Option(say('人工核对后仅解除限制，保留测试未验证','Release after manual review; tests remain unverified'),'unverified'));dispositionLabel.append(disposition);dispositionLabel.hidden=true;
   const dialog=node('dialog');dialog.id='conflict-dialog';
   const heading=node('h3',say('AI 协助处理冲突','AI-assisted conflict repair'));
+  const reviewHelp=node('p',say('先在原项目任务列出冲突文件，再由你逐个选择合并方式；预览并确认后才写入，最后自动运行项目测试。','The existing project task lists conflicting files first. Choose how to merge each file, preview and confirm before writing, then project tests run automatically.'));
   const info=node('p',say('同一项目复用一个处理任务，在任务列表中交互，可能产生模型费用。遇到保留哪方、覆盖等选择，AI 会先询问你。','Actions for this project reuse one task and may incur model costs. AI will ask before choosing sides or overwriting changes.'));
   const strategyLabel=node('label',say('处理方式','Approach')),strategy=node('select');strategy.id='conflict-strategy';strategy.append(new Option(say('逐项询问我（推荐）','Ask me at each decision (recommended)'),'ask'),new Option(say('我先说明处理要求','I will provide instructions'),'instructions'));strategyLabel.append(strategy);
   const instructionsLabel=node('label',say('补充说明（可选）','Instructions (optional)')),instructions=node('textarea');instructions.id='conflict-instructions';instructions.rows=3;instructions.maxLength=1000;instructions.placeholder=say('例如：保留我的美术文件，其它冲突逐项询问。','For example: keep my art files; ask about other conflicts.');instructionsLabel.append(instructions);
   const send=node('button',say('确认，开始处理','Start repair')),cancel=node('button',say('取消','Cancel'));send.id='conflict-send';cancel.id='conflict-cancel';
-  dialog.append(heading,info,strategyLabel,instructionsLabel,send,cancel);
+  dialog.append(heading,info,reviewHelp,strategyLabel,instructionsLabel,send,cancel);
   for(const button of [check,retry,assist,resume,acknowledge,send,cancel])button.type='button';
   box.append(title,help,actions,status,tests,testDetails,dispositionLabel,repairLabel,repairAck,label,acknowledge,details,dialog);document.getElementById('update-progress').after(box);
   let uncertain=false,receiptKey='',problemCode='',repairRecord,repairing=false,generation=0,stashTarget;
