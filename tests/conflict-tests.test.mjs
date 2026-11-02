@@ -32,6 +32,14 @@ test('test report binds to host session and repair id even after active project 
  assert.equal((await f.store.read()).conflictRepairsByDirectory['/project'].tests.source,'agent-report');
 });
 
+test('both conflict targets request full previews, reversible choices and bounded explicit batch writes',async()=>{
+ for(const kind of [undefined,'stash']) {
+  const f=await fixture(kind);
+  for(const text of ['最终全文','相对当前本地的差异','不能截断后冒充全文','不覆盖项目文件或暂存区','返回修改段落','撤销本轮选择，重新开始','取消且保持原文件','原索引条目','写后内容摘要','后续改动','不能将整个工作树或整个索引重置','报告 pending','多选文件批量处理','不要把单选框冒充多选','未选文件不得执行该批操作','二进制/无法解读内容明确排除','批量不保证跨文件原子性','不自动重放或假称整批回滚'])assert.ok(f.task.includes(text),text);
+  assert.equal(f.record.sessionKey.startsWith('jixin-project-'),true);
+ }
+});
+
 test('no checks, failed exit, missing exit and oversized reports cannot claim passed',async()=>{
  const f=await fixture();
  for(const checks of [[],[{command:'npm test',exitCode:1,result:'failed'}],[{command:'npm test',exitCode:null,result:'interrupted'}],[{command:'x'.repeat(501),exitCode:0,result:'passed'}]])await assert.rejects(f.service('conflict-tests-report',{...f.report,checks},f.source),{code:'INVALID_TEST_REPORT'});
