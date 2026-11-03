@@ -41,6 +41,15 @@ test('AI repair is scoped to selected project, asks before semantic choices, and
  assert.equal((await f.service('conflict-start',{...f.params,operationId:randomUUID()})).jobId,'job');assert.equal(f.calls.length,1);
  assert.equal((await f.service('conflict-read',f.params)).state,'done');assert.equal(f.calls.length,1);
 });
+test('query hydrates a missing Host session without accepting an unrelated caller or dispatching again',async()=>{
+ const f=fixture();f.agent.errand=async p=>{f.calls.push(p);return {ok:true,jobId:'job'};};
+ const r=await f.service('conflict-start',f.params);assert.equal(r.sessionId,undefined);
+ f.agent.queryErrand=async()=>({ok:true,status:'running',sessionId:'host-session'});
+ assert.equal((await f.service('conflict-read',f.params)).sessionId,'host-session');
+ assert.equal((await f.store.read()).conflictRepairsByDirectory['/project'].sessionId,'host-session');
+ assert.equal(f.calls.length,1);
+});
+
 test('uncertain dispatch survives service restart and cannot be replayed with a new request id',async()=>{
  const f=fixture();f.agent.errand=async()=>{f.calls.push('lost');throw new Error('response lost');};
  assert.equal((await f.service('conflict-start',f.params)).state,'uncertain');

@@ -50,6 +50,19 @@ try {
  await writeFile(join(project,'.git/hero-before-repair.txt'),await readFile(join(project,'hero.txt')));await writeFile(join(project,'hero.txt'),'team\n');
  await page.locator('#conflict-continue').click();await page.locator('#beginner-confirm:not(:disabled)').waitFor();await page.locator('#beginner-confirm').click();await page.locator('#update-progress[data-state=done]').waitFor();
  assert.equal(git(['status','--porcelain']),'');assert.equal(await readFile(join(project,'.git/hero-before-repair.txt'),'utf8'),'local\n');assert.equal(aiCalls.length,1);assert.equal(await page.locator('#update-recovery').isVisible(),false);
+ // Resolve a real merge, leaving its commit pending exactly as in the reported issue.
+ git(['checkout','-qb','finish-fixture']);await writeFile(join(project,'hero.txt'),'other finish\n');git(['commit','-qam','other finish']);
+ git(['checkout','-q','main']);await writeFile(join(project,'hero.txt'),'local finish\n');git(['commit','-qam','local finish']);
+ assert.throws(()=>git(['merge','finish-fixture']));await writeFile(join(project,'hero.txt'),'local finish\nother finish\n');git(['add','hero.txt']);
+ await page.locator('#git-refresh').click();await page.locator('#update-recovery h3').filter({hasText:'等待合并提交'}).waitFor();
+ await page.locator('#conflict-continue').click();await page.waitForFunction(()=>document.querySelector('#update-recovery-help')?.textContent.includes('只暂存文件还没有结束版本操作'),undefined,{timeout:5000});
+ assert.notEqual(git(['rev-parse','--verify','MERGE_HEAD']),'');assert.equal(aiCalls.length,1);
+ await page.locator('#update-recovery').screenshot({path:join(out,'320暗色-等待合并提交恢复卡.png')});
+ await page.locator('#conflict-assist:not(:disabled)').click();assert.match(await page.locator('#conflict-instructions').inputValue(),/询问我是否完成合并提交/);
+ await page.screenshot({path:join(out,'320暗色-文件合并后等待提交.png'),fullPage:true});await page.locator('#conflict-cancel').click();assert.equal(aiCalls.length,1);
+ // Simulated user-approved completion uses native Git; the plugin must not remove markers.
+ git(['commit','-qm','approved finish']);await page.locator('#git-refresh').click();await page.locator('#update-recovery').waitFor({state:'hidden'});
+ assert.equal((await gitWithHost(host,project,{action:'status'})).pendingGit,false);
  // A lost dispatch survives page reload and has an explicit no-replay recovery.
  loseDispatch=true;const lost=await service('conflict-start',{projectId:'one',revision:1,operationId:randomUUID(),strategy:'ask',instructions:''});assert.equal(lost.state,'uncertain');
  await page.reload();await page.evaluate(async()=>{const {mountGit}=await import('/git-ui.js');mountGit({transport:{call:window.transport},context:()=>({projectId:'one',revision:1,ready:true}),notice:()=>{}});});
@@ -62,5 +75,5 @@ try {
  await page.evaluate(()=>{window.draftProgress.start('draft');window.draftProgress.fail({message:'lost'});window.draftProgress.sync({id:'draft',state:'review-draft'});});
  assert.match(await page.locator('#submit-progress-title').first().textContent(),/草稿待完善.*已核对/);
  await page.setViewportSize({width:860,height:760});await page.emulateMedia({colorScheme:'light'});await page.addStyleTag({content:':root{--panel-bg:#f8f8f6;--surface:#fff;--text-primary:#262626;--text-secondary:#737373;--border-default:#d7d7d4;color-scheme:light}'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:join(out,'860亮色-检查后更新完成.png'),fullPage:true});
- assert.deepEqual(errors,[]);console.log('PASS: real isolated conflict preflight; 320/860; dialog cancel zero dispatch; mocked AI task scoped to selected directory; fresh check does not replay; unresolved conflict blocks; repaired fixture updates with backup preserved.');
+ assert.deepEqual(errors,[]);console.log('PASS: real isolated conflict preflight; 320/860; dialog cancel zero dispatch; mocked AI task scoped to selected directory; no replay; unresolved conflict blocks; staged merge shows persistent completion guidance; approved native commit restores normal UI; backups preserved.');
 } finally {await browser?.close();worker?.kill();if(server)await new Promise(yes=>server.close(yes));await rm(temp,{recursive:true,force:true});}

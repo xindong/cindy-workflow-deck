@@ -60,6 +60,17 @@ test('failed or unavailable tests block restored completion; changed content inv
  assert.equal((await f.service('conflict-acknowledge',ack)).stashOutcome,'restored');
 });
 
+test('resolved pending merge may record tests but commit fingerprint changes still require retesting',async()=>{
+ const f=await fixture();f.pending();
+ const data=await f.store.read();
+ const service=createConflictService({store:f.store,agent:{queryErrand:async()=>({ok:true,status:'done',sessionId:'project-task'})},git:async()=>({fingerprint:'merged',pendingGit:true,gitOperation:{kind:'merge',unresolvedCount:0,awaitingMergeCommit:true}})});
+ delete data.conflictRepairsByDirectory['/project'].sessionId;
+ await assert.rejects(service('conflict-tests-report',f.report,{sessionContext:{session_id:'intruder'}}),{code:'UNOWNED_SESSION'});
+ assert.equal((await service('conflict-tests-report',f.report,f.source)).status,'passed');
+ assert.equal((await service('conflict-read',f.params)).tests.status,'passed');
+ f.change();assert.equal((await f.service('conflict-read',f.params)).tests.status,'pending');
+});
+
 test('explicit manual release preserves unverified outcome instead of claiming restoration success',async()=>{
  const f=await fixture('stash');await f.service('conflict-read',f.params);
  const result=await f.service('conflict-acknowledge',{...f.params,recordId:f.record.id,confirmed:true,stashRestored:true,testsUnverified:true});

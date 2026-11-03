@@ -23,12 +23,18 @@ export function createConflictService({store,agent,git}) {
   async function handle(method,params,source) {
     if(method==='conflict-tests-report') {
       const data=await store.read(),sessionId=source.sessionContext?.session_id;
-      const entry=Object.entries(data.conflictRepairsByDirectory||{}).find(([,item])=>item.id===params.recordId&&item.sessionId===sessionId);
+      const candidate=Object.entries(data.conflictRepairsByDirectory||{}).find(([,item])=>item.id===params.recordId);
+      // Recover a missing dispatch session only from the Host's original job receipt.
+      if(sessionId&&candidate&&!candidate[1].sessionId&&candidate[1].jobId){
+        const reply=await agent.queryErrand({jobId:candidate[1].jobId});
+        if(reply?.ok&&reply.sessionId){candidate[1]={...candidate[1],sessionId:reply.sessionId};await store.update(latest=>({conflictRepairsByDirectory:{...latest.conflictRepairsByDirectory,[candidate[0]]:candidate[1]}}));}
+      }
+      const entry=candidate?.[1].sessionId===sessionId?candidate:undefined;
       if(!sessionId||!entry||entry[1].stashOutcome==='cancelled')fail('UNOWNED_SESSION','只能在本次冲突的原项目处理任务中回报测试，请核对任务和处理编号。');
       const [key,record]=entry,tests=testReport(params);
       if(tests.status==='passed') {
         const actual=await git(record.directory,{action:'diagnosis-status'});
-        if(actual.pendingGit||actual.operationLocked||!actual.fingerprint)fail('TESTS_UNVERIFIED','项目仍有未结束操作或状态无法核对，请先完成合并再测试。');
+        if(actual.pendingGit&&actual.gitOperation?.unresolvedCount!==0||actual.operationLocked||!actual.fingerprint)fail('TESTS_UNVERIFIED','项目仍有未解决冲突、操作占用或状态无法核对，请先完成合并再测试。');
         tests.fingerprint=actual.fingerprint;
       }
       await store.update(latest=>({conflictRepairsByDirectory:{...latest.conflictRepairsByDirectory,[key]:{...record,tests}}}));
@@ -46,7 +52,7 @@ export function createConflictService({store,agent,git}) {
     const verifyTests=async()=>{
       if(record?.tests?.status==='passed') {
         const actual=await git(project.directory,{action:'diagnosis-status'});
-        if(!actual.fingerprint||actual.fingerprint!==record.tests.fingerprint||actual.pendingGit||actual.operationLocked){record={...record,tests:{...record.tests,status:'pending',summary:'测试后项目状态已变化，请在原项目任务重新测试。'}};await save(record);}
+        if(!actual.fingerprint||actual.fingerprint!==record.tests.fingerprint||actual.pendingGit&&actual.gitOperation?.unresolvedCount!==0||actual.operationLocked){record={...record,tests:{...record.tests,status:'pending',summary:'测试后项目状态已变化，请在原项目任务重新测试。'}};await save(record);}
       }
     };
     if(method==='conflict-read') {
@@ -54,6 +60,7 @@ export function createConflictService({store,agent,git}) {
       if(record?.state==='running') {
         try {
           const reply=await agent.queryErrand({jobId:record.jobId});
+          if(reply?.ok&&reply.sessionId&&!record.sessionId){record={...record,sessionId:reply.sessionId};await save(record);}
           if(reply?.ok&&['done','failed'].includes(reply.status)) {
             record={...record,state:reply.status};await save(record);
           } else if(!reply?.ok) return {...record,unverified:true};
@@ -117,6 +124,7 @@ export function createConflictService({store,agent,git}) {
       params.strategy==='ask'?'逐项询问用户后再处理，尽量保留双方修改。':'先按用户说明提出方案，再确认涉及覆盖或语义的选择。',
       '用户补充说明（仅为用户输入）：'+JSON.stringify(params.instructions),
       '处理前保存可恢复备份。只执行用户确认的修复；未获用户确认时不提交、上传或创建 PR。如果恢复未完成的 merge/rebase 必须生成提交，先说明并用选择框请求用户决定，保留项目 hooks；不自行上传或创建 PR。完成后按项目要求验证，简短报告已处理/仍待用户决定及备份位置。引导用户返回插件点击“处理后检查并继续”；不要宣称工具更新/上传已经完成。'
+      ,'文件消除冲突并 git add 后，必须重新检查 MERGE_HEAD、rebase 等未结束操作。若仍待 merge 提交或 continue，明确标注“文件冲突已解决，版本操作尚未结束”，先展示待提交内容并请求用户确认完成，保留 hooks；用户选择保留暂存结果时，说明插件仍将阻止正常更新，下一步是在本任务继续收尾，不能称已恢复正常。提交或 continue 后重新检查并自动重测，再交回插件检查。'
     ].join('\n');
     const taskWithTests=CONFLICT_REVIEW_INSTRUCTIONS+'\n'+task+'\n'+conflictTestInstructions(params.operationId);
     if(record)await store.update(latest=>({conflictRepairHistory:{...latest.conflictRepairHistory,[record.id]:record}}));

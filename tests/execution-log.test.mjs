@@ -22,6 +22,14 @@ test('concurrent reports serialize; bounded storage preserves receipt records',a
   const {store,log}=fixture();await Promise.all(Array.from({length:80},(_,i)=>log.report({session_id:'own'},{status:'step',title:String(i),detail:'字'.repeat(1000)},String(i))));
   const data=await store.read();assert.ok(new TextEncoder().encode(JSON.stringify(data.executionLogs)).length<=18000);assert.equal(data.sidebarReceipts.a.sessionId,'own');assert.ok((await log.list())[0].entries.length>0);
 });
+test('Host-receipted conflict tasks can report, but unaccepted and unrelated tasks cannot',async()=>{
+ const {store,log}=fixture(),args={status:'output',title:'Checks',detail:'8 passed'};
+ await store.write({conflictRepairsByDirectory:{'/one':{id:'repair',jobId:'host-job',sessionId:'conflict-task',state:'running'},'/two':{sessionId:'unaccepted',state:'uncertain'}}});
+ await log.report({session_id:'conflict-task'},args,'report');
+ assert.equal((await log.list()).find(r=>r.sessionId==='conflict-task').entries.length,1);
+ for(const id of ['unaccepted','other'])await assert.rejects(log.report({session_id:id},args,'rejected'),{code:'UNOWNED_SESSION'});
+});
+
 test('storage failure never acknowledges report as recorded',async()=>{
   const {store}=fixture();store.write=async()=>{throw new Error('disk failed');};const log=createExecutionLog({store});
   await assert.rejects(log.report({session_id:'own'},{status:'step',title:'Step',detail:'Done'},'x'),/disk failed/);

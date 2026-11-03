@@ -1,19 +1,23 @@
 // Only Host-issued task session ids in our durable receipts may report progress.
 export function createExecutionLog({ store, changed = () => {}, now = () => Date.now() }) {
+  const owned=data=>[
+    ...Object.values(data.sidebarReceipts||{}).filter(r=>r.state==='accepted'&&r.sessionId),
+    ...Object.values(data.conflictRepairsByDirectory||{}).filter(r=>r.jobId&&r.sessionId&&['running','done','failed','acknowledged'].includes(r.state)).map(r=>({...r,workflowId:'conflict-repair'}))
+  ];
   let queue = Promise.resolve();
   const serial = work => { const next = queue.then(work); queue = next.catch(() => {}); return next; };
   async function list() {
     const data = await store.read();
     const sessions=new Map();
-    for(const record of Object.values(data.sidebarReceipts||{}))if(record.state==='accepted'&&record.sessionId){sessions.delete(record.sessionId);sessions.set(record.sessionId,record);}
+    for(const record of owned(data)){sessions.delete(record.sessionId);sessions.set(record.sessionId,record);}
     return [...sessions.values()]
       .map(r => ({ sessionId: r.sessionId, workflowId: r.workflowId, sourceSessionId: r.sourceSessionId, entries: (data.executionLogs || {})[r.sessionId] || [] })).slice(-30).reverse();
   }
   function append(sessionId, entry, eventId) { return serial(async () => {
     const data = await store.read();
-    const own = Object.values(data.sidebarReceipts || {}).some(r => r.state === 'accepted' && r.sessionId === sessionId);
-    if (!own) throw Object.assign(new Error('Not a workflow task'), { code: 'UNOWNED_SESSION' });
-    const logs = Object.fromEntries(Object.entries(data.executionLogs || {}).filter(([id]) => Object.values(data.sidebarReceipts || {}).some(r => r.state === 'accepted' && r.sessionId === id)));
+    const sessions=new Set(owned(data).map(r=>r.sessionId));
+    if (!sessions.has(sessionId)) throw Object.assign(new Error('当前任务没有插件的受理回执，请回原项目处理任务继续；进度未保存，实际文件不会回滚。'), { code: 'UNOWNED_SESSION' });
+    const logs = Object.fromEntries(Object.entries(data.executionLogs || {}).filter(([id]) => sessions.has(id)));
     const items = logs[sessionId] || [];
     if (eventId && items.some(item => item.eventId === eventId)) return { recorded: true };
     logs[sessionId] = [...items, { ...entry, at: now(), ...(eventId ? { eventId } : {}) }].slice(-60);
