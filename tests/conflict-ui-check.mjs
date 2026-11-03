@@ -63,6 +63,9 @@ try {
  // Simulated user-approved completion uses native Git; the plugin must not remove markers.
  git(['commit','-qm','approved finish']);await page.locator('#git-refresh').click();await page.locator('#update-recovery').waitFor({state:'hidden'});
  assert.equal((await gitWithHost(host,project,{action:'status'})).pendingGit,false);
+ await writeFile(join(project,'.git','jixin-beginner.json'),JSON.stringify({id:randomUUID(),action:'beginner-update',state:'needs-verification',step:'restore',completed:['fetch','stash','merge'],stash:'ui-backup'}));
+ await page.locator('#git-refresh').click();await page.locator('#update-recovery-confirm').check();await page.locator('#update-recovery-acknowledge:not(:disabled)').click();
+ await page.locator('#update-recovery').waitFor({state:'hidden'});assert.equal((await gitWithHost(host,project,{action:'status'})).beginnerReceipt.state,'acknowledged');assert.equal(await page.locator('#beginner-update').isDisabled(),false);
  // A lost dispatch survives page reload and has an explicit no-replay recovery.
  loseDispatch=true;const lost=await service('conflict-start',{projectId:'one',revision:1,operationId:randomUUID(),strategy:'ask',instructions:''});assert.equal(lost.state,'uncertain');
  await page.reload();await page.evaluate(async()=>{const {mountGit}=await import('/git-ui.js');mountGit({transport:{call:window.transport},context:()=>({projectId:'one',revision:1,ready:true}),notice:()=>{}});});
