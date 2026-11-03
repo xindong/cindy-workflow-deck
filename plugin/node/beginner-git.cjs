@@ -54,12 +54,19 @@ function retryableFailure(record) {
     && ['fetch','preflight'].includes(record.step) && !record.stash && !record.previousStash
     && Array.isArray(record.completed) && record.completed.every(s=>s==='fetch');
 }
-async function assertNoPendingGit(ctx,state) {
-  if(state.changes.some(c=>/U/.test(c.status)||['AA','DD'].includes(c.status))) fail('PROJECT_CONFLICT','项目里有尚未处理的文件冲突。请联系项目负责人处理，工具不会替你覆盖文件。');
-  for(const name of ['MERGE_HEAD','CHERRY_PICK_HEAD','REVERT_HEAD','rebase-merge','rebase-apply']) {
+async function pendingGitOperation(ctx,state) {
+  const unresolvedCount=state.changes.filter(c=>/U/.test(c.status)||['AA','DD'].includes(c.status)).length;
+  // Rebase can also expose other markers; prefer its enclosing operation.
+  for(const [name,kind] of [['rebase-merge','rebase'],['rebase-apply','rebase'],['MERGE_HEAD','merge'],['CHERRY_PICK_HEAD','cherry-pick'],['REVERT_HEAD','revert']]) {
     const file=path.resolve(ctx.root,(await ctx.run(['rev-parse','--git-path',name])).trim());
-    try {await fs.lstat(file);fail('PROJECT_CONFLICT','项目有一项尚未完成的版本操作，请联系负责人先处理。');}catch(e){if(e.code!=='ENOENT')throw e;}
+    try {await fs.lstat(file);return {kind,unresolvedCount,awaitingMergeCommit:kind==='merge'&&unresolvedCount===0};}catch(e){if(e.code!=='ENOENT')throw e;}
   }
+  return unresolvedCount?{kind:'conflict',unresolvedCount,awaitingMergeCommit:false}:null;
+}
+async function assertNoPendingGit(ctx,state) {
+  const operation=await pendingGitOperation(ctx,state);
+  if(operation?.unresolvedCount)fail('PROJECT_CONFLICT','项目里有尚未处理的文件冲突。请联系项目负责人处理，工具不会替你覆盖文件。');
+  if(operation)fail('PROJECT_CONFLICT',operation.awaitingMergeCommit?'文件冲突已解决，但合并提交尚未完成。请在原项目任务确认并完成合并提交，再检查恢复状态。':'文件冲突已解决，但版本操作尚未结束。请在原项目任务完成后再检查。');
 }
 async function runBeginner(ctx,state,params,env) {
   const prior=await readReceipt(ctx);
@@ -145,4 +152,4 @@ async function acknowledge(ctx,prior,state) {
   await assertNoPendingGit(ctx,state);
   await writeReceipt(ctx,{...prior,state:'acknowledged',previousState:prior.state,acknowledgedAt:new Date().toISOString()});
 }
-module.exports={assertNoPendingGit,readReceipt,runBeginner,acknowledge,retryableFailure};
+module.exports={assertNoPendingGit,pendingGitOperation,readReceipt,runBeginner,acknowledge,retryableFailure};

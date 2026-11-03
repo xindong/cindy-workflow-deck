@@ -121,16 +121,17 @@ async function gitRequest(directory,params={}) {
     if(action==='diagnosis-status') {
       let operationLocked=false;
       try {await fs.lstat(path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim()));operationLocked=true;}catch(error){if(error.code!=='ENOENT')throw error;}
-      return {...state,operationLocked,aiRepair:await repair.read(ctx)}; // No write ticket or SSH binding.
+      const gitOperation=await require('./beginner-git.cjs').pendingGitOperation(ctx,state);
+      return {...state,operationLocked,gitOperation,pendingGit:!!gitOperation,aiRepair:await repair.read(ctx)}; // No write ticket or SSH binding.
     }
     if(action==='status') {
       const token=randomUUID();tickets.set(token,{root,fingerprint:state.fingerprint,expires:Date.now()+10*60*1000});
       for(const [key,t] of tickets) if(t.expires<Date.now()) tickets.delete(key);
       const service=require('./beginner-git.cjs'),receipt=await service.readReceipt(ctx);
-      let pendingGit=false;try {await service.assertNoPendingGit(ctx,state);}catch(error){if(error.code!=='PROJECT_CONFLICT')throw error;pendingGit=true;}
+      const gitOperation=await service.pendingGitOperation(ctx,state),pendingGit=!!gitOperation;
       let operationLocked=false;
       try {await fs.lstat(path.resolve(ctx.root,(await run(['rev-parse','--git-path','jixin-write.lock'])).trim()));operationLocked=true;}catch(error){if(error.code!=='ENOENT')throw error;}
-      return {...state,token,pendingGit,operationLocked,outgoing:await require('./outgoing-commits.cjs').read(ctx,state),aiRepair:await repair.read(ctx),sshIdentity:ctx.sshIdentity,stashRestoreReceipt:await stashRestore.read(ctx),fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
+      return {...state,token,pendingGit,gitOperation,operationLocked,outgoing:await require('./outgoing-commits.cjs').read(ctx,state),aiRepair:await repair.read(ctx),sshIdentity:ctx.sshIdentity,stashRestoreReceipt:await stashRestore.read(ctx),fileRevertReceipt:await require('./file-changes.cjs').readReceipt(ctx),beginnerReceipt:receipt ? {...receipt,retryable:service.retryableFailure(receipt)} : null};
     }
     if(action==='issues-list') return require('./github-issues.cjs').listIssues(ctx,params,ctx.env);
     if(action==='file-diff') return await require('./file-changes.cjs').compare(ctx,state,params);
